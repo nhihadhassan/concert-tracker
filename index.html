@@ -400,6 +400,7 @@ const SUPABASE_URL = 'https://zgafubhzhxikuknihmnu.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_HMICK42AzL2W_Tpb6VutDQ_HawfnbWM';
 const CLOUD_TABLE  = 'concert_tracker_concerts';
 const AUTH_REQUIRED = true; // require email magic-link login (RLS restricts data to the owner)
+const PRODUCTION_AUTH_REDIRECT = 'https://concert-tracker-sepia.vercel.app/';
 const sb = (window.supabase && SUPABASE_URL && SUPABASE_KEY)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
       auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
@@ -496,10 +497,12 @@ function hideGate(){ const g=$('#authGate'); if(g) g.hidden=true; $('#signOutBtn
 async function sendMagicLink(email){
   if (!sb){ setAuthMsg('Cannot reach the server. Check your connection.', 'err'); return; }
   setAuthMsg('Sending…');
+  const isLocal = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+  const emailRedirectTo = isLocal ? location.origin + location.pathname : PRODUCTION_AUTH_REDIRECT;
   try {
     const { error } = await sb.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: location.origin + location.pathname }
+      options: { emailRedirectTo }
     });
     if (error) throw error;
     setAuthMsg('Check your email for a sign-in link, then open it on this device.', 'ok');
