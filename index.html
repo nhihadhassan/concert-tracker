@@ -403,7 +403,12 @@ const AUTH_REQUIRED = true; // require email magic-link login (RLS restricts dat
 const PRODUCTION_AUTH_REDIRECT = 'https://concert-tracker-sepia.vercel.app/';
 const sb = (window.supabase && SUPABASE_URL && SUPABASE_KEY)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        flowType: 'implicit'
+      }
     })
   : null;
 
