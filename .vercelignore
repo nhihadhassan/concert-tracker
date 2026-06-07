@@ -1,0 +1,9 @@
+# Only the web app (index.html) should be deployed publicly.
+# Keep the private source data and local tooling out of the deployment.
+*.xlsx
+*.pdf
+*.csv
+.claude/
+.git/
+PRODUCT.md
+README*

@@ -1,0 +1,14 @@
+# Local tooling and agent context
+.agents/
+.claude/
+.vercel/
+
+# Private source data
+*.csv
+*.pdf
+*.xlsx
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+

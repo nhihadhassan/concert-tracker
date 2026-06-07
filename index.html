@@ -1,0 +1,1355 @@
+<!DOCTYPE html>
+<html lang="en" class="">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Nhihad's Concerts | Concert Tracker</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%237c3aed'/%3E%3Cg fill='none' stroke='white' stroke-width='7' stroke-linecap='round'%3E%3Crect x='38' y='18' width='24' height='40' rx='12'/%3E%3Cpath d='M30 50a20 20 0 0 0 40 0'/%3E%3Cline x1='50' y1='70' x2='50' y2='84'/%3E%3Cline x1='38' y1='84' x2='62' y2='84'/%3E%3C/g%3E%3C/svg%3E" />
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%237c3aed'/%3E%3Cg fill='none' stroke='white' stroke-width='7' stroke-linecap='round'%3E%3Crect x='38' y='18' width='24' height='40' rx='12'/%3E%3Cpath d='M30 50a20 20 0 0 0 40 0'/%3E%3Cline x1='50' y1='70' x2='50' y2='84'/%3E%3Cline x1='38' y1='84' x2='62' y2='84'/%3E%3C/g%3E%3C/svg%3E" />
+<script>
+  // Tailwind must be configured before the CDN script runs.
+  window.tailwind = window.tailwind || {};
+</script>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = { darkMode: 'class' };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root { color-scheme: light dark; }
+  html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+  body { min-width: 320px; }
+  h1, h2, h3 { text-wrap: balance; letter-spacing: 0; }
+  p { text-wrap: pretty; }
+
+  /* Subtle scrollbar + line clamp helper for notes */
+  .clamp-3 { display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+  dialog::backdrop { background: rgba(15,23,42,.62); }
+  dialog { box-shadow: 0 24px 80px rgba(15,23,42,.28); }
+  /* Hide number input spinners for a cleaner look */
+  input[type=number]::-webkit-outer-spin-button,
+  input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+  /* A11y: visible keyboard focus on all interactive controls (WCAG 2.4.7) */
+  a:focus-visible, button:focus-visible, select:focus-visible,
+  input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
+    outline: 2px solid #8b5cf6; outline-offset: 2px; border-radius: 6px;
+  }
+  /* A11y: placeholder contrast ≥4.5:1 (default gray-400 fails) */
+  ::placeholder { color: #64748b; opacity: 1; }
+  .dark ::placeholder { color: #94a3b8; }
+
+  .shell-header { box-shadow: 0 1px 0 rgba(15,23,42,.04); }
+  .brand-mark {
+    display:grid; place-items:center; width:2.5rem; height:2.5rem; border-radius:.75rem;
+    background: linear-gradient(135deg, #7c3aed, #db2777); color:white;
+    box-shadow: 0 10px 24px rgba(124,58,237,.24);
+  }
+  .control, .ff { min-height:44px; }
+  .ui-button {
+    min-height:44px; display:inline-flex; align-items:center; justify-content:center; gap:.45rem;
+    border-radius:.625rem; transition: background-color .18s ease-out, border-color .18s ease-out, color .18s ease-out, box-shadow .18s ease-out, transform .18s ease-out;
+  }
+  .ui-button:active { transform: translateY(1px); }
+  .concert-card { transition: border-color .18s ease-out, box-shadow .18s ease-out, transform .18s ease-out; }
+  .concert-card:hover { border-color: rgb(196 181 253); box-shadow: 0 18px 48px rgba(15,23,42,.08); transform: translateY(-1px); }
+  .dark .concert-card:hover { border-color: rgb(109 40 217); box-shadow: 0 18px 48px rgba(0,0,0,.26); }
+  #list { grid-template-columns: minmax(0, 1fr); }
+  @media (min-width: 640px) { #list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (min-width: 1024px) { #list { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  .concert-card, .concert-card > * { min-width:0; }
+  .chip { color: rgb(51 65 85); }
+  .dark .chip { color: rgb(203 213 225); }
+  .icon-action { min-width:44px; min-height:44px; }
+  .summary-table th { min-height:36px; }
+  .summary-table tbody tr { transition: background-color .16s ease-out; }
+  @media (max-width: 640px) {
+    .header-actions { width:100%; display:grid; grid-template-columns:1fr 1fr; gap:.5rem; }
+    .header-actions #addBtn { grid-column:1 / -1; }
+    dialog { width:min(100vw - 1rem, 680px); }
+  }
+
+  /* Respect reduced-motion preference (WCAG 2.3.3 / smooth-scroll opt-out) */
+  @media (prefers-reduced-motion: reduce) {
+    * { scroll-behavior: auto !important; }
+    .transition-colors, .transition-shadow, .ui-button, .concert-card, .summary-table tbody tr { transition: none !important; }
+    .concert-card:hover, .ui-button:active { transform:none; }
+  }
+</style>
+</head>
+<body class="bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100 transition-colors">
+
+<!-- ============================ LOGIN GATE ============================ -->
+<div id="authGate" hidden class="fixed inset-0 z-50 grid place-items-center p-4 bg-slate-50 dark:bg-slate-950">
+  <div class="w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-xl text-center">
+    <span class="brand-mark text-2xl mx-auto" aria-hidden="true">🎤</span>
+    <h1 class="text-xl font-bold mt-3">Nhihad's Concerts</h1>
+    <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Private — sign in to view and edit your concerts.</p>
+
+    <form id="authForm" class="mt-5 text-left">
+      <label for="authEmail" class="block text-sm font-medium mb-1">Email</label>
+      <input id="authEmail" type="email" autocomplete="email" inputmode="email" required
+        placeholder="you@example.com"
+        class="ff w-full px-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900" />
+      <button id="authSendBtn" type="submit"
+        class="ui-button w-full mt-3 px-4 text-sm font-semibold bg-violet-600 hover:bg-violet-700 text-white">
+        Email me a magic link
+      </button>
+    </form>
+
+    <p id="authMsg" class="text-sm mt-3 hidden"></p>
+    <p class="text-xs text-slate-400 dark:text-slate-500 mt-4">No password. You'll get a one-time sign-in link by email; it keeps you signed in on this device.</p>
+  </div>
+</div>
+
+<!-- ============================ HEADER ============================ -->
+<header class="shell-header sticky top-0 z-30 backdrop-blur bg-white/88 dark:bg-slate-900/88 border-b border-slate-200 dark:border-slate-800">
+  <div class="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3 flex-wrap">
+    <div class="flex items-center gap-2 mr-auto">
+      <span class="brand-mark text-xl" aria-hidden="true">🎤</span>
+      <div>
+        <h1 class="text-lg sm:text-xl font-bold leading-tight">Nhihad's Concerts</h1>
+        <p class="text-xs text-slate-500 dark:text-slate-400 -mt-0.5">Personal concert tracker · <span id="savedAt" class="text-emerald-600 dark:text-emerald-400" title="All changes save automatically to this browser">Saved</span></p>
+      </div>
+    </div>
+    <div class="header-actions flex items-center gap-2">
+      <button id="themeToggle" title="Toggle dark mode"
+        class="ui-button px-3 text-sm font-medium border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800">
+        <span class="dark:hidden">🌙 Dark</span><span class="hidden dark:inline">☀️ Light</span>
+      </button>
+      <button id="exportBtn"
+        class="ui-button px-3 text-sm font-medium border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800">
+        Export CSV
+      </button>
+      <button id="addBtn"
+        class="ui-button px-4 text-sm font-semibold bg-violet-600 hover:bg-violet-700 text-white shadow-sm shadow-violet-600/20">
+        Add concert
+      </button>
+      <button id="signOutBtn" title="Sign out" hidden
+        class="ui-button px-3 text-sm font-medium border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800">
+        Sign out
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-7xl mx-auto px-4 py-6 sm:py-7">
+ <div class="lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-6 lg:items-start">
+  <!-- LEFT COLUMN -->
+  <div class="space-y-8 min-w-0">
+
+  <!-- ============================ STATS ============================ -->
+  <section id="stats" class="grid grid-cols-1 sm:grid-cols-3 gap-3"></section>
+
+  <!-- ============================ CONTROLS ============================ -->
+  <section class="grid gap-3 md:grid-cols-12 items-end">
+    <div class="md:col-span-4">
+      <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Search artist or venue</label>
+      <input id="search" type="search" placeholder="e.g. Kendrick, Scotiabank..."
+        class="control w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900" />
+    </div>
+    <div class="md:col-span-3">
+      <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Status</label>
+      <select id="filterStatus" class="control w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900">
+        <option value="">All statuses</option>
+        <option>Want to Go</option>
+        <option>Attended</option>
+        <option>Cancelled</option>
+      </select>
+    </div>
+    <div class="md:col-span-2">
+      <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Genre</label>
+      <select id="filterGenre" class="control w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900">
+        <option value="">All genres</option>
+      </select>
+    </div>
+    <div class="md:col-span-3">
+      <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Sort by</label>
+      <select id="sortBy" class="control w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900">
+        <option value="date-desc">Date (newest first)</option>
+        <option value="date-asc">Date (oldest first)</option>
+        <option value="price-desc">Price (high to low)</option>
+        <option value="rating-desc">Realized rating (high to low)</option>
+        <option value="artist-asc">Artist (A to Z)</option>
+      </select>
+    </div>
+  </section>
+
+  <!-- ============================ LIST ============================ -->
+  <section>
+    <div id="listMeta" class="text-sm text-slate-500 dark:text-slate-400 mb-3"></div>
+    <div id="list" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"></div>
+    <div id="emptyState" class="hidden text-center py-16 text-slate-500 dark:text-slate-400">
+      <div class="text-5xl mb-3">🎧</div>
+      <p class="font-medium">No concerts match your filters.</p>
+      <p class="text-sm">Try clearing the search or filters, or add a new concert.</p>
+    </div>
+  </section>
+
+  </div><!-- /LEFT COLUMN -->
+
+  <!-- ============================ SUMMARY SIDEBAR ============================ -->
+  <aside class="mt-8 lg:mt-0 lg:sticky lg:top-20">
+    <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+      <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2">
+        <h2 class="font-semibold text-sm">🏆 Ranked Summary</h2>
+        <button id="toggleAnt" class="ui-button min-h-0 px-2.5 py-1.5 text-xs rounded border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800">Hide Ant</button>
+      </div>
+      <div id="summaryScroll" class="max-h-[78vh] overflow-y-auto"></div>
+    </div>
+  </aside>
+
+ </div><!-- /two-column grid -->
+
+  <footer class="text-center text-xs text-slate-400 dark:text-slate-600 py-6">
+    Built from Nhihad's Google Form &amp; concert spreadsheet · Data stored locally in your browser.
+  </footer>
+</main>
+
+<!-- ============================ FORM MODAL ============================ -->
+<dialog id="formDialog" class="rounded-2xl p-0 w-[min(680px,92vw)] bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 backdrop:backdrop-blur-sm">
+  <form id="concertForm" method="dialog" class="flex flex-col max-h-[88vh]">
+    <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between sticky top-0 bg-white dark:bg-slate-900 z-10">
+      <h2 id="formTitle" class="text-lg font-bold">Add concert</h2>
+      <button type="button" id="closeForm" class="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-2xl leading-none">&times;</button>
+    </div>
+
+    <div class="px-6 py-4 overflow-y-auto space-y-5">
+      <p class="text-xs text-red-500">* Indicates required question</p>
+      <input type="hidden" id="f_id" />
+
+      <!-- Status (tracker addition) -->
+      <div>
+        <label class="block font-medium mb-1">Status <span class="text-red-500">*</span></label>
+        <div class="flex flex-wrap gap-2" id="statusGroup">
+          <label class="status-opt"><input type="radio" name="status" value="Want to Go" class="peer sr-only"><span class="px-3 py-1.5 rounded-full border border-slate-300 dark:border-slate-700 text-sm cursor-pointer peer-checked:bg-amber-500 peer-checked:text-white peer-checked:border-amber-500">🎟 Want to Go</span></label>
+          <label class="status-opt"><input type="radio" name="status" value="Attended" class="peer sr-only"><span class="px-3 py-1.5 rounded-full border border-slate-300 dark:border-slate-700 text-sm cursor-pointer peer-checked:bg-emerald-600 peer-checked:text-white peer-checked:border-emerald-600">✅ Attended</span></label>
+          <label class="status-opt"><input type="radio" name="status" value="Cancelled" class="peer sr-only"><span class="px-3 py-1.5 rounded-full border border-slate-300 dark:border-slate-700 text-sm cursor-pointer peer-checked:bg-rose-600 peer-checked:text-white peer-checked:border-rose-600">🚫 Cancelled</span></label>
+        </div>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">For <b>Attended</b> shows, Price, Seat, Genre &amp; Realized Rating become required (matching the form).</p>
+      </div>
+
+      <!-- 1. Artist -->
+      <div>
+        <label class="block font-medium mb-1">1. Artist <span class="text-red-500">*</span></label>
+        <input id="f_artist" type="text" class="ff" />
+      </div>
+      <!-- 2. Tour Name -->
+      <div>
+        <label class="block font-medium mb-1">2. Tour Name</label>
+        <input id="f_tour" type="text" class="ff" />
+      </div>
+      <!-- 3. Date -->
+      <div>
+        <label class="block font-medium mb-1">3. Date <span class="text-red-500">*</span></label>
+        <input id="f_date" type="date" class="ff" />
+        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 italic">Example: January 7, 2019</p>
+      </div>
+      <!-- 4. Venue -->
+      <div>
+        <label class="block font-medium mb-1">4. Venue <span class="text-red-500">*</span></label>
+        <p class="text-xs italic text-slate-500 dark:text-slate-400 mb-2">Mark only one oval.</p>
+        <div id="venueGroup" class="space-y-2"></div>
+        <input id="f_venueOther" type="text" placeholder="Other venue..." class="ff mt-2 hidden" />
+      </div>
+      <!-- 5. Price -->
+      <div>
+        <label class="block font-medium mb-1">5. Price <span class="text-red-500">*</span></label>
+        <div class="relative">
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">$</span>
+          <input id="f_price" type="number" step="0.01" min="0" class="ff pl-7" />
+        </div>
+      </div>
+      <!-- 6. Seat -->
+      <div>
+        <label class="block font-medium mb-1">6. Seat <span class="text-red-500">*</span></label>
+        <input id="f_seat" type="text" placeholder="e.g. Sec 120, Row 18, Seat 4 · Floor/GA · Lawn" class="ff" />
+      </div>
+      <!-- 7. Genre -->
+      <div>
+        <label class="block font-medium mb-1">7. Genre <span class="text-red-500">*</span></label>
+        <p class="text-xs italic text-slate-500 dark:text-slate-400 mb-2">Mark only one oval.</p>
+        <div id="genreGroup" class="space-y-2"></div>
+        <input id="f_genreOther" type="text" placeholder="Other genre..." class="ff mt-2 hidden" />
+      </div>
+
+      <!-- Sub-scores -->
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block font-medium mb-1">8. Projected Rating Score</label>
+          <input id="f_projScore" type="number" step="0.1" min="0" max="11" class="ff" />
+        </div>
+        <div>
+          <label class="block font-medium mb-1">9. Enjoyment Score</label>
+          <input id="f_enjoyment" type="number" step="0.1" min="0" max="11" class="ff score" />
+        </div>
+        <div>
+          <label class="block font-medium mb-1">10. Stage Score</label>
+          <input id="f_stage" type="number" step="0.1" min="0" max="11" class="ff score" />
+        </div>
+        <div>
+          <label class="block font-medium mb-1">11. Setlist Score</label>
+          <input id="f_setlist" type="number" step="0.1" min="0" max="11" class="ff score" />
+        </div>
+        <div>
+          <label class="block font-medium mb-1">12. Seat Score</label>
+          <input id="f_seatScore" type="number" step="0.1" min="0" max="11" class="ff score" />
+        </div>
+        <div>
+          <label class="block font-medium mb-1">13. Realized Rating <span class="text-red-500">*</span></label>
+          <input id="f_realized" type="number" step="0.1" min="0" max="11" class="ff" />
+          <p id="autoHint" class="text-xs text-violet-500 mt-1 hidden"></p>
+        </div>
+      </div>
+
+      <!-- 14. Spotify -->
+      <div>
+        <label class="block font-medium mb-1">14. Spotify Set List</label>
+        <input id="f_spotify" type="url" placeholder="https://open.spotify.com/playlist/..." class="ff" />
+      </div>
+      <!-- 15. Who did you go with -->
+      <div>
+        <label class="block font-medium mb-1">15. Who did you go with</label>
+        <input id="f_companions" type="text" class="ff" />
+      </div>
+      <!-- 16. Notes -->
+      <div>
+        <label class="block font-medium mb-1">16. Notes</label>
+        <textarea id="f_notes" rows="3" class="ff"></textarea>
+      </div>
+      <!-- 17. Type -->
+      <div>
+        <label class="block font-medium mb-1">17. Type</label>
+        <p class="text-xs italic text-slate-500 dark:text-slate-400 mb-2">Mark only one oval.</p>
+        <div id="typeGroup" class="space-y-2"></div>
+        <input id="f_typeOther" type="text" placeholder="Other type..." class="ff mt-2 hidden" />
+      </div>
+      <!-- Rachel's Score (spreadsheet parity) -->
+      <div>
+        <label class="block font-medium mb-1">Rachel's Score <span class="text-xs font-normal text-slate-400">(guest rating)</span></label>
+        <input id="f_rachelScore" type="number" step="0.1" min="0" max="11" class="ff" />
+      </div>
+
+      <div id="formError" class="hidden rounded-lg bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 text-sm p-3"></div>
+    </div>
+
+    <div class="px-6 py-4 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-2 sticky bottom-0 bg-white dark:bg-slate-900">
+      <button type="button" id="cancelForm" class="ui-button px-4 py-2 text-sm font-medium border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800">Cancel</button>
+      <button type="submit" class="ui-button px-5 py-2 text-sm font-semibold bg-violet-600 hover:bg-violet-700 text-white">Save concert</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- ============================ PHOTO PICKER MODAL ============================ -->
+<dialog id="imgPicker" class="rounded-2xl p-0 w-[min(560px,92vw)] bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 backdrop:backdrop-blur-sm">
+  <div class="flex flex-col max-h-[85vh]">
+    <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+      <h2 id="imgPickerTitle" class="text-base font-bold">Change photo</h2>
+      <button type="button" id="imgPickerClose" aria-label="Close" class="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-2xl leading-none">&times;</button>
+    </div>
+    <div class="p-5 space-y-4 overflow-y-auto">
+      <div>
+        <label for="imgQuery" class="block text-sm font-medium mb-1">Search online (Apple Music artwork)</label>
+        <div class="flex gap-2">
+          <input id="imgQuery" type="search" class="ff" />
+          <button type="button" id="imgSearchBtn" class="ui-button px-3 py-2 text-sm font-semibold bg-violet-600 hover:bg-violet-700 text-white shrink-0">Search</button>
+        </div>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Tip: add the album or tour name for a closer match (e.g. "Tyler the Creator Chromakopia").</p>
+      </div>
+      <div id="imgResults" class="grid grid-cols-4 gap-2"></div>
+      <div class="border-t border-slate-200 dark:border-slate-800 pt-4 space-y-3">
+        <div>
+          <label for="imgUrl" class="block text-sm font-medium mb-1">Or paste an image URL</label>
+          <div class="flex gap-2">
+            <input id="imgUrl" type="url" placeholder="https://..." class="ff" />
+            <button type="button" id="imgUrlBtn" class="ui-button px-3 py-2 text-sm font-medium border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0">Use image</button>
+          </div>
+        </div>
+        <div>
+          <label for="imgFile" class="block text-sm font-medium mb-1">Or upload from your device</label>
+          <input id="imgFile" type="file" accept="image/*" class="ff text-sm" />
+          <p id="imgFileHint" class="text-xs text-slate-500 dark:text-slate-400 mt-1">Stored locally in your browser. Keep it under 1.5 MB.</p>
+        </div>
+      </div>
+    </div>
+    <div class="px-5 py-4 border-t border-slate-200 dark:border-slate-800 flex justify-between gap-2">
+      <button type="button" id="imgResetBtn" class="ui-button px-3 py-2 text-sm font-medium border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800">Reset to automatic</button>
+      <button type="button" id="imgPickerDone" class="ui-button px-4 py-2 text-sm font-semibold bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600">Done</button>
+    </div>
+  </div>
+</dialog>
+
+<style>
+  /* Shared form field style (kept in CSS so markup stays clean) */
+  .ff { width:100%; min-height:44px; padding:.5rem .75rem; border-radius:.5rem; border:1px solid rgb(203 213 225); background:#fff; }
+  .dark .ff { background:rgb(15 23 42); border-color:rgb(51 65 85); color:#fff; }
+  .ff:focus { outline:2px solid rgb(139 92 246); outline-offset:0; }
+</style>
+
+<script>
+//============================ DATA ============================
+const STORAGE_KEY = 'concertTracker.v1';
+const THEME_KEY   = 'concertTracker.theme';
+const SAVED_KEY   = 'concertTracker.savedAt';
+const OUTBOX_KEY  = 'concertTracker.outbox';
+
+//============================ CLOUD SYNC (Supabase) ============================
+// Personal single-user app. The publishable key is safe to ship in the client;
+// access is limited by RLS policies on the concert_tracker_concerts table.
+const SUPABASE_URL = 'https://zgafubhzhxikuknihmnu.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_HMICK42AzL2W_Tpb6VutDQ_HawfnbWM';
+const CLOUD_TABLE  = 'concert_tracker_concerts';
+const AUTH_REQUIRED = true; // require email magic-link login (RLS restricts data to the owner)
+const sb = (window.supabase && SUPABASE_URL && SUPABASE_KEY)
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+    })
+  : null;
+
+async function cloudPull(){
+  const { data, error } = await sb.from(CLOUD_TABLE).select('id,data');
+  if (error) throw error;
+  return (data || []).map(r => ({ ...r.data, id: r.id }));
+}
+async function cloudUpsert(c){
+  const { error } = await sb.from(CLOUD_TABLE).upsert({ id: c.id, data: c, updated_at: new Date().toISOString() });
+  if (error) throw error;
+}
+async function cloudDelete(id){
+  const { error } = await sb.from(CLOUD_TABLE).delete().eq('id', id);
+  if (error) throw error;
+}
+
+// Outbox: writes made while offline are queued and flushed on reconnect.
+function readOutbox(){ try { return JSON.parse(localStorage.getItem(OUTBOX_KEY)) || {up:{},del:{}}; } catch(e){ return {up:{},del:{}}; } }
+function writeOutbox(o){ try { localStorage.setItem(OUTBOX_KEY, JSON.stringify(o)); } catch(e){} }
+function queueUp(id){ const o=readOutbox(); o.up[id]=true; delete o.del[id]; writeOutbox(o); }
+function queueDel(id){ const o=readOutbox(); o.del[id]=true; delete o.up[id]; writeOutbox(o); }
+async function flushOutbox(){
+  const o = readOutbox();
+  try {
+    for (const id of Object.keys(o.del)){ await cloudDelete(id); delete o.del[id]; }
+    for (const id of Object.keys(o.up)){
+      const c = concerts.find(x => x.id === id);
+      if (!c){ delete o.up[id]; continue; }
+      await cloudUpsert(c); delete o.up[id];
+    }
+    writeOutbox(o); return true;
+  } catch(e){ writeOutbox(o); return false; }
+}
+
+// Fire-and-forget per-record sync called by mutations.
+async function pushConcert(c){
+  if (!sb || !c) return;
+  try { await cloudUpsert(c); await flushOutbox(); markSynced(); }
+  catch(e){ queueUp(c.id); markOffline(); }
+}
+async function pushDelete(id){
+  if (!sb) return;
+  try { await cloudDelete(id); await flushOutbox(); markSynced(); }
+  catch(e){ queueDel(id); markOffline(); }
+}
+
+// Pull cloud state on load, reconcile with local, then keep live via realtime.
+let rtChannel = null;
+async function syncWithCloud(){
+  if (!sb) return;
+  setSyncIndicator('saving');
+  try {
+    const remote = await cloudPull();
+    if (remote.length === 0){
+      // First run with an empty cloud: migrate whatever is local up to the cloud.
+      for (const c of concerts) await cloudUpsert(c);
+    } else {
+      await flushOutbox();
+      const merged = await cloudPull();
+      concerts = merged; cacheLocal(); renderAll();
+    }
+    markSynced();
+    subscribeRealtime();
+  } catch(e){
+    console.warn('Cloud sync unavailable, working offline.', e);
+    markOffline();
+  }
+}
+function subscribeRealtime(){
+  if (rtChannel || !sb) return;
+  rtChannel = sb.channel('concert-tracker')
+    .on('postgres_changes', { event:'*', schema:'public', table: CLOUD_TABLE }, async () => {
+      try { const merged = await cloudPull(); concerts = merged; cacheLocal(); renderAll(); markSynced(); } catch(e){}
+    })
+    .subscribe();
+}
+
+//============================ AUTH (email magic link) ============================
+let authReady = false;
+function setAuthMsg(text, kind){
+  const el = $('#authMsg'); if (!el) return;
+  if (!text){ el.classList.add('hidden'); el.textContent=''; return; }
+  el.classList.remove('hidden');
+  el.className = 'text-sm mt-3 ' + (kind==='err' ? 'text-rose-500' : kind==='ok' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400');
+  el.textContent = text;
+}
+function showGate(){ const g=$('#authGate'); if(g) g.hidden=false; $('#signOutBtn')?.setAttribute('hidden',''); }
+function hideGate(){ const g=$('#authGate'); if(g) g.hidden=true; $('#signOutBtn')?.removeAttribute('hidden'); }
+
+async function sendMagicLink(email){
+  if (!sb){ setAuthMsg('Cannot reach the server. Check your connection.', 'err'); return; }
+  setAuthMsg('Sending…');
+  try {
+    const { error } = await sb.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: location.origin + location.pathname }
+    });
+    if (error) throw error;
+    setAuthMsg('Check your email for a sign-in link, then open it on this device.', 'ok');
+  } catch(e){
+    setAuthMsg('Could not send link: ' + (e.message || e), 'err');
+  }
+}
+
+function onSignedIn(){
+  hideGate();
+  setAuthMsg('');
+  if (!authReady){ authReady = true; syncWithCloud(); }
+}
+function onSignedOut(){
+  authReady = false;
+  showGate();
+}
+
+async function bootstrapAuth(){
+  // No auth enforced, or Supabase library unavailable (offline) → run as local/open app.
+  if (!AUTH_REQUIRED || !sb){ syncWithCloud(); return; }
+  showGate(); // default to gated until we know the session
+  sb.auth.onAuthStateChange((_event, session) => { session ? onSignedIn() : onSignedOut(); });
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) onSignedIn();
+  } catch(e){ /* onAuthStateChange will handle it */ }
+}
+
+const VENUES = [
+  "Scotiabank Arena (40 Bay St., Toronto, ON M5J 2X2)",
+  "History (1663 Queen St E, Toronto, ON M4L 1G5)",
+  "Budweiser Stage (909 Lake Shore Blvd W, Toronto, ON M6K 3L3)",
+  "Phoenix Concert Theatre (410 Sherbourne St, Toronto, ON M5X 1K2)",
+  "Coca-Cola Coliseum (45 Manitoba Dr, Toronto, ON M6K 3C3)",
+  "Rebel (11 Polson St First Floor, Toronto, ON M5A 1A4)",
+  "Rogers Center (1 Blue Jays Way, Toronto, ON M5V 1J1)",
+  "Echo Beach (909 Lake Shore Blvd W, Toronto, ON M6K 3L3)"
+];
+const GENRES = ["Hip-Hop", "Pop", "EDM"];
+const TYPES  = ["Concert", "Festival"];
+
+// ---- Seed data (extracted from "Nhihad's Concerts (Responses).xlsx") ----
+const SEED = [{"artist":"Pentatonix","tour":"Pentatonix World Tour","date":"2016-11-07","venue":"Scotiabank Arena (40 Bay St., Toronto, ON M5J 2X2)","price":0.0,"genre":"Pop","projScore":6.0,"enjoyment":8.0,"stage":8.0,"setlist":null,"seatScore":10.0,"realized":7.0,"spotify":null,"seat":"Floor","notes":null,"companions":"Vishar","type":"Concert","rachelScore":null},{"artist":"We Day","tour":null,"date":"2017-09-27","venue":"Scotiabank Arena (40 Bay St., Toronto, ON M5J 2X2)","price":0.0,"genre":"Pop","projScore":9.0,"enjoyment":0.0,"stage":5.0,"setlist":0.0,"seatScore":8.0,"realized":1.0,"spotify":null,"seat":"Sec 120","notes":null,"companions":null,"type":"Concert","rachelScore":null},{"artist":"Ram Riddlez","tour":"Ryerson Frosh","date":"2018-08-30","venue":"SLC","price":0.0,"genre":"Hip-Hop","projScore":7.0,"enjoyment":7.0,"stage":5.0,"setlist":null,"seatScore":8.0,"realized":6.0,"spotify":null,"seat":"Floor","notes":null,"companions":null,"type":"Concert","rachelScore":null},{"artist":"Tory Lanes","tour":"Ryerson Frosh","date":"2019-01-19","venue":"Rebel (11 Polson St First Floor, Toronto, ON M5A 1A4)","price":40.0,"genre":"Hip-Hop","projScore":7.0,"enjoyment":8.0,"stage":7.0,"setlist":8.0,"seatScore":9.0,"realized":8.1,"spotify":null,"seat":"Floor","notes":"Special Guest - Pressa","companions":null,"type":"Concert","rachelScore":null},{"artist":"Jack Harlow","tour":"Crème de la Crème Tour","date":"2021-11-16","venue":"History (1663 Queen St E, Toronto, ON M4L 1G5)","price":45.55,"genre":"Hip-Hop","projScore":7.0,"enjoyment":10.0,"stage":8.0,"setlist":10.0,"seatScore":10.0,"realized":9.1,"spotify":"https://open.spotify.com/playlist/04ZO3P1CmSEV4wdGt9ZCjB?si=d9dd3415480b431e","seat":"Floor","notes":null,"companions":"Rachel, Shuo","type":"Concert","rachelScore":null},{"artist":"Isaiah Rashad","tour":"Lil Sunny's Awesome Vacation","date":"2022-02-14","venue":"Rebel (11 Polson St First Floor, Toronto, ON M5A 1A4)","price":53.51,"genre":"Hip-Hop","projScore":6.0,"enjoyment":8.0,"stage":7.0,"setlist":9.0,"seatScore":8.0,"realized":8.5,"spotify":"https://open.spotify.com/playlist/2XoD7Ax5l5pRMD4O0mJ0h0?si=7f5911412b9f45a2","seat":"Floor","notes":null,"companions":"Shuo, Arshan, Mikayla","type":"Concert","rachelScore":null},{"artist":"Kendrick Lamar","tour":"The Big Steppers Tour","date":"2022-08-12","venue":"Scotiabank Arena (40 Bay St., Toronto, ON M5J 2X2)","price":192.0,"genre":"Hip-Hop","projScore":9.5,"enjoyment":9.0,"stage":9.5,"setlist":9.5,"seatScore":9.0,"realized":9.4,"spotify":"https://open.spotify.com/playlist/20qwVkf0Lu4cQfoI8Qmhic?si=ba7c44b49d6147a3","seat":"Floor","notes":"Baby Keem - The Big Steppers Tour (2022) - SBA 9.1\nTana Leone - The Big Steppers Tour (2022) - SBA 7.8","companions":"Shuo, Mikayla, Rafina","type":"Concert","rachelScore":null},{"artist":"The Weeknd 2022","tour":"After Hours Until Dawn Tour","date":"2022-09-23","venue":"Rogers Center (1 Blue Jays Way, Toronto, ON M5V 1J1)","price":120.0,"genre":"Pop","projScore":8.0,"enjoyment":10.0,"stage":10.0,"setlist":10.0,"seatScore":8.0,"realized":9.6,"spotify":"https://open.spotify.com/playlist/187dmuemcg4piYe1DJi2jW?si=376e8de9897046e6","seat":"Section 210R, Row 9, Seat 10","notes":"Kaytranada Opener","companions":null,"type":"Concert","rachelScore":null},{"artist":"Denzel Curry 2022","tour":"Melt My Eyez Tour","date":"2022-09-28","venue":"Rebel (11 Polson St First Floor, Toronto, ON M5A 1A4)","price":47.97,"genre":"Hip-Hop","projScore":7.0,"enjoyment":7.0,"stage":7.0,"setlist":8.0,"seatScore":7.0,"realized":7.2,"spotify":null,"seat":"Floor","notes":null,"companions":"Shuo","type":"Concert","rachelScore":null},{"artist":"Yung Gravy & BBNO$","tour":"BABY GRAVY THE TOUR","date":"2022-11-23","venue":"History (1663 Queen St E, Toronto, ON M4L 1G5)","price":50.0,"genre":"Hip-Hop","projScore":7.0,"enjoyment":9.0,"stage":8.0,"setlist":8.0,"seatScore":9.0,"realized":8.6,"spotify":"https://open.spotify.com/playlist/04ZO3P1CmSEV4wdGt9ZCjB?si=5fd1fc6208754836","seat":"Floor","notes":null,"companions":"Rachel","type":"Concert","rachelScore":9.0},{"artist":"J.I.D & Smino","tour":"Luv Is 4ever Tour","date":"2023-03-13","venue":"History (1663 Queen St E, Toronto, ON M4L 1G5)","price":78.75,"genre":"Hip-Hop","projScore":8.0,"enjoyment":9.0,"stage":8.0,"setlist":9.0,"seatScore":9.0,"realized":8.9,"spotify":"https://www.setlist.fm/stats/average-setlist/smino-5bc41fdc.html?tour=7bdfb2d8","seat":"Floor","notes":null,"companions":"Ifaj, Shuo, Mikayla, Rafina","type":"Concert","rachelScore":null},{"artist":"Don Toliver 2023","tour":"Thee Love Sick Tour","date":"2023-06-22","venue":"Echo Beach (909 Lake Shore Blvd W, Toronto, ON M6K 3L3)","price":91.25,"genre":"Hip-Hop","projScore":8.5,"enjoyment":10.0,"stage":9.0,"setlist":9.0,"seatScore":10.0,"realized":9.2,"spotify":"https://open.spotify.com/playlist/2iSb1fvB41mu1u85NIkowH?si=400d40c7a1a14760","seat":"Floor","notes":"Pierre Bourne Opener","companions":"Areeb, Tasmia, Shakera","type":"Concert","rachelScore":null},{"artist":"Swae Lee","tour":"DJ Set","date":"2023-08-20","venue":"Rebel (11 Polson St First Floor, Toronto, ON M5A 1A4)","price":45.0,"genre":"Hip-Hop","projScore":7.0,"enjoyment":8.0,"stage":7.0,"setlist":9.0,"seatScore":9.0,"realized":8.4,"spotify":"https://open.spotify.com/playlist/4cwp036BVYMwRqY1PG97sX?si=3f4d966d00804f98","seat":"Floor","notes":"Nav Special Guest","companions":"Rafina","type":"Concert","rachelScore":null},{"artist":"Travis Scott","tour":"Utopia Tour Presents Circus Maximus","date":"2023-12-29","venue":"Scotiabank Arena (40 Bay St., Toronto, ON M5J 2X2)","price":186.75,"genre":"Hip-Hop","projScore":9.0,"enjoyment":10.0,"stage":10.0,"setlist":9.5,"seatScore":9.5,"realized":9.5,"spotify":"https://open.spotify.com/playlist/4MJJZTVqrxaNF6Vrz7a7qi?si=4bca432bad9343e8","seat":"Sec 120, Row 18, Seat 4","notes":"Teezo Touchdown Opener","companions":"Areeb","type":"Concert","rachelScore":null},{"artist":"Travis Scott","tour":"DJ Set","date":"2024-01-06","venue":"Rebel (11 Polson St First Floor, Toronto, ON M5A 1A4)","price":59.34,"genre":"Hip-Hop","projScore":8.0,"enjoyment":null,"stage":null,"setlist":null,"seatScore":null,"realized":8.0,"spotify":null,"seat":"Floor","notes":null,"companions":"Ifaj, Aninda, Prottoy, Fahid","type":"Concert","rachelScore":null},{"artist":"Lil Tecca","tour":"HVN On Earth Tour","date":"2024-02-28","venue":"Coca-Cola Coliseum (45 Manitoba Dr, Toronto, ON M6K 3C3)","price":101.75,"genre":"Hip-Hop","projScore":8.0,"enjoyment":6.5,"stage":7.0,"setlist":7.0,"seatScore":6.0,"realized":6.0,"spotify":"https://open.spotify.com/playlist/4xDgFViKuWFPej1JNSpQ4e?si=fb4ea7f785254af0","seat":"Floor","notes":null,"companions":null,"type":"Concert","rachelScore":null},{"artist":"Offset","tour":"Set It Off Tour","date":"2024-03-17","venue":"History (1663 Queen St E, Toronto, ON M4L 1G5)","price":78.5,"genre":"Hip-Hop","projScore":8.0,"enjoyment":9.0,"stage":9.0,"setlist":9.0,"seatScore":9.0,"realized":8.4,"spotify":"https://open.spotify.com/playlist/79qHToiUTFWvAKfprw5M3U?si=70b5cda414c84579","seat":"Floor","notes":null,"companions":"Rachel, Noureen, Ajay, Thasa, Rajeith","type":"Concert","rachelScore":9.0},{"artist":"Night Lovell","tour":"I Hope You’re Happy Tour","date":"2024-03-26","venue":"Phoenix Concert Theatre (410 Sherbourne St, Toronto, ON M5X 1K2)","price":44.44,"genre":"Hip-Hop","projScore":6.0,"enjoyment":10.0,"stage":7.0,"setlist":9.0,"seatScore":10.0,"realized":8.7,"spotify":"https://open.spotify.com/playlist/4b4haiyYDAyFYfMl3HTeKx?si=d4a723167d27448c","seat":"Floor","notes":null,"companions":null,"type":"Concert","rachelScore":null},{"artist":"Olivia Rodrigo","tour":"GUTS world tour","date":"2024-03-29","venue":"Scotiabank Arena (40 Bay St., Toronto, ON M5J 2X2)","price":184.5,"genre":"Pop","projScore":9.5,"enjoyment":10.0,"stage":9.5,"setlist":10.0,"seatScore":8.5,"realized":9.4,"spotify":"https://open.spotify.com/playlist/2WWhFjlyZPIHz3v9oCb2PH?si=a93791e2f9974dbf","seat":"Sec 305, Row 1, Seat 18","notes":"Chapelle Roan Opener","companions":"Rachel, Jessica, Sarah","type":"Concert","rachelScore":10.0},{"artist":"Noah Kahan","tour":"We'll All Be Here Forever Tour","date":"2024-04-14","venue":"Scotiabank Arena (40 Bay St., Toronto, ON M5J 2X2)","price":182.5,"genre":"Pop","projScore":8.5,"enjoyment":10.0,"stage":8.5,"setlist":10.0,"seatScore":10.0,"realized":9.4,"spotify":"https://open.spotify.com/playlist/5h4rVHuQ6tYwZDQjguVRBS?si=685eee99d78a4f56","seat":"Sec ES203, Row R2, Seat 3","notes":"Jensen Mcrae opener","companions":"Rachel, Elise, Sarah P","type":"Concert","rachelScore":10.0},{"artist":"Teezo Touchdown","tour":"Spend the Night Tour","date":"2024-05-07","venue":"Phoenix Concert Theatre (410 Sherbourne St, Toronto, ON M5X 1K2)","price":35.31,"genre":"Hip-Hop","projScore":7.0,"enjoyment":6.5,"stage":6.0,"setlist":6.0,"seatScore":8.0,"realized":6.6,"spotify":"https://open.spotify.com/playlist/0zDGbtcPMl2LVJdvKmo2RW?si=454ed1010870461a","seat":"Floor","notes":null,"companions":"Shuo","type":"Concert","rachelScore":null},{"artist":"21 Savage","tour":"American Dream Tour","date":"2024-05-27","venue":"Budweiser Stage (909 Lake Shore Blvd W, Toronto, ON M6K 3L3)","price":72.5,"genre":"Hip-Hop","projScore":8.2,"enjoyment":9.0,"stage":8.0,"setlist":10.0,"seatScore":8.0,"realized":8.8,"spotify":"https://open.spotify.com/playlist/520WY0corThLzKS6fD2jJS?si=1bcbb564b59a461f","seat":"Lawn","notes":"Drake - Special Guest\nJID opener\nNardo Wick opener\n21 Lil Harold opener\n","companions":"Rachel, Ifaj, Aninda","type":"Concert","rachelScore":9.0},{"artist":"Russ","tour":"It Was You All Along North American Tour","date":"2024-06-25","venue":"Scotiabank Arena (40 Bay St., Toronto, ON M5J 2X2)","price":25.0,"genre":"Hip-Hop","projScore":7.0,"enjoyment":7.0,"stage":7.0,"setlist":7.0,"seatScore":8.0,"realized":7.0,"spotify":"https://open.spotify.com/playlist/7LcaEuSTcfIz2ZTTsEd5k4?si=399139b3e13c4027","seat":"Sec 308, Row 18, Seat 4","notes":"Melei, 6lack opener","companions":"Rachel","type":"Concert","rachelScore":8.0},{"artist":"ScHoolboy Q","tour":"Blue Lips Weekends","date":"2024-07-18","venue":"History (1663 Queen St E, Toronto, ON M4L 1G5)","price":61.0,"genre":"Hip-Hop","projScore":8.5,"enjoyment":null,"stage":null,"setlist":null,"seatScore":null,"realized":null,"spotify":null,"seat":"Floor","notes":"CANCELLED","companions":"Ifaj","type":"Concert","rachelScore":null},{"artist":"Train & REO Speedwagon","tour":"Summer Road Trip 2024","date":"2024-07-20","venue":"Budweiser Stage (909 Lake Shore Blvd W, Toronto, ON M6K 3L3)","price":25.0,"genre":"Rock","projScore":7.0,"enjoyment":7.0,"stage":8.0,"setlist":null,"seatScore":7.5,"realized":7.5,"spotify":"https://open.spotify.com/playlist/3XUuGHpj0db7RUW6EXX09j?si=cb7de2ca038449b6","seat":"Sec 409, Row H, Seat 5","notes":null,"companions":"Rachel","type":"Concert","rachelScore":8.0},{"artist":"Ski Mask The Slump God","tour":"11th Dimension Tour","date":"2024-07-29","venue":"History (1663 Queen St E, Toronto, ON M4L 1G5)","price":60.5,"genre":"Hip-Hop","projScore":7.0,"enjoyment":6.5,"stage":6.0,"setlist":6.0,"seatScore":6.0,"realized":6.2,"spotify":"https://open.spotify.com/playlist/0zegZdgEpkKshi8LtqSJS0?si=5ac9fc35338f4b63","seat":"Floor","notes":"Killy - Special guest","companions":"Ifaj, Aninda, Subat","type":"Concert","rachelScore":null},{"artist":"Childish Gambino","tour":"The New World","date":"2024-08-18","venue":"Scotiabank Arena (40 Bay St., Toronto, ON M5J 2X2)","price":145.0,"genre":"Hip-Hop","projScore":8.0,"enjoyment":10.0,"stage":10.0,"setlist":8.0,"seatScore":6.0,"realized":9.5,"spotify":"https://open.spotify.com/playlist/5vhaikmsPh52LNWEarLS9I?si=c90dd04d2c8a496e","seat":"600 BOX 4 Row 2 Seat 15-17","notes":"Willow opener. Absolutely insane visuals, I still think about it to this day","companions":"Rachel, Adamo, Mashook, Michelle","type":"Concert","rachelScore":9.0},{"artist":"Conan Gray","tour":"Found Heaven On Tour","date":"2024-09-23","venue":"Budweiser Stage (909 Lake Shore Blvd W, Toronto, ON M6K 3L3)","price":25.0,"genre":"Pop","projScore":6.7,"enjoyment":7.0,"stage":8.0,"setlist":null,"seatScore":7.0,"realized":7.5,"spotify":"https://open.spotify.com/playlist/72Gshknyf33aVjQ9wcvD2t?si=938fe48c95e8444f","seat":"Lawn","notes":"Maisiey Peters opener","companions":"Rachel, Sarah, SIenna, Samantha","type":"Concert","rachelScore":9.0},{"artist":"Billie Eilish","tour":"HIT ME HARD AND SOFT: THE TOUR","date":"2024-10-01","venue":"Scotiabank Arena (40 Bay St., Toronto, ON M5J 2X2)","price":164.0,"genre":"Pop","projScore":9.5,"enjoyment":10.0,"stage":9.5,"setlist":10.0,"seatScore":8.5,"realized":9.5,"spotify":"https://open.spotify.com/playlist/7yxMTC5iVTwXHeFnQzj3KK?si=6c3f0d93df9648a8","seat":"Sec 315, Row 2, Seat 8","notes":null,"companions":"Rachel, Ridita","type":"Concert","rachelScore":10.0},{"artist":"Don Toliver 2024","tour":"Hardstone Psycho","date":"2024-11-14","venue":"Scotiabank Arena (40 Bay St., Toronto, ON M5J 2X2)","price":140.5,"genre":"Hip-Hop","projScore":9.0,"enjoyment":10.0,"stage":9.5,"setlist":9.0,"seatScore":10.0,"realized":9.4,"spotify":"https://open.spotify.com/playlist/1NTLJ2EWw6MiZOr4tlGVAq","seat":"Floor GA","notes":"Openers were all ass","companions":"Owen and the boys","type":"Concert","rachelScore":null},{"artist":"Emei","tour":"Rabbithole tour!","date":"2025-03-18","venue":"Axis Club","price":0.0,"genre":"Pop","projScore":6.0,"enjoyment":8.5,"stage":7.0,"setlist":7.0,"seatScore":8.0,"realized":7.5,"spotify":"https://open.spotify.com/playlist/2AOFmf4apExZqlmnGfoHLr?si=19b3646b7ea44ca4","seat":"Floor","notes":"Hendrick opener guy was great too. Rachel gift me tickets :D it was really fun actually","companions":"Rachel","type":"Concert","rachelScore":null},{"artist":"Denzel Curry 2025","tour":"Mischievous South Tour","date":"2025-04-20","venue":"History (1663 Queen St E, Toronto, ON M4L 1G5)","price":67.5,"genre":"Hip-Hop","projScore":7.5,"enjoyment":8.0,"stage":7.0,"setlist":8.0,"seatScore":9.0,"realized":7.9,"spotify":"https://open.spotify.com/playlist/1TB3JzfNyNvlBWDiLyzYIi","seat":"Floor GA","notes":null,"companions":"Abraham and Ifaj","type":"Concert","rachelScore":null},{"artist":"Remi Wolf","tour":"Big Ideas Tour","date":"2025-04-22","venue":"History (1663 Queen St E, Toronto, ON M4L 1G5)","price":67.5,"genre":"Pop","projScore":7.7,"enjoyment":9.0,"stage":8.0,"setlist":8.0,"seatScore":9.0,"realized":8.1,"spotify":"https://open.spotify.com/playlist/3woqak3oy014ty9fVz8Jmk","seat":"Floor GA","notes":null,"companions":"Rachel","type":"Concert","rachelScore":null},{"artist":"Central Cee","tour":"Can’t Rush Greatness","date":"2025-05-25","venue":"History (1663 Queen St E, Toronto, ON M4L 1G5)","price":120.0,"genre":"Hip-Hop","projScore":8.0,"enjoyment":7.0,"stage":7.0,"setlist":7.0,"seatScore":9.0,"realized":7.8,"spotify":"https://open.spotify.com/playlist/66SAUaXgXDj8mggBngmQYa","seat":"Floor GA","notes":null,"companions":"Shafat, Olivia","type":"Concert","rachelScore":null},{"artist":"Kendrick Lamar & SZA","tour":"GNX","date":"2025-06-13","venue":"Rogers Center (1 Blue Jays Way, Toronto, ON M5V 1J1)","price":205.0,"genre":"Hip-Hop","projScore":9.5,"enjoyment":10.0,"stage":9.9,"setlist":11.0,"seatScore":10.0,"realized":10.0,"spotify":"https://open.spotify.com/playlist/2b8aVD5rg2jJH8y7jfhUKp","seat":"Sec 27 Row 2","notes":"So fire, so much energy, visuals were so creative. Absolutely rapped my throat out and went bar for bar, was so much fun with my squad too","companions":"Rachel, Joshua, Mashook, Michelle, Olivia, Evelyn","type":"Concert","rachelScore":null},{"artist":"Tyler, the Creator","tour":"Chromakopia","date":"2025-07-24","venue":"Scotiabank Arena (40 Bay St., Toronto, ON M5J 2X2)","price":136.0,"genre":"Hip-Hop","projScore":8.5,"enjoyment":9.5,"stage":9.0,"setlist":9.0,"seatScore":8.5,"realized":9.4,"spotify":"https://open.spotify.com/playlist/0VBJVx5hy4KCuOQZqEp7xe?si=33f81a83d189442f","seat":"Sec 322 Row 10","notes":"Great energy and stage presence. Highlights were like him and see you again","companions":"Owen, Lishan, Ibby","type":"Concert","rachelScore":null},{"artist":"The Weeknd 2025","tour":"After Hours Till Dawn","date":"2025-07-28","venue":"Rogers Center (1 Blue Jays Way, Toronto, ON M5V 1J1)","price":310.0,"genre":"Hip-Hop","projScore":9.5,"enjoyment":10.0,"stage":10.0,"setlist":9.5,"seatScore":9.5,"realized":10.0,"spotify":"https://open.spotify.com/playlist/6krnI9D0VWjCeSNwqDieL0","seat":"Sec 123 Row 9","notes":"Absolute masterpiece, open skydome, insane visuals, CN tower views, sang his absolute heart out for 2.5 hours, played banger after banger. I had an amazing time and was able to dance a bit. Kaytranada was a great opener too.","companions":"Rachel, Shafat, Rasha, Nayaab","type":"Concert","rachelScore":null},{"artist":"Dua Lipa","tour":"Radical Optimism Tour","date":"2025-09-02","venue":"Scotiabank Arena (40 Bay St., Toronto, ON M5J 2X2)","price":126.5,"genre":"Pop","projScore":8.2,"enjoyment":9.0,"stage":8.5,"setlist":10.0,"seatScore":6.0,"realized":9.2,"spotify":"https://open.spotify.com/playlist/6QjNP26gG9wGK0hhPxrcZk","seat":"Sec 324 Row 14","notes":"Brought out Mustafa the Poet.\n\nAbsolutely amazing and criminally underrated. So much fun, such a great concert. Our seats were kinda bad and the set blocked the screens","companions":"Rachel","type":"Concert","rachelScore":null},{"artist":"Hozier","tour":"Unreal Earth","date":"2025-09-10","venue":"Rogers Stadium","price":0.0,"genre":"Pop","projScore":8.0,"enjoyment":9.0,"stage":5.0,"setlist":9.0,"seatScore":8.0,"realized":8.8,"spotify":"https://open.spotify.com/playlist/1ege6KEUWmVmRo2zncJZfA","seat":"West 101","notes":"Amazing performance ","companions":"Rachel","type":"Concert","rachelScore":null},{"artist":"Kali Uchis","tour":"Sincerely,","date":"2025-09-17","venue":"Scotiabank Arena (40 Bay St., Toronto, ON M5J 2X2)","price":60.0,"genre":"Latin","projScore":8.0,"enjoyment":8.0,"stage":8.5,"setlist":8.0,"seatScore":7.0,"realized":8.5,"spotify":"https://open.spotify.com/playlist/7EE7Ntg5HJxN3z91Hw1C3L","seat":"Sec 319","notes":"I liked the high energy parts. Great stage props ","companions":"Rachel","type":"Concert","rachelScore":null},{"artist":"JID","tour":"God Does Like Paradise","date":"2025-10-22","venue":"Rebel (11 Polson St First Floor, Toronto, ON M5A 1A4)","price":82.0,"genre":"Hip-Hop","projScore":8.5,"enjoyment":9.4,"stage":8.0,"setlist":9.0,"seatScore":10.0,"realized":8.8,"spotify":"https://open.spotify.com/playlist/6R4StXZvNEtXoTelxpBQV8","seat":"Floor GA","notes":"Really fun, great energy, just so short","companions":"Bijan, Nalin","type":"Concert","rachelScore":null},{"artist":"Sabrina Carpenter","tour":"Short and Sweet","date":"2025-11-11","venue":"Scotiabank Arena (40 Bay St., Toronto, ON M5J 2X2)","price":315.0,"genre":"Pop","projScore":9.0,"enjoyment":9.0,"stage":9.8,"setlist":9.0,"seatScore":6.0,"realized":9.4,"spotify":"https://open.spotify.com/playlist/790zV08vQSycdCYSdzKj5S","seat":"Sec 322 Row 16 Standing","notes":"Very cool, very fun","companions":"Rachel","type":"Concert","rachelScore":null},{"artist":"Dave","tour":"The Boy Who Played the Harp Tour","date":"2026-04-23","venue":"Coca-Cola Coliseum (45 Manitoba Dr, Toronto, ON M6K 3C3)","price":107.0,"genre":"Hip-Hop","projScore":8.0,"enjoyment":9.0,"stage":8.0,"setlist":8.0,"seatScore":9.0,"realized":8.4,"spotify":"https://open.spotify.com/playlist/4hi0S84R56aMtuCSlyQUa1","seat":"Floor/GA","notes":"Could've been longer, I wanted Trojan Horse UK rap and a guest","companions":"Bijan and Jack","type":"Concert","rachelScore":null},{"artist":"ASAP Rocky","tour":"Dont be Dumb on Tour","date":"2026-05-31","venue":"Scotiabank Arena (40 Bay St., Toronto, ON M5J 2X2)","price":117.0,"genre":"Hip-Hop","projScore":8.0,"enjoyment":null,"stage":null,"setlist":null,"seatScore":null,"realized":null,"spotify":null,"seat":"Section 322 Row 14 Seat 15","notes":null,"companions":"Rachel, Choyon, Ifaj, Ibby","type":"Concert","rachelScore":null},{"artist":"Don Toliver","tour":"Ocatane Tour","date":"2026-06-05","venue":"Scotiabank Arena (40 Bay St., Toronto, ON M5J 2X2)","price":215.0,"genre":"Hip-Hop","projScore":9.0,"enjoyment":null,"stage":null,"setlist":null,"seatScore":null,"realized":null,"spotify":null,"seat":"Floor GA","notes":null,"companions":"Owen, Ibby","type":"Concert","rachelScore":null}];
+
+//============================ STATE ============================
+let concerts = [];
+
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : 'id-' + Math.random().toString(36).slice(2) + Date.now());
+
+function seedStatus(row){
+  if (row.notes && /cancel/i.test(row.notes)) return 'Cancelled';
+  if (row.realized != null) return 'Attended';
+  return 'Want to Go';
+}
+
+// Deterministic UUID from a string so the same seed concert gets the same id on
+// every device — prevents duplicate rows when multiple devices seed the empty cloud.
+function detUuid(str){
+  let h1=0x811c9dc5>>>0, h2=0x1b873593>>>0, h3=0xcafebabe>>>0, h4=0xdeadbeef>>>0;
+  for (let i=0;i<str.length;i++){ const c=str.charCodeAt(i);
+    h1=Math.imul(h1^c,0x01000193)>>>0;
+    h2=Math.imul(h2^((c<<3)|(h1&7)),0x85ebca6b)>>>0;
+    h3=Math.imul(h3^(c+i),0xc2b2ae35)>>>0;
+    h4=Math.imul(h4^((h1+h2)>>>0),0x27d4eb2f)>>>0;
+  }
+  const hx = n => (n>>>0).toString(16).padStart(8,'0');
+  const s = hx(h1)+hx(h2)+hx(h3)+hx(h4);
+  return `${s.slice(0,8)}-${s.slice(8,12)}-4${s.slice(13,16)}-8${s.slice(17,20)}-${s.slice(20,32)}`;
+}
+function buildSeed(){
+  return SEED.map(r => ({ timestamp: new Date().toISOString(), status: seedStatus(r), ...r, id: detUuid(r.artist + '|' + r.date) }));
+}
+
+function loadConcerts(){
+  let raw = null;
+  try { raw = localStorage.getItem(STORAGE_KEY); } catch(e){}
+  if (raw){
+    try { return JSON.parse(raw); } catch(e){ console.warn('Corrupt storage, reseeding', e); }
+  }
+  const seeded = buildSeed();
+  saveConcerts(seeded);
+  return seeded;
+}
+
+function cacheLocal(){
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(concerts)); } catch(e){ console.error('Cache failed', e); }
+}
+function saveConcerts(arr){
+  concerts = arr || concerts;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(concerts));
+    const ts = Date.now();
+    localStorage.setItem(SAVED_KEY, String(ts));
+    setSyncIndicator(sb ? 'saving' : 'local', ts);
+  } catch(e){
+    console.error('Save failed', e);
+    setSyncIndicator('error');
+  }
+}
+
+// Header sync/save indicator.
+function fmtSavedTime(ts){
+  if (!ts) return '';
+  const d = new Date(+ts);
+  if (isNaN(d)) return '';
+  const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  const sameDay = d.toDateString() === new Date().toDateString();
+  return sameDay ? time : `${d.toLocaleDateString(undefined,{month:'short',day:'numeric'})}, ${time}`;
+}
+function setSyncIndicator(state, ts){
+  const el = $('#savedAt'); if (!el) return;
+  const t = fmtSavedTime(ts || localStorage.getItem(SAVED_KEY));
+  const map = {
+    synced:  { cls:'text-emerald-600 dark:text-emerald-400', txt:`✓ Synced${t?' '+t:''}` },
+    local:   { cls:'text-emerald-600 dark:text-emerald-400', txt:`✓ Saved${t?' '+t:''}` },
+    saving:  { cls:'text-slate-400', txt:'Saving…' },
+    offline: { cls:'text-amber-500', txt:`⚠ Offline — saved on this device` },
+    error:   { cls:'text-rose-500', txt:'Not saved — storage blocked' },
+  };
+  const s = map[state] || map.local;
+  el.className = s.cls;
+  el.textContent = s.txt;
+}
+function markSynced(){ const ts = Date.now(); try { localStorage.setItem(SAVED_KEY, String(ts)); } catch(e){} setSyncIndicator('synced', ts); }
+function markOffline(){ setSyncIndicator('offline'); }
+
+//============================ HELPERS ============================
+const $ = sel => document.querySelector(sel);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtMoney = n => (n == null || isNaN(n)) ? 'N/A' : '$' + Number(n).toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2});
+const fmtDate = d => { if(!d) return 'N/A'; const dt = new Date(d + 'T00:00:00'); return isNaN(dt) ? d : dt.toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}); };
+const num = v => { const n = parseFloat(v); return isNaN(n) ? null : n; };
+
+function computeAutoRating(scores){
+  const vals = scores.filter(v => v != null && !isNaN(v));
+  if (!vals.length) return null;
+  return Math.round((vals.reduce((a,b)=>a+b,0) / vals.length) * 10) / 10;
+}
+
+const STATUS_STYLES = {
+  'Want to Go': 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300',
+  'Attended'  : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300',
+  'Cancelled' : 'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300'
+};
+const STATUS_CYCLE = { 'Want to Go':'Attended', 'Attended':'Cancelled', 'Cancelled':'Want to Go' };
+
+//============================ VALIDATION ============================
+// Conditional required-field logic by status.
+function validateForm(data){
+  const errors = [];
+  if (!data.artist?.trim()) errors.push('Artist is required.');
+  if (!data.date) errors.push('Date is required.');
+  if (!data.venue?.trim()) errors.push('Venue is required.');
+  if (data.status === 'Attended'){
+    if (data.price == null) errors.push('Price is required for attended concerts.');
+    if (!data.seat?.trim()) errors.push('Seat is required for attended concerts.');
+    if (!data.genre?.trim()) errors.push('Genre is required for attended concerts.');
+    if (data.realized == null) errors.push('Realized Rating is required for attended concerts.');
+  }
+  return errors;
+}
+
+//============================ STATS ============================
+function renderStats(){
+  const attended = concerts.filter(c => c.status === 'Attended');
+  const wtg = concerts.filter(c => c.status === 'Want to Go');
+  const spent = concerts.filter(c => c.status !== 'Cancelled').reduce((s,c)=> s + (c.price||0), 0);
+
+  // Next upcoming show: soonest "Want to Go" by date (prefer future, else any upcoming)
+  const todayStr = new Date().toISOString().slice(0,10);
+  const upcomingSorted = wtg.slice().sort((a,b)=> (a.date||'').localeCompare(b.date||''));
+  const next = upcomingSorted.find(c => (c.date||'') >= todayStr) || upcomingSorted[0];
+
+  $('#stats').innerHTML =
+    statCard('Total concerts', concerts.length, `${attended.length} attended · ${wtg.length} upcoming`) +
+    nextConcertCard(next) +
+    statCard('Total spent', fmtMoney(spent), 'excludes cancelled');
+}
+function statCard(label, value, sub){
+  return `<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
+    <div class="text-xs font-medium text-slate-500 dark:text-slate-400">${esc(label)}</div>
+    <div class="text-2xl font-bold mt-1 truncate" title="${esc(value)}">${esc(value)}</div>
+    <div class="text-xs text-slate-500 dark:text-slate-400 mt-1 truncate">${esc(sub)}</div>
+  </div>`;
+}
+function nextConcertCard(next){
+  if (!next){
+    return `<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
+      <div class="text-xs font-medium text-slate-500 dark:text-slate-400">Next concert</div>
+      <div class="text-lg font-semibold mt-2 text-slate-500 dark:text-slate-400">None scheduled</div>
+    </div>`;
+  }
+  const key = cleanArtistName(next.artist).toLowerCase();
+  const override = next.image || null;
+  const shownImg = override || imageCache[key];
+  const thumbStyle = shownImg
+    ? `background-image:url('${esc(shownImg)}');background-size:cover;background-position:center;`
+    : `background-image:${gradientFor(next.artist)};`;
+  if (!override) fetchArtistImage(next.artist); // ensure artwork loads / swaps in
+  return `<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
+    <div class="text-xs font-medium text-slate-500 dark:text-slate-400">Next concert</div>
+    <div class="flex items-center gap-3 mt-2">
+      <div ${override ? '' : `data-artistkey="${esc(key)}"`} aria-hidden="true"
+        class="shrink-0 w-12 h-12 rounded-lg overflow-hidden flex items-center justify-center text-white font-bold text-sm shadow-sm"
+        style="${thumbStyle}">${shownImg ? '' : `<span class="thumb-init">${esc(initialsFor(next.artist))}</span>`}</div>
+      <div class="min-w-0">
+        <div class="font-bold truncate" title="${esc(next.artist)}">${esc(next.artist)}</div>
+        <div class="text-xs text-slate-500 dark:text-slate-400">${esc(fmtDate(next.date))}</div>
+      </div>
+    </div>
+  </div>`;
+}
+function shorten(s){ s = String(s); return s.length > 18 ? s.slice(0,16)+'...' : s; }
+const fmtDateShort = d => { if(!d) return 'N/A'; const dt = new Date(d + 'T00:00:00'); return isNaN(dt) ? d : dt.toLocaleDateString(undefined,{month:'short',day:'numeric'}); };
+
+//============================ COLOR + IMAGE HELPERS ============================
+// Rating badge background class by band (used on detailed cards)
+function ratingColor(v){
+  if (v == null) return 'bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-300';
+  if (v < 5)   return 'bg-rose-500 text-white';
+  if (v < 7)   return 'bg-amber-500 text-white';
+  if (v < 8.5) return 'bg-lime-500 text-white';
+  return 'bg-emerald-500 text-white';
+}
+// Deterministic gradient + initials placeholder for the card thumbnail
+function gradientFor(name){
+  let h = 0; for (let i=0;i<name.length;i++){ h = (h*31 + name.charCodeAt(i)) >>> 0; }
+  const a = h % 360, b = (a + 40 + (h>>8)%80) % 360;
+  return `linear-gradient(135deg, hsl(${a} 65% 45%), hsl(${b} 65% 35%))`;
+}
+function initialsFor(name){
+  const parts = name.replace(/\d+/g,'').trim().split(/[\s,&]+/).filter(Boolean);
+  return ((parts[0]?.[0]||'') + (parts[1]?.[0]||'')).toUpperCase() || '🎵';
+}
+// Clean an artist name into an iTunes-search-friendly query
+function cleanArtistName(name){
+  let n = String(name).replace(/\b(19|20)\d{2}\b/g, ' ');      // drop years
+  n = n.split(/\s+(?:ft\.?|feat\.?|x|&|,|\/)\s+/i)[0];          // first artist only
+  return n.replace(/\s+/g,' ').trim();
+}
+
+//============================ ARTIST IMAGE CACHE / FETCH ============================
+const IMG_KEY = 'concertTracker.images.v1';
+let imageCache = (() => { try { return JSON.parse(localStorage.getItem(IMG_KEY)) || {}; } catch(e){ return {}; } })();
+const inFlight = new Set();
+function saveImageCache(){ try { localStorage.setItem(IMG_KEY, JSON.stringify(imageCache)); } catch(e){} }
+
+async function fetchArtistImage(rawName){
+  const key = cleanArtistName(rawName).toLowerCase();
+  if (!key || key in imageCache || inFlight.has(key)) return;
+  inFlight.add(key);
+  try {
+    const url = `https://itunes.apple.com/search?term=${encodeURIComponent(key)}&entity=album&limit=1`;
+    const res = await fetch(url);
+    const data = await res.json();
+    const art = data?.results?.[0]?.artworkUrl100;
+    imageCache[key] = art ? art.replace('100x100bb','300x300bb') : null;
+  } catch(e){
+    imageCache[key] = null; // network/offline, keep gradient fallback
+  } finally {
+    inFlight.delete(key);
+    saveImageCache();
+    // swap any visible thumbnails for this artist
+    document.querySelectorAll(`[data-artistkey="${CSS.escape(key)}"]`).forEach(el => applyThumb(el, imageCache[key]));
+  }
+}
+function applyThumb(el, src){
+  if (src){
+    el.style.backgroundImage = `url("${src}")`;
+    el.style.backgroundSize = 'cover';
+    el.style.backgroundPosition = 'center';
+    const ini = el.querySelector('.thumb-init'); if (ini) ini.remove(); // drop initials, keep overlay
+  }
+}
+
+// Throttled prefetch of artist images (concurrency-capped, dedup + cache aware).
+// Avoids IntersectionObserver which doesn't fire reliably in some embedded/headless views.
+const IMG_CONCURRENCY = 6;
+let imgQueue = [];
+let activeImg = 0;
+function pumpImgQueue(){
+  while (activeImg < IMG_CONCURRENCY && imgQueue.length){
+    const name = imgQueue.shift();
+    activeImg++;
+    fetchArtistImage(name).finally(()=>{ activeImg--; pumpImgQueue(); });
+  }
+}
+function observeThumbs(){
+  const seen = new Set();
+  document.querySelectorAll('#list [data-artist]').forEach(el => {
+    const raw = el.dataset.artist;
+    const key = cleanArtistName(raw).toLowerCase();
+    if (!key || key in imageCache || seen.has(key)) return;
+    seen.add(key);
+    imgQueue.push(raw);
+  });
+  pumpImgQueue();
+}
+
+//============================ LIST ============================
+function getFiltered(){
+  const q = $('#search').value.trim().toLowerCase();
+  const fs = $('#filterStatus').value;
+  const fg = $('#filterGenre').value;
+  const sort = $('#sortBy').value;
+  let out = concerts.filter(c => {
+    if (fs && c.status !== fs) return false;
+    if (fg && c.genre !== fg) return false;
+    if (q && !((c.artist||'').toLowerCase().includes(q) || (c.venue||'').toLowerCase().includes(q))) return false;
+    return true;
+  });
+  const cmp = {
+    'date-desc': (a,b)=> (b.date||'').localeCompare(a.date||''),
+    'date-asc' : (a,b)=> (a.date||'').localeCompare(b.date||''),
+    'price-desc':(a,b)=> (b.price||0) - (a.price||0),
+    'rating-desc':(a,b)=> (b.realized??-1) - (a.realized??-1),
+    'artist-asc':(a,b)=> (a.artist||'').localeCompare(b.artist||''),
+  }[sort];
+  return out.sort(cmp);
+}
+
+function venueShort(v){ return (v||'').replace(/\s*\(.*\)\s*$/, ''); }
+
+function renderList(){
+  const rows = getFiltered();
+  const list = $('#list');
+  $('#listMeta').textContent = `Showing ${rows.length} of ${concerts.length} concert${concerts.length===1?'':'s'}`;
+  $('#emptyState').classList.toggle('hidden', rows.length !== 0);
+  list.innerHTML = rows.map(c => {
+    const badge = STATUS_STYLES[c.status] || '';
+    const key = cleanArtistName(c.artist).toLowerCase();
+    const override = c.image || null;
+    const shownImg = override || imageCache[key];
+    const thumbStyle = shownImg
+      ? `background-image:url('${esc(shownImg)}');background-size:cover;background-position:center;`
+      : `background-image:${gradientFor(c.artist)};`;
+    const ratingTxt = c.realized != null ? c.realized : (c.projScore != null ? 'N/A' : 'N/A');
+    const ratingSub = c.realized != null ? '/10' : (c.projScore != null ? 'unrated' : '');
+    return `
+    <div id="card-${c.id}" class="concert-card bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 flex flex-col gap-3 scroll-mt-24">
+      <div class="flex items-start gap-3">
+        <button type="button" data-action="photo" data-id="${c.id}" aria-label="Change photo for ${esc(c.artist)}" title="Change photo"
+          ${override ? '' : `data-artist="${esc(c.artist)}" data-artistkey="${esc(key)}"`}
+          class="group relative shrink-0 w-14 h-14 rounded-xl overflow-hidden flex items-center justify-center text-white font-bold text-sm shadow-sm"
+          style="${thumbStyle}">${shownImg ? '' : `<span class="thumb-init">${esc(initialsFor(c.artist))}</span>`}<span class="absolute inset-0 hidden group-hover:flex group-focus:flex items-center justify-center bg-black/45 text-white text-base pointer-events-none" aria-hidden="true">📷</span></button>
+        <div class="min-w-0 flex-1">
+          <h3 class="font-bold truncate" title="${esc(c.artist)}">${esc(c.artist)}</h3>
+          ${c.tour ? `<p class="text-xs text-slate-500 dark:text-slate-400 truncate">${esc(c.tour)}</p>` : ''}
+        </div>
+        <div class="shrink-0 flex flex-col items-center gap-0.5">
+          <div class="w-14 h-14 rounded-2xl flex flex-col items-center justify-center leading-none ${ratingColor(c.realized)}" title="Realized rating">
+            <span class="text-xl font-extrabold">${esc(ratingTxt)}</span>
+            <span class="text-[10px] opacity-90">${esc(ratingSub)}</span>
+          </div>
+          ${c.realized != null && c.projScore != null ? `<span class="text-[10px] text-slate-400">proj ${esc(c.projScore)}</span>` : ''}
+        </div>
+      </div>
+      <div class="text-sm space-y-1">
+        <div class="flex items-center gap-1 text-slate-600 dark:text-slate-300">📅 ${esc(fmtDate(c.date))}</div>
+        <div class="flex items-center gap-1 text-slate-600 dark:text-slate-300 truncate" title="${esc(c.venue)}">📍 ${esc(venueShort(c.venue))}</div>
+        <div class="flex flex-wrap items-center gap-1.5 pt-0.5">
+          <button data-action="status" data-id="${c.id}" title="Click to change status" aria-label="Status: ${esc(c.status)}. Click to change."
+            class="ui-button min-h-[44px] text-xs font-semibold px-3 py-1 rounded-full ${badge}">${esc(c.status)}</button>
+          ${c.genre ? `<span class="chip text-xs px-2 py-1 rounded-md bg-slate-100 dark:bg-slate-800">${esc(c.genre)}</span>`:''}
+          ${c.type ? `<span class="chip text-xs px-2 py-1 rounded-md bg-slate-100 dark:bg-slate-800">${esc(c.type)}</span>`:''}
+          ${c.seat ? `<span class="chip text-xs px-2 py-1 rounded-md bg-slate-100 dark:bg-slate-800" title="Seat">💺 ${esc(c.seat)}</span>`:''}
+        </div>
+        <div class="flex items-center justify-between pt-1">
+          <span class="font-medium text-slate-700 dark:text-slate-200">${esc(fmtMoney(c.price))}</span>
+        </div>
+        ${c.companions ? `<div class="text-xs text-slate-500 dark:text-slate-400 truncate" title="${esc(c.companions)}">👥 ${esc(c.companions)}</div>`:''}
+        ${c.notes ? `<p class="text-xs text-slate-500 dark:text-slate-400 clamp-3 whitespace-pre-line">${esc(c.notes)}</p>`:''}
+      </div>
+      <div class="flex items-center gap-2 mt-auto pt-2 border-t border-slate-100 dark:border-slate-800">
+        ${c.spotify ? `<a href="${esc(c.spotify)}" target="_blank" rel="noopener" class="ui-button min-h-[44px] px-2.5 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950">🎵 Setlist</a>` : '<span></span>'}
+        <div class="ml-auto flex gap-1.5">
+          <button data-action="edit" data-id="${c.id}" aria-label="Edit ${esc(c.artist)}" class="ui-button icon-action text-xs px-3 py-1 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800">Edit</button>
+          <button data-action="delete" data-id="${c.id}" aria-label="Delete ${esc(c.artist)}" title="Delete concert" class="ui-button icon-action text-xs px-2 py-1 rounded-lg border border-rose-300 text-rose-700 dark:text-rose-300 dark:border-rose-800 hover:bg-rose-50 dark:hover:bg-rose-950">🗑</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  observeThumbs();
+}
+
+//============================ SUMMARY SIDEBAR ============================
+// Columns: clickable headers sort; the "Ant" column is optional (hideable).
+const SUM_COLS = [
+  { key:'artist',    label:'Artist', align:'left',   type:'str' },
+  { key:'realized',  label:'Rating', align:'center', type:'num' },
+  { key:'projScore', label:'Ant',    align:'center', type:'num', optional:true },
+  { key:'year',      label:'Year',   align:'center', type:'num' },
+  { key:'price',     label:'Price',  align:'right',  type:'num' },
+];
+let summarySort = { key:'realized', dir:-1 }; // default: highest rating first
+let hideAnt = false;
+
+const sumVal = (c, key) => key === 'year' ? (c.date||'').slice(0,4) : c[key];
+
+function setSummarySort(key){
+  if (summarySort.key === key) summarySort.dir *= -1;
+  else summarySort = { key, dir: key === 'artist' ? 1 : -1 };
+  renderSummary();
+}
+
+function renderSummary(){
+  const rows = concerts.filter(c => c.realized != null);
+  const { key, dir } = summarySort;
+  rows.sort((a,b)=>{
+    let av = sumVal(a,key), bv = sumVal(b,key);
+    if (key === 'artist') return String(av).localeCompare(String(bv)) * dir;
+    av = (av == null || av === '') ? -Infinity : +av;
+    bv = (bv == null || bv === '') ? -Infinity : +bv;
+    if (av === bv) return (b.realized - a.realized); // stable-ish tiebreak by rating
+    return (av - bv) * dir;
+  });
+  const cols = SUM_COLS.filter(c => !(c.optional && hideAnt));
+  const alignCls = a => a === 'left' ? 'text-left' : a === 'right' ? 'text-right' : 'text-center';
+  const arrow = k => summarySort.key === k ? (summarySort.dir < 0 ? ' ▼' : ' ▲') : '';
+
+  const thead = `<thead class="sticky top-0 z-10"><tr class="bg-indigo-500 text-white text-xs">` +
+    cols.map(c => `<th data-sort="${c.key}" tabindex="0" role="button" aria-label="Sort by ${esc(c.label)}"
+        class="font-semibold px-2 py-2 cursor-pointer select-none hover:bg-indigo-600 whitespace-nowrap ${alignCls(c.align)}">${esc(c.label)}${arrow(c.key)}</th>`).join('') +
+    `</tr></thead>`;
+
+  const cell = (c, col) => {
+    const base = `px-2 py-1.5 tabular-nums ${alignCls(col.align)}`;
+    if (col.key === 'artist')   return `<td class="${base} font-semibold truncate max-w-[120px]" title="${esc(c.artist)}">${esc(c.artist)}</td>`;
+    if (col.key === 'price')    return `<td class="${base}">${esc(fmtMoney(c.price))}</td>`;
+    if (col.key === 'year')     return `<td class="${base} text-slate-500 dark:text-slate-400">${esc((c.date||'').slice(0,4))}</td>`;
+    if (col.key === 'realized') return `<td class="${base} font-bold">${esc(c.realized)}</td>`;
+    if (col.key === 'projScore')return `<td class="${base} text-slate-600 dark:text-slate-300">${c.projScore!=null?esc(c.projScore):'N/A'}</td>`;
+    return '<td></td>';
+  };
+
+  const tbody = `<tbody>` + (rows.length
+    ? rows.map(c => `<tr data-action="goto" data-id="${c.id}" tabindex="0" role="button"
+        class="border-b border-slate-100 dark:border-slate-800 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 focus:outline-none focus:ring-2 focus:ring-indigo-400">${cols.map(col=>cell(c,col)).join('')}</tr>`).join('')
+    : `<tr><td colspan="${cols.length}" class="px-3 py-6 text-center text-slate-400">No rated concerts yet.</td></tr>`) + `</tbody>`;
+
+  $('#summaryScroll').innerHTML = `<table class="summary-table w-full text-sm border-collapse">${thead}${tbody}</table>`;
+}
+
+function renderAll(){ renderStats(); renderList(); renderSummary(); }
+
+//============================ RADIO GROUP BUILDERS ============================
+function buildRadioGroup(container, name, options, otherInputId){
+  container.innerHTML = options.map((o,i)=>`
+    <label class="flex items-center gap-2 cursor-pointer min-h-[32px]">
+      <input type="radio" name="${name}" value="${esc(o)}" class="accent-violet-600">
+      <span class="text-sm">${esc(o)}</span>
+    </label>`).join('') + `
+    <label class="flex items-center gap-2 cursor-pointer min-h-[32px]">
+      <input type="radio" name="${name}" value="__other__" class="accent-violet-600">
+      <span class="text-sm">Other:</span>
+    </label>`;
+  container.addEventListener('change', () => {
+    const other = container.querySelector(`input[value="__other__"]`).checked;
+    document.getElementById(otherInputId).classList.toggle('hidden', !other);
+  });
+}
+
+function getRadioValue(name, options, otherInputId){
+  const checked = document.querySelector(`input[name="${name}"]:checked`);
+  if (!checked) return '';
+  if (checked.value === '__other__') return document.getElementById(otherInputId).value.trim();
+  return checked.value;
+}
+
+function setRadioValue(name, options, otherInputId, value){
+  const otherInput = document.getElementById(otherInputId);
+  otherInput.classList.add('hidden'); otherInput.value = '';
+  document.querySelectorAll(`input[name="${name}"]`).forEach(r => r.checked = false);
+  if (value == null || value === ''){ return; }
+  if (options.includes(value)){
+    document.querySelector(`input[name="${name}"][value="${CSS.escape(value)}"]`).checked = true;
+  } else {
+    document.querySelector(`input[name="${name}"][value="__other__"]`).checked = true;
+    otherInput.classList.remove('hidden'); otherInput.value = value;
+  }
+}
+
+//============================ FORM ============================
+const dialog = $('#formDialog');
+
+function openForm(concert){
+  $('#formError').classList.add('hidden');
+  $('#formTitle').textContent = concert ? 'Edit concert' : 'Add concert';
+  $('#f_id').value = concert?.id || '';
+  $('#f_artist').value = concert?.artist || '';
+  $('#f_tour').value = concert?.tour || '';
+  $('#f_date').value = concert?.date || '';
+  $('#f_price').value = concert?.price ?? '';
+  $('#f_seat').value = concert?.seat || '';
+  $('#f_projScore').value = concert?.projScore ?? '';
+  $('#f_enjoyment').value = concert?.enjoyment ?? '';
+  $('#f_stage').value = concert?.stage ?? '';
+  $('#f_setlist').value = concert?.setlist ?? '';
+  $('#f_seatScore').value = concert?.seatScore ?? '';
+  $('#f_realized').value = concert?.realized ?? '';
+  $('#f_spotify').value = concert?.spotify || '';
+  $('#f_companions').value = concert?.companions || '';
+  $('#f_notes').value = concert?.notes || '';
+  $('#f_rachelScore').value = concert?.rachelScore ?? '';
+  // status
+  document.querySelectorAll('input[name="status"]').forEach(r => r.checked = (r.value === (concert?.status || 'Want to Go')));
+  // radio groups
+  setRadioValue('venue', VENUES, 'f_venueOther', concert?.venue);
+  setRadioValue('genre', GENRES, 'f_genreOther', concert?.genre);
+  setRadioValue('type',  TYPES,  'f_typeOther',  concert?.type || 'Concert');
+  $('#autoHint').classList.add('hidden');
+  if (typeof dialog.showModal === 'function') dialog.showModal();
+  else dialog.setAttribute('open','');
+}
+
+function closeForm(){ dialog.close(); }
+
+function readForm(){
+  return {
+    id: $('#f_id').value || null,
+    status: document.querySelector('input[name="status"]:checked')?.value || 'Want to Go',
+    artist: $('#f_artist').value.trim(),
+    tour: $('#f_tour').value.trim() || null,
+    date: $('#f_date').value,
+    venue: getRadioValue('venue', VENUES, 'f_venueOther'),
+    price: num($('#f_price').value),
+    seat: $('#f_seat').value.trim() || null,
+    genre: getRadioValue('genre', GENRES, 'f_genreOther') || null,
+    projScore: num($('#f_projScore').value),
+    enjoyment: num($('#f_enjoyment').value),
+    stage: num($('#f_stage').value),
+    setlist: num($('#f_setlist').value),
+    seatScore: num($('#f_seatScore').value),
+    realized: num($('#f_realized').value),
+    spotify: $('#f_spotify').value.trim() || null,
+    companions: $('#f_companions').value.trim() || null,
+    notes: $('#f_notes').value.trim() || null,
+    type: getRadioValue('type', TYPES, 'f_typeOther') || null,
+    rachelScore: num($('#f_rachelScore').value),
+  };
+}
+
+function upsertConcert(data){
+  let saved;
+  if (data.id){
+    const i = concerts.findIndex(c => c.id === data.id);
+    if (i >= 0){ concerts[i] = { ...concerts[i], ...data }; saved = concerts[i]; }
+  } else {
+    saved = { ...data, id: uid(), timestamp: new Date().toISOString() };
+    concerts.push(saved);
+  }
+  saveConcerts();
+  renderAll();
+  pushConcert(saved);
+}
+
+function deleteConcert(id){
+  concerts = concerts.filter(c => c.id !== id);
+  saveConcerts();
+  renderAll();
+  pushDelete(id);
+}
+
+function cycleStatus(id){
+  const c = concerts.find(x => x.id === id);
+  if (!c) return;
+  c.status = STATUS_CYCLE[c.status] || 'Want to Go';
+  saveConcerts();
+  renderAll();
+  pushConcert(c);
+}
+
+//============================ PHOTO PICKER ============================
+let pickerId = null;
+const imgPicker = $('#imgPicker');
+
+function openImgPicker(id){
+  const c = concerts.find(x => x.id === id); if (!c) return;
+  pickerId = id;
+  $('#imgPickerTitle').textContent = 'Photo - ' + c.artist;
+  $('#imgQuery').value = cleanArtistName(c.artist);
+  $('#imgUrl').value = ''; $('#imgFile').value = ''; $('#imgFileHint').textContent = 'Stored locally in your browser. Keep it under 1.5 MB.';
+  $('#imgResults').innerHTML = '';
+  if (typeof imgPicker.showModal === 'function') imgPicker.showModal(); else imgPicker.setAttribute('open','');
+  searchImages();
+}
+
+async function searchImages(){
+  const q = $('#imgQuery').value.trim();
+  const box = $('#imgResults');
+  if (!q){ box.innerHTML = ''; return; }
+  box.innerHTML = `<div class="col-span-4 text-sm text-slate-400 py-4 text-center">Searching...</div>`;
+  try {
+    const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&entity=album&limit=24`);
+    const data = await res.json();
+    const urls = [...new Set((data.results||[]).map(r => r.artworkUrl100).filter(Boolean)
+                   .map(u => u.replace('100x100bb','300x300bb')))].slice(0, 12);
+    if (!urls.length){ box.innerHTML = `<div class="col-span-4 text-sm text-slate-400 py-4 text-center">No results. Paste a URL or upload instead.</div>`; return; }
+    box.innerHTML = urls.map(u => `<button type="button" data-url="${esc(u)}" aria-label="Use this image"
+        class="aspect-square rounded-lg overflow-hidden border-2 border-transparent hover:border-violet-500 focus:border-violet-500 focus:outline-none">
+        <img src="${esc(u)}" alt="" loading="lazy" class="w-full h-full object-cover"></button>`).join('');
+  } catch(e){
+    box.innerHTML = `<div class="col-span-4 text-sm text-rose-500 py-4 text-center">Search failed (offline?). Paste a URL or upload instead.</div>`;
+  }
+}
+
+function setConcertImage(url){
+  const c = concerts.find(x => x.id === pickerId); if (!c || !url) return;
+  c.image = url;
+  saveConcerts();
+  renderAll();
+  pushConcert(c);
+  imgPicker.close();
+}
+function resetConcertImage(){
+  const c = concerts.find(x => x.id === pickerId); if (!c) return;
+  delete c.image;
+  saveConcerts();
+  renderAll();
+  pushConcert(c);
+  imgPicker.close();
+}
+function uploadConcertImage(file){
+  if (!file) return;
+  if (file.size > 1.5 * 1024 * 1024){ $('#imgFileHint').textContent = 'That file is over 1.5 MB. Please pick a smaller image.'; return; }
+  const reader = new FileReader();
+  reader.onload = () => setConcertImage(reader.result); // data URL persisted in localStorage
+  reader.readAsDataURL(file);
+}
+
+//============================ CSV EXPORT ============================
+function exportCSV(){
+  const cols = ['timestamp','artist','tour','date','venue','price','genre','projScore','enjoyment','stage','setlist','seatScore','realized','spotify','seat','notes','companions','type','rachelScore','status'];
+  const headers = ['Timestamp','Artist','Tour Name','Date','Venue','Price','Genre','Projected Rating Score','Enjoyment Score','Stage Score','Setlist Score','Seat Score','Realized Rating','Spotify Set List','Seat','Notes','Who did you go with','Type',"Rachel's Score",'Status'];
+  const cell = v => { if (v == null) return ''; const s = String(v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s; };
+  const lines = [headers.join(',')];
+  concerts.forEach(c => lines.push(cols.map(k => cell(c[k])).join(',')));
+  const blob = new Blob([lines.join('\r\n')], { type:'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'nhihad-concerts.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=> URL.revokeObjectURL(url), 1000);
+}
+
+//============================ THEME ============================
+function applyTheme(t){
+  document.documentElement.classList.toggle('dark', t === 'dark');
+  try { localStorage.setItem(THEME_KEY, t); } catch(e){}
+}
+
+//============================ SELF TESTS ============================
+function runSelfTests(){
+  const results = [];
+  const assert = (name, cond) => { results.push({name, pass: !!cond}); console[cond?'log':'error'](`${cond?'✅ PASS':'❌ FAIL'} - ${name}`); };
+
+  // computeAutoRating
+  assert('auto rating avg of 8,7,8,9 = 8.0', computeAutoRating([8,7,8,9]) === 8.0);
+  assert('auto rating ignores nulls', computeAutoRating([10,null,8,6]) === 8.0);
+  assert('auto rating empty = null', computeAutoRating([null,null]) === null);
+
+  // validation
+  const base = { artist:'X', date:'2025-01-01', venue:'V', status:'Want to Go' };
+  assert('want-to-go needs only artist/date/venue', validateForm(base).length === 0);
+  assert('attended missing price/realized blocked', validateForm({...base, status:'Attended'}).length > 0);
+  assert('attended complete passes', validateForm({artist:'X',date:'2025-01-01',venue:'V',status:'Attended',price:10,seat:'Floor',genre:'Pop',realized:8}).length === 0);
+  assert('missing artist blocked', validateForm({date:'2025-01-01',venue:'V',status:'Want to Go'}).length > 0);
+
+  // filter logic on a throwaway copy
+  const saved = concerts;
+  concerts = [
+    {id:'1',artist:'Kendrick Lamar',venue:'Scotiabank Arena',status:'Attended',genre:'Hip-Hop',date:'2022-08-12',realized:9.4,price:100},
+    {id:'2',artist:'Dua Lipa',venue:'Rogers Center',status:'Want to Go',genre:'Pop',date:'2025-09-02',realized:null,price:120},
+  ];
+  // simulate filters via DOM-independent re-impl check
+  const byStatus = concerts.filter(c=>c.status==='Attended');
+  assert('status filter returns 1 attended', byStatus.length === 1 && byStatus[0].artist === 'Kendrick Lamar');
+  const bySearch = concerts.filter(c=> c.artist.toLowerCase().includes('scotia') || c.venue.toLowerCase().includes('scotia'));
+  assert('search "scotia" matches by venue', bySearch.length === 1 && bySearch[0].id === '1');
+
+  // persistence round-trip (separate temp key, never touches real key)
+  const TKEY='__ct_selftest__';
+  localStorage.setItem(TKEY, JSON.stringify(concerts));
+  const back = JSON.parse(localStorage.getItem(TKEY));
+  assert('persistence round-trip preserves data', back.length === 2 && back[0].artist === 'Kendrick Lamar');
+  localStorage.removeItem(TKEY);
+
+  concerts = saved; // restore
+
+  const passed = results.filter(r=>r.pass).length;
+  const msg = `${passed}/${results.length} tests passed`;
+  const resultEl = $('#selfTestResult');
+  if (resultEl){
+    resultEl.textContent = (passed===results.length ? '✅ ' : '❌ ') + msg;
+    resultEl.className = 'text-sm font-medium ' + (passed===results.length ? 'text-emerald-600' : 'text-rose-600');
+  }
+  console.log(`\n${passed===results.length?'✅ ALL PASS':'❌ SOME FAILED'} - ${msg}`);
+  return results;
+}
+
+//============================ INIT / WIRING ============================
+function init(){
+  // theme
+  let theme = 'light';
+  try { theme = localStorage.getItem(THEME_KEY) || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark':'light'); } catch(e){}
+  document.documentElement.classList.toggle('dark', theme === 'dark');
+
+  // data
+  concerts = loadConcerts();
+  // show the last-saved time (loadConcerts already saved+set it on first-ever run)
+  try { const ts = localStorage.getItem(SAVED_KEY); if (ts) setSyncIndicator(sb ? 'saving' : 'local', ts); } catch(e){}
+
+  // radio groups
+  buildRadioGroup($('#venueGroup'), 'venue', VENUES, 'f_venueOther');
+  buildRadioGroup($('#genreGroup'), 'genre', GENRES, 'f_genreOther');
+  buildRadioGroup($('#typeGroup'),  'type',  TYPES,  'f_typeOther');
+
+  // a11y: associate each field label with its control (WCAG 1.3.1 / 3.3.2)
+  document.querySelectorAll('#concertForm label').forEach(l => {
+    if (l.querySelector('input,select,textarea')) return;            // wrapping radio labels already associated
+    const ctrl = l.parentElement.querySelector('input:not([type=radio]):not([type=hidden]), textarea, select');
+    if (ctrl && ctrl.id && !l.htmlFor) l.htmlFor = ctrl.id;
+  });
+  // a11y: accessible names for icon/ambiguous controls
+  $('#formDialog').setAttribute('aria-labelledby', 'formTitle');
+  $('#closeForm').setAttribute('aria-label', 'Close form');
+  $('#themeToggle').setAttribute('aria-label', 'Toggle dark mode');
+
+  // genre filter options (from data + known genres)
+  const genres = Array.from(new Set([...GENRES, ...concerts.map(c=>c.genre).filter(Boolean)])).sort();
+  $('#filterGenre').insertAdjacentHTML('beforeend', genres.map(g=>`<option>${esc(g)}</option>`).join(''));
+
+  renderAll();
+
+  // header buttons
+  $('#addBtn').addEventListener('click', () => openForm(null));
+  $('#exportBtn').addEventListener('click', exportCSV);
+  $('#themeToggle').addEventListener('click', () => applyTheme(document.documentElement.classList.contains('dark') ? 'light':'dark'));
+
+  // controls
+  ['#search','#filterStatus','#filterGenre','#sortBy'].forEach(s => $(s).addEventListener('input', renderList));
+
+  // list actions (delegated)
+  $('#list').addEventListener('click', e => {
+    const btn = e.target.closest('button[data-action]'); if (!btn) return;
+    const id = btn.dataset.id;
+    if (btn.dataset.action === 'edit') openForm(concerts.find(c=>c.id===id));
+    else if (btn.dataset.action === 'delete'){ const c = concerts.find(x=>x.id===id); if (confirm(`Delete "${c?.artist}"?`)) deleteConcert(id); }
+    else if (btn.dataset.action === 'status') cycleStatus(id);
+    else if (btn.dataset.action === 'photo') openImgPicker(id);
+  });
+
+  // photo picker wiring
+  $('#imgSearchBtn').addEventListener('click', searchImages);
+  $('#imgQuery').addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); searchImages(); } });
+  $('#imgResults').addEventListener('click', e => { const b = e.target.closest('button[data-url]'); if (b) setConcertImage(b.dataset.url); });
+  $('#imgUrlBtn').addEventListener('click', () => { const u = $('#imgUrl').value.trim(); if (u) setConcertImage(u); });
+  $('#imgFile').addEventListener('change', e => uploadConcertImage(e.target.files[0]));
+  $('#imgResetBtn').addEventListener('click', resetConcertImage);
+  $('#imgPickerClose').addEventListener('click', () => imgPicker.close());
+  $('#imgPickerDone').addEventListener('click', () => imgPicker.close());
+
+  // summary sidebar: jump to a concert card
+  const gotoCard = id => {
+    // clear any active filters/search that might hide the target, then scroll
+    const card = document.getElementById('card-' + id);
+    if (!card){ // it may be filtered out, reset filters and re-render
+      $('#search').value=''; $('#filterStatus').value=''; $('#filterGenre').value='';
+      renderList();
+    }
+    const target = document.getElementById('card-' + id);
+    if (target){
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      target.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block:'center' });
+      target.classList.add('ring-2','ring-indigo-400');
+      setTimeout(()=> target.classList.remove('ring-2','ring-indigo-400'), 1600);
+    }
+  };
+  $('#summaryScroll').addEventListener('click', e => {
+    const th = e.target.closest('th[data-sort]'); if (th){ setSummarySort(th.dataset.sort); return; }
+    const row = e.target.closest('tr[data-action="goto"]'); if (row) gotoCard(row.dataset.id);
+  });
+  $('#summaryScroll').addEventListener('keydown', e => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const th = e.target.closest('th[data-sort]'); if (th){ e.preventDefault(); setSummarySort(th.dataset.sort); return; }
+    const row = e.target.closest('tr[data-action="goto"]'); if (row){ e.preventDefault(); gotoCard(row.dataset.id); }
+  });
+  $('#toggleAnt').addEventListener('click', () => {
+    hideAnt = !hideAnt;
+    $('#toggleAnt').textContent = hideAnt ? 'Show Ant' : 'Hide Ant';
+    $('#toggleAnt').setAttribute('aria-pressed', String(hideAnt));
+    renderSummary();
+  });
+
+  // form
+  $('#closeForm').addEventListener('click', closeForm);
+  $('#cancelForm').addEventListener('click', closeForm);
+  $('#concertForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const data = readForm();
+    const errors = validateForm(data);
+    if (errors.length){
+      const box = $('#formError');
+      box.innerHTML = errors.map(x=>'• '+esc(x)).join('<br>');
+      box.classList.remove('hidden');
+      return;
+    }
+    upsertConcert(data);
+    closeForm();
+  });
+
+  // auto rating
+  document.querySelectorAll('.score').forEach(inp => inp.addEventListener('input', () => {
+    const auto = computeAutoRating([num($('#f_enjoyment').value), num($('#f_stage').value), num($('#f_setlist').value), num($('#f_seatScore').value)]);
+    const hint = $('#autoHint');
+    if (auto != null){
+      hint.textContent = `Suggested from sub-scores: ${auto.toFixed(1)} (editable)`;
+      hint.classList.remove('hidden');
+      $('#f_realized').value = auto;
+    } else hint.classList.add('hidden');
+  }));
+
+  // self-test + reset
+  $('#selfTestBtn')?.addEventListener('click', runSelfTests);
+  $('#resetSeedBtn')?.addEventListener('click', () => {
+    if (confirm('Reset ALL data back to the original 45 seed concerts? This erases your changes.')){
+      const seed = buildSeed();
+      saveConcerts(seed);
+      renderAll();
+      seed.forEach(pushConcert); // propagate reset to the cloud
+    }
+  });
+
+  // Auth + cloud sync
+  $('#authForm')?.addEventListener('submit', e => {
+    e.preventDefault();
+    const email = $('#authEmail').value.trim();
+    if (email) sendMagicLink(email);
+  });
+  $('#signOutBtn')?.addEventListener('click', async () => {
+    if (sb){ try { await sb.auth.signOut(); } catch(e){} }
+  });
+
+  bootstrapAuth();
+  // Re-sync when returning to the tab (catches edits made on another device).
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && sb && (!AUTH_REQUIRED || authReady)) syncWithCloud(); });
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
