@@ -521,14 +521,47 @@ function onSignedOut(){
   showGate();
 }
 
+function cleanAuthUrl(){
+  if (location.search || location.hash){
+    history.replaceState({}, document.title, location.origin + location.pathname);
+  }
+}
+
+async function handleAuthCallback(){
+  const query = new URLSearchParams(location.search);
+  const hash = new URLSearchParams(location.hash.replace(/^#/, ''));
+  const authError = query.get('error_description') || hash.get('error_description') || query.get('error') || hash.get('error');
+  if (authError) throw new Error(authError);
+
+  const code = query.get('code');
+  if (code){
+    setAuthMsg('Signing you in...');
+    const { error } = await sb.auth.exchangeCodeForSession(code);
+    if (error) throw error;
+    cleanAuthUrl();
+    return;
+  }
+
+  if (hash.has('access_token') || hash.has('refresh_token')){
+    setAuthMsg('Signing you in...');
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) cleanAuthUrl();
+  }
+}
+
 async function bootstrapAuth(){
   // No auth enforced, or Supabase library unavailable (offline) → run as local/open app.
   if (!AUTH_REQUIRED || !sb){ syncWithCloud(); return; }
   showGate(); // default to gated until we know the session
+  try {
+    await handleAuthCallback();
+  } catch(e){
+    setAuthMsg('Sign-in link failed: ' + (e.message || e), 'err');
+  }
   sb.auth.onAuthStateChange((_event, session) => { session ? onSignedIn() : onSignedOut(); });
   try {
     const { data: { session } } = await sb.auth.getSession();
-    if (session) onSignedIn();
+    session ? onSignedIn() : onSignedOut();
   } catch(e){ /* onAuthStateChange will handle it */ }
 }
 
