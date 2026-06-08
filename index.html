@@ -407,7 +407,7 @@ const sb = (window.supabase && SUPABASE_URL && SUPABASE_KEY)
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true,
-        flowType: 'implicit'
+        flowType: 'pkce'
       }
     })
   : null;
@@ -551,6 +551,11 @@ async function handleAuthCallback(){
     setAuthMsg('Signing you in...');
     const { data: { session } } = await sb.auth.getSession();
     if (session) cleanAuthUrl();
+    return;
+  }
+
+  if (location.pathname === '/auth/callback'){
+    throw new Error('Supabase returned to the callback without a sign-in code. Request a new link from this browser tab.');
   }
 }
 
