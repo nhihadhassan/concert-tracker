@@ -80,7 +80,7 @@
 <body class="bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100 transition-colors">
 
 <!-- ============================ LOGIN GATE ============================ -->
-<div id="authGate" hidden class="fixed inset-0 z-50 grid place-items-center p-4 bg-slate-50 dark:bg-slate-950">
+<div id="authGate" hidden style="display:none" class="fixed inset-0 z-50 grid place-items-center p-4 bg-slate-50 dark:bg-slate-950">
   <div class="w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-xl text-center">
     <span class="brand-mark text-2xl mx-auto" aria-hidden="true">🎤</span>
     <h1 class="text-xl font-bold mt-3">Nhihad's Concerts</h1>
@@ -552,8 +552,16 @@ function setAuthMsg(text, kind){
   el.className = 'text-sm mt-3 ' + (kind==='err' ? 'text-rose-500' : kind==='ok' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400');
   el.textContent = text;
 }
-function showGate(){ const g=$('#authGate'); if(g) g.hidden=false; $('#signOutBtn')?.setAttribute('hidden',''); }
-function hideGate(){ const g=$('#authGate'); if(g) g.hidden=true; $('#signOutBtn')?.removeAttribute('hidden'); }
+function showGate(){
+  const g=$('#authGate');
+  if(g){ g.hidden=false; g.style.display='grid'; }
+  $('#signOutBtn')?.setAttribute('hidden','');
+}
+function hideGate(){
+  const g=$('#authGate');
+  if(g){ g.hidden=true; g.style.display='none'; }
+  $('#signOutBtn')?.removeAttribute('hidden');
+}
 function isPinUnlocked(){ try { return sessionStorage.getItem(PIN_SESSION_KEY) === 'true'; } catch(e){ return false; } }
 function unlockWithPin(pin){
   if (pin !== BACKUP_PIN){
