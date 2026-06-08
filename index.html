@@ -97,8 +97,25 @@
       </button>
     </form>
 
+    <div class="my-5 flex items-center gap-3 text-xs text-slate-400 dark:text-slate-500">
+      <span class="h-px flex-1 bg-slate-200 dark:bg-slate-800"></span>
+      <span>or</span>
+      <span class="h-px flex-1 bg-slate-200 dark:bg-slate-800"></span>
+    </div>
+
+    <form id="pinForm" class="text-left">
+      <label for="pinInput" class="block text-sm font-medium mb-1">Temporary PIN</label>
+      <input id="pinInput" type="password" inputmode="numeric" autocomplete="one-time-code" maxlength="4"
+        placeholder="0067"
+        class="ff w-full px-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900" />
+      <button id="pinBtn" type="submit"
+        class="ui-button w-full mt-3 px-4 text-sm font-semibold border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800">
+        Unlock with PIN
+      </button>
+    </form>
+
     <p id="authMsg" class="text-sm mt-3 hidden"></p>
-    <p class="text-xs text-slate-400 dark:text-slate-500 mt-4">No password. You'll get a one-time sign-in link by email; it keeps you signed in on this device.</p>
+    <p class="text-xs text-slate-400 dark:text-slate-500 mt-4">No password. Use the email link for cloud sync, or the temporary PIN while email limits reset.</p>
   </div>
 </div>
 
@@ -401,6 +418,8 @@ const SUPABASE_KEY = 'sb_publishable_HMICK42AzL2W_Tpb6VutDQ_HawfnbWM';
 const CLOUD_TABLE  = 'concert_tracker_concerts';
 const AUTH_REQUIRED = true; // require email magic-link login (RLS restricts data to the owner)
 const PRODUCTION_AUTH_REDIRECT = 'https://concert-tracker-sepia.vercel.app/';
+const BACKUP_PIN = '';
+const PIN_SESSION_KEY = 'concertTracker.pinUnlocked';
 const sb = (window.supabase && SUPABASE_URL && SUPABASE_KEY)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
       auth: {
@@ -498,6 +517,17 @@ function setAuthMsg(text, kind){
 }
 function showGate(){ const g=$('#authGate'); if(g) g.hidden=false; $('#signOutBtn')?.setAttribute('hidden',''); }
 function hideGate(){ const g=$('#authGate'); if(g) g.hidden=true; $('#signOutBtn')?.removeAttribute('hidden'); }
+function isPinUnlocked(){ try { return sessionStorage.getItem(PIN_SESSION_KEY) === 'true'; } catch(e){ return false; } }
+function unlockWithPin(pin){
+  if (pin !== BACKUP_PIN){
+    setAuthMsg('Incorrect PIN.', 'err');
+    return;
+  }
+  try { sessionStorage.setItem(PIN_SESSION_KEY, 'true'); } catch(e){}
+  hideGate();
+  setAuthMsg('');
+  markOffline();
+}
 
 async function sendMagicLink(email){
   if (!sb){ setAuthMsg('Cannot reach the server. Check your connection.', 'err'); return; }
@@ -562,6 +592,11 @@ async function handleAuthCallback(){
 async function bootstrapAuth(){
   // No auth enforced, or Supabase library unavailable (offline) → run as local/open app.
   if (!AUTH_REQUIRED || !sb){ syncWithCloud(); return; }
+  if (isPinUnlocked()){
+    hideGate();
+    markOffline();
+    return;
+  }
   showGate(); // default to gated until we know the session
   try {
     await handleAuthCallback();
@@ -1386,8 +1421,14 @@ function init(){
     const email = $('#authEmail').value.trim();
     if (email) sendMagicLink(email);
   });
+  $('#pinForm')?.addEventListener('submit', e => {
+    e.preventDefault();
+    unlockWithPin($('#pinInput').value.trim());
+  });
   $('#signOutBtn')?.addEventListener('click', async () => {
+    try { sessionStorage.removeItem(PIN_SESSION_KEY); } catch(e){}
     if (sb){ try { await sb.auth.signOut(); } catch(e){} }
+    showGate();
   });
 
   bootstrapAuth();
