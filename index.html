@@ -400,7 +400,7 @@ const SUPABASE_URL = 'https://zgafubhzhxikuknihmnu.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_HMICK42AzL2W_Tpb6VutDQ_HawfnbWM';
 const CLOUD_TABLE  = 'concert_tracker_concerts';
 const AUTH_REQUIRED = true; // require email magic-link login (RLS restricts data to the owner)
-const PRODUCTION_AUTH_REDIRECT = 'https://concert-tracker-sepia.vercel.app/auth/callback';
+const PRODUCTION_AUTH_REDIRECT = 'https://concert-tracker-sepia.vercel.app/';
 const sb = (window.supabase && SUPABASE_URL && SUPABASE_KEY)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
       auth: {
@@ -555,7 +555,7 @@ async function handleAuthCallback(){
   }
 
   if (location.pathname === '/auth/callback'){
-    throw new Error('The email link reached this app, but it did not include a Supabase sign-in code or token. In Supabase, make sure the Magic Link email template uses {{ .ConfirmationURL }} for the Sign in link.');
+    throw new Error('The email link reached the old callback URL without a Supabase sign-in code or token. Request a fresh link from the main Concert Tracker URL.');
   }
 }
 
