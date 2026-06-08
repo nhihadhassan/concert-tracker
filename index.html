@@ -329,6 +329,13 @@
         <label class="block font-medium mb-1">15. Who did you go with</label>
         <input id="f_companions" type="text" class="ff" />
       </div>
+      <label class="flex items-start gap-3 rounded-lg border border-slate-200 dark:border-slate-800 p-3">
+        <input id="f_rachelAttended" type="checkbox" class="mt-1 accent-violet-600">
+        <span>
+          <span class="block text-sm font-medium">Rachel attended this concert</span>
+          <span class="block text-xs text-slate-500 dark:text-slate-400">Rachel can see this concert when signed in.</span>
+        </span>
+      </label>
       <!-- 16. Notes -->
       <div>
         <label class="block font-medium mb-1">16. Notes</label>
@@ -418,6 +425,9 @@ const SUPABASE_KEY = 'sb_publishable_HMICK42AzL2W_Tpb6VutDQ_HawfnbWM';
 const CLOUD_TABLE  = 'concert_tracker_concerts';
 const AUTH_REQUIRED = true; // require email magic-link login (RLS restricts data to the owner)
 const PRODUCTION_AUTH_REDIRECT = 'https://concert-tracker-sepia.vercel.app/';
+const OWNER_EMAIL = 'owner@example.com';
+const RACHEL_EMAIL = 'partner@example.com';
+const AUTHORIZED_EMAILS = new Set([OWNER_EMAIL, RACHEL_EMAIL]);
 const BACKUP_PIN = '';
 const PIN_SESSION_KEY = 'concertTracker.pinUnlocked';
 const sb = (window.supabase && SUPABASE_URL && SUPABASE_KEY)
@@ -431,13 +441,36 @@ const sb = (window.supabase && SUPABASE_URL && SUPABASE_KEY)
     })
   : null;
 
+function cleanEmail(email){ return String(email || '').trim().toLowerCase(); }
+function isRachelShared(c){
+  if (c.rachelAttended != null) return !!c.rachelAttended;
+  return /(^|[\s,])rachel([\s,]|$)/i.test(c.companions || '') || c.rachelScore != null;
+}
+function normalizeConcert(c){
+  const ownerEmail = cleanEmail(c.ownerEmail) || OWNER_EMAIL;
+  return {
+    ...c,
+    ownerEmail,
+    rachelAttended: isRachelShared(c),
+  };
+}
+function normalizeConcerts(rows){ return (rows || []).map(normalizeConcert); }
+function canSeeConcert(c){
+  const email = cleanEmail(currentUserEmail);
+  if (!email || email === OWNER_EMAIL) return true;
+  if (email === RACHEL_EMAIL) return cleanEmail(c.ownerEmail) === RACHEL_EMAIL || !!c.rachelAttended;
+  return cleanEmail(c.ownerEmail) === email;
+}
+function getVisibleConcerts(){ return concerts.filter(canSeeConcert); }
+
 async function cloudPull(){
   const { data, error } = await sb.from(CLOUD_TABLE).select('id,data');
   if (error) throw error;
-  return (data || []).map(r => ({ ...r.data, id: r.id }));
+  return normalizeConcerts((data || []).map(r => ({ ...r.data, id: r.id })));
 }
 async function cloudUpsert(c){
-  const { error } = await sb.from(CLOUD_TABLE).upsert({ id: c.id, data: c, updated_at: new Date().toISOString() });
+  const normalized = normalizeConcert(c);
+  const { error } = await sb.from(CLOUD_TABLE).upsert({ id: normalized.id, data: normalized, updated_at: new Date().toISOString() });
   if (error) throw error;
 }
 async function cloudDelete(id){
@@ -465,12 +498,12 @@ async function flushOutbox(){
 
 // Fire-and-forget per-record sync called by mutations.
 async function pushConcert(c){
-  if (!sb || !c) return;
+  if (!sb || !authReady || !c) return;
   try { await cloudUpsert(c); await flushOutbox(); markSynced(); }
   catch(e){ queueUp(c.id); markOffline(); }
 }
 async function pushDelete(id){
-  if (!sb) return;
+  if (!sb || !authReady) return;
   try { await cloudDelete(id); await flushOutbox(); markSynced(); }
   catch(e){ queueDel(id); markOffline(); }
 }
@@ -482,13 +515,16 @@ async function syncWithCloud(){
   setSyncIndicator('saving');
   try {
     const remote = await cloudPull();
-    if (remote.length === 0){
+    if (remote.length === 0 && cleanEmail(currentUserEmail) === OWNER_EMAIL){
       // First run with an empty cloud: migrate whatever is local up to the cloud.
       for (const c of concerts) await cloudUpsert(c);
     } else {
       await flushOutbox();
       const merged = await cloudPull();
       concerts = merged; cacheLocal(); renderAll();
+      if (cleanEmail(currentUserEmail) === OWNER_EMAIL){
+        for (const c of concerts) await cloudUpsert(c);
+      }
     }
     markSynced();
     subscribeRealtime();
@@ -508,6 +544,7 @@ function subscribeRealtime(){
 
 //============================ AUTH (email magic link) ============================
 let authReady = false;
+let currentUserEmail = null;
 function setAuthMsg(text, kind){
   const el = $('#authMsg'); if (!el) return;
   if (!text){ el.classList.add('hidden'); el.textContent=''; return; }
@@ -531,6 +568,11 @@ function unlockWithPin(pin){
 
 async function sendMagicLink(email){
   if (!sb){ setAuthMsg('Cannot reach the server. Check your connection.', 'err'); return; }
+  email = cleanEmail(email);
+  if (!AUTHORIZED_EMAILS.has(email)){
+    setAuthMsg('That email is not allowed for this tracker.', 'err');
+    return;
+  }
   setAuthMsg('Sending…');
   const isLocal = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
   const emailRedirectTo = isLocal ? location.origin + location.pathname : PRODUCTION_AUTH_REDIRECT;
@@ -546,13 +588,15 @@ async function sendMagicLink(email){
   }
 }
 
-function onSignedIn(){
+function onSignedIn(session){
+  currentUserEmail = cleanEmail(session?.user?.email);
   hideGate();
   setAuthMsg('');
   if (!authReady){ authReady = true; syncWithCloud(); }
 }
 function onSignedOut(){
   authReady = false;
+  currentUserEmail = null;
   showGate();
 }
 
@@ -603,10 +647,10 @@ async function bootstrapAuth(){
   } catch(e){
     setAuthMsg('Sign-in link failed: ' + (e.message || e), 'err');
   }
-  sb.auth.onAuthStateChange((_event, session) => { session ? onSignedIn() : onSignedOut(); });
+  sb.auth.onAuthStateChange((_event, session) => { session ? onSignedIn(session) : onSignedOut(); });
   try {
     const { data: { session } } = await sb.auth.getSession();
-    session ? onSignedIn() : onSignedOut();
+    session ? onSignedIn(session) : onSignedOut();
   } catch(e){ /* onAuthStateChange will handle it */ }
 }
 
@@ -652,14 +696,14 @@ function detUuid(str){
   return `${s.slice(0,8)}-${s.slice(8,12)}-4${s.slice(13,16)}-8${s.slice(17,20)}-${s.slice(20,32)}`;
 }
 function buildSeed(){
-  return SEED.map(r => ({ timestamp: new Date().toISOString(), status: seedStatus(r), ...r, id: detUuid(r.artist + '|' + r.date) }));
+  return normalizeConcerts(SEED.map(r => ({ timestamp: new Date().toISOString(), status: seedStatus(r), ...r, id: detUuid(r.artist + '|' + r.date) })));
 }
 
 function loadConcerts(){
   let raw = null;
   try { raw = localStorage.getItem(STORAGE_KEY); } catch(e){}
   if (raw){
-    try { return JSON.parse(raw); } catch(e){ console.warn('Corrupt storage, reseeding', e); }
+    try { return normalizeConcerts(JSON.parse(raw)); } catch(e){ console.warn('Corrupt storage, reseeding', e); }
   }
   const seeded = buildSeed();
   saveConcerts(seeded);
@@ -670,12 +714,12 @@ function cacheLocal(){
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(concerts)); } catch(e){ console.error('Cache failed', e); }
 }
 function saveConcerts(arr){
-  concerts = arr || concerts;
+  concerts = normalizeConcerts(arr || concerts);
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(concerts));
     const ts = Date.now();
     localStorage.setItem(SAVED_KEY, String(ts));
-    setSyncIndicator(sb ? 'saving' : 'local', ts);
+    setSyncIndicator(sb && authReady ? 'saving' : 'local', ts);
   } catch(e){
     console.error('Save failed', e);
     setSyncIndicator('error');
@@ -716,9 +760,16 @@ const fmtDate = d => { if(!d) return 'N/A'; const dt = new Date(d + 'T00:00:00')
 const num = v => { const n = parseFloat(v); return isNaN(n) ? null : n; };
 
 function computeAutoRating(scores){
-  const vals = scores.filter(v => v != null && !isNaN(v));
-  if (!vals.length) return null;
-  return Math.round((vals.reduce((a,b)=>a+b,0) / vals.length) * 10) / 10;
+  const weighted = [
+    { value: scores[0], weight: 0.5 },      // enjoyment
+    { value: scores[1], weight: 1 / 6 },    // stage
+    { value: scores[2], weight: 1 / 6 },    // setlist
+    { value: scores[3], weight: 1 / 6 },    // seat
+  ].filter(item => item.value != null && !isNaN(item.value));
+  const totalWeight = weighted.reduce((sum, item) => sum + item.weight, 0);
+  if (!totalWeight) return null;
+  const score = weighted.reduce((sum, item) => sum + item.value * item.weight, 0) / totalWeight;
+  return Math.round(score * 10) / 10;
 }
 
 const STATUS_STYLES = {
@@ -746,9 +797,10 @@ function validateForm(data){
 
 //============================ STATS ============================
 function renderStats(){
-  const attended = concerts.filter(c => c.status === 'Attended');
-  const wtg = concerts.filter(c => c.status === 'Want to Go');
-  const spent = concerts.filter(c => c.status !== 'Cancelled').reduce((s,c)=> s + (c.price||0), 0);
+  const visible = getVisibleConcerts();
+  const attended = visible.filter(c => c.status === 'Attended');
+  const wtg = visible.filter(c => c.status === 'Want to Go');
+  const spent = visible.filter(c => c.status !== 'Cancelled').reduce((s,c)=> s + (c.price||0), 0);
 
   // Next upcoming show: soonest "Want to Go" by date (prefer future, else any upcoming)
   const todayStr = new Date().toISOString().slice(0,10);
@@ -756,7 +808,7 @@ function renderStats(){
   const next = upcomingSorted.find(c => (c.date||'') >= todayStr) || upcomingSorted[0];
 
   $('#stats').innerHTML =
-    statCard('Total concerts', concerts.length, `${attended.length} attended · ${wtg.length} upcoming`) +
+    statCard('Total concerts', visible.length, `${attended.length} attended · ${wtg.length} upcoming`) +
     nextConcertCard(next) +
     statCard('Total spent', fmtMoney(spent), 'excludes cancelled');
 }
@@ -887,7 +939,7 @@ function getFiltered(){
   const fs = $('#filterStatus').value;
   const fg = $('#filterGenre').value;
   const sort = $('#sortBy').value;
-  let out = concerts.filter(c => {
+  let out = getVisibleConcerts().filter(c => {
     if (fs && c.status !== fs) return false;
     if (fg && c.genre !== fg) return false;
     if (q && !((c.artist||'').toLowerCase().includes(q) || (c.venue||'').toLowerCase().includes(q))) return false;
@@ -904,11 +956,18 @@ function getFiltered(){
 }
 
 function venueShort(v){ return (v||'').replace(/\s*\(.*\)\s*$/, ''); }
+function ownerLabel(c){
+  const email = cleanEmail(c.ownerEmail);
+  if (email === RACHEL_EMAIL) return 'Rachel';
+  if (email === OWNER_EMAIL) return 'Nhihad';
+  return email ? email.split('@')[0] : 'Nhihad';
+}
 
 function renderList(){
   const rows = getFiltered();
   const list = $('#list');
-  $('#listMeta').textContent = `Showing ${rows.length} of ${concerts.length} concert${concerts.length===1?'':'s'}`;
+  const visibleTotal = getVisibleConcerts().length;
+  $('#listMeta').textContent = `Showing ${rows.length} of ${visibleTotal} concert${visibleTotal===1?'':'s'}`;
   $('#emptyState').classList.toggle('hidden', rows.length !== 0);
   list.innerHTML = rows.map(c => {
     const badge = STATUS_STYLES[c.status] || '';
@@ -947,6 +1006,8 @@ function renderList(){
             class="ui-button min-h-[44px] text-xs font-semibold px-3 py-1 rounded-full ${badge}">${esc(c.status)}</button>
           ${c.genre ? `<span class="chip text-xs px-2 py-1 rounded-md bg-slate-100 dark:bg-slate-800">${esc(c.genre)}</span>`:''}
           ${c.type ? `<span class="chip text-xs px-2 py-1 rounded-md bg-slate-100 dark:bg-slate-800">${esc(c.type)}</span>`:''}
+          ${c.rachelAttended ? `<span class="chip text-xs px-2 py-1 rounded-md bg-fuchsia-50 text-fuchsia-700 dark:bg-fuchsia-950 dark:text-fuchsia-300">Rachel attended</span>`:''}
+          ${cleanEmail(c.ownerEmail) === RACHEL_EMAIL ? `<span class="chip text-xs px-2 py-1 rounded-md bg-violet-50 text-violet-700 dark:bg-violet-950 dark:text-violet-300">Added by ${esc(ownerLabel(c))}</span>`:''}
           ${c.seat ? `<span class="chip text-xs px-2 py-1 rounded-md bg-slate-100 dark:bg-slate-800" title="Seat">💺 ${esc(c.seat)}</span>`:''}
         </div>
         <div class="flex items-center justify-between pt-1">
@@ -988,7 +1049,7 @@ function setSummarySort(key){
 }
 
 function renderSummary(){
-  const rows = concerts.filter(c => c.realized != null);
+  const rows = getVisibleConcerts().filter(c => c.realized != null);
   const { key, dir } = summarySort;
   rows.sort((a,b)=>{
     let av = sumVal(a,key), bv = sumVal(b,key);
@@ -1084,6 +1145,7 @@ function openForm(concert){
   $('#f_realized').value = concert?.realized ?? '';
   $('#f_spotify').value = concert?.spotify || '';
   $('#f_companions').value = concert?.companions || '';
+  $('#f_rachelAttended').checked = concert ? !!normalizeConcert(concert).rachelAttended : cleanEmail(currentUserEmail) === RACHEL_EMAIL;
   $('#f_notes').value = concert?.notes || '';
   $('#f_rachelScore').value = concert?.rachelScore ?? '';
   // status
@@ -1118,6 +1180,7 @@ function readForm(){
     realized: num($('#f_realized').value),
     spotify: $('#f_spotify').value.trim() || null,
     companions: $('#f_companions').value.trim() || null,
+    rachelAttended: $('#f_rachelAttended').checked,
     notes: $('#f_notes').value.trim() || null,
     type: getRadioValue('type', TYPES, 'f_typeOther') || null,
     rachelScore: num($('#f_rachelScore').value),
@@ -1128,9 +1191,14 @@ function upsertConcert(data){
   let saved;
   if (data.id){
     const i = concerts.findIndex(c => c.id === data.id);
-    if (i >= 0){ concerts[i] = { ...concerts[i], ...data }; saved = concerts[i]; }
+    if (i >= 0){ concerts[i] = normalizeConcert({ ...concerts[i], ...data }); saved = concerts[i]; }
   } else {
-    saved = { ...data, id: uid(), timestamp: new Date().toISOString() };
+    saved = normalizeConcert({
+      ...data,
+      ownerEmail: cleanEmail(currentUserEmail) || OWNER_EMAIL,
+      id: uid(),
+      timestamp: new Date().toISOString()
+    });
     concerts.push(saved);
   }
   saveConcerts();
@@ -1214,11 +1282,11 @@ function uploadConcertImage(file){
 
 //============================ CSV EXPORT ============================
 function exportCSV(){
-  const cols = ['timestamp','artist','tour','date','venue','price','genre','projScore','enjoyment','stage','setlist','seatScore','realized','spotify','seat','notes','companions','type','rachelScore','status'];
-  const headers = ['Timestamp','Artist','Tour Name','Date','Venue','Price','Genre','Projected Rating Score','Enjoyment Score','Stage Score','Setlist Score','Seat Score','Realized Rating','Spotify Set List','Seat','Notes','Who did you go with','Type',"Rachel's Score",'Status'];
+  const cols = ['timestamp','artist','tour','date','venue','price','genre','projScore','enjoyment','stage','setlist','seatScore','realized','spotify','seat','notes','companions','rachelAttended','type','rachelScore','status','ownerEmail'];
+  const headers = ['Timestamp','Artist','Tour Name','Date','Venue','Price','Genre','Projected Rating Score','Enjoyment Score','Stage Score','Setlist Score','Seat Score','Realized Rating','Spotify Set List','Seat','Notes','Who did you go with','Rachel attended','Type',"Rachel's Score",'Status','Owner'];
   const cell = v => { if (v == null) return ''; const s = String(v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s; };
   const lines = [headers.join(',')];
-  concerts.forEach(c => lines.push(cols.map(k => cell(c[k])).join(',')));
+  getVisibleConcerts().forEach(c => lines.push(cols.map(k => cell(c[k])).join(',')));
   const blob = new Blob([lines.join('\r\n')], { type:'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -1239,8 +1307,10 @@ function runSelfTests(){
   const assert = (name, cond) => { results.push({name, pass: !!cond}); console[cond?'log':'error'](`${cond?'✅ PASS':'❌ FAIL'} - ${name}`); };
 
   // computeAutoRating
-  assert('auto rating avg of 8,7,8,9 = 8.0', computeAutoRating([8,7,8,9]) === 8.0);
-  assert('auto rating ignores nulls', computeAutoRating([10,null,8,6]) === 8.0);
+  assert('weighted rating of 8,7,8,9 = 8.0', computeAutoRating([8,7,8,9]) === 8.0);
+  assert('enjoyment carries half the rating', computeAutoRating([10,0,0,0]) === 5.0);
+  assert('weighted rating normalizes missing stage', computeAutoRating([10,null,8,6]) === 8.8);
+  assert('rating without enjoyment averages remaining scores', computeAutoRating([null,7,8,9]) === 8.0);
   assert('auto rating empty = null', computeAutoRating([null,null]) === null);
 
   // validation
@@ -1252,6 +1322,7 @@ function runSelfTests(){
 
   // filter logic on a throwaway copy
   const saved = concerts;
+  const savedEmail = currentUserEmail;
   concerts = [
     {id:'1',artist:'Kendrick Lamar',venue:'Scotiabank Arena',status:'Attended',genre:'Hip-Hop',date:'2022-08-12',realized:9.4,price:100},
     {id:'2',artist:'Dua Lipa',venue:'Rogers Center',status:'Want to Go',genre:'Pop',date:'2025-09-02',realized:null,price:120},
@@ -1262,14 +1333,28 @@ function runSelfTests(){
   const bySearch = concerts.filter(c=> c.artist.toLowerCase().includes('scotia') || c.venue.toLowerCase().includes('scotia'));
   assert('search "scotia" matches by venue', bySearch.length === 1 && bySearch[0].id === '1');
 
+  currentUserEmail = RACHEL_EMAIL;
+  concerts = [
+    {id:'1',artist:'Shared Show',ownerEmail:OWNER_EMAIL,rachelAttended:true,status:'Attended'},
+    {id:'2',artist:'Nhihad Only',ownerEmail:OWNER_EMAIL,rachelAttended:false,status:'Attended'},
+    {id:'3',artist:'Rachel Solo',ownerEmail:RACHEL_EMAIL,rachelAttended:true,status:'Attended'},
+  ].map(normalizeConcert);
+  assert('Rachel sees shared and her own concerts only', getVisibleConcerts().map(c=>c.artist).join('|') === 'Shared Show|Rachel Solo');
+  currentUserEmail = OWNER_EMAIL;
+  assert('Nhihad sees all concerts', getVisibleConcerts().length === 3);
+
+  concerts = saved; currentUserEmail = savedEmail; // restore
+
   // persistence round-trip (separate temp key, never touches real key)
   const TKEY='__ct_selftest__';
-  localStorage.setItem(TKEY, JSON.stringify(concerts));
+  const roundTripFixture = [
+    {id:'1',artist:'Kendrick Lamar',venue:'Scotiabank Arena',status:'Attended',genre:'Hip-Hop',date:'2022-08-12',realized:9.4,price:100},
+    {id:'2',artist:'Dua Lipa',venue:'Rogers Center',status:'Want to Go',genre:'Pop',date:'2025-09-02',realized:null,price:120},
+  ];
+  localStorage.setItem(TKEY, JSON.stringify(roundTripFixture));
   const back = JSON.parse(localStorage.getItem(TKEY));
   assert('persistence round-trip preserves data', back.length === 2 && back[0].artist === 'Kendrick Lamar');
   localStorage.removeItem(TKEY);
-
-  concerts = saved; // restore
 
   const passed = results.filter(r=>r.pass).length;
   const msg = `${passed}/${results.length} tests passed`;
@@ -1398,7 +1483,7 @@ function init(){
     const auto = computeAutoRating([num($('#f_enjoyment').value), num($('#f_stage').value), num($('#f_setlist').value), num($('#f_seatScore').value)]);
     const hint = $('#autoHint');
     if (auto != null){
-      hint.textContent = `Suggested from sub-scores: ${auto.toFixed(1)} (editable)`;
+      hint.textContent = `Weighted suggestion: ${auto.toFixed(1)} (enjoyment is 50%)`;
       hint.classList.remove('hidden');
       $('#f_realized').value = auto;
     } else hint.classList.add('hidden');
