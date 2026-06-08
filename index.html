@@ -597,6 +597,12 @@ function onSignedIn(session){
 function onSignedOut(){
   authReady = false;
   currentUserEmail = null;
+  if (isPinUnlocked()){
+    hideGate();
+    setAuthMsg('');
+    markOffline();
+    return;
+  }
   showGate();
 }
 
