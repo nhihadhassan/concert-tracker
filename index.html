@@ -400,7 +400,7 @@ const SUPABASE_URL = 'https://zgafubhzhxikuknihmnu.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_HMICK42AzL2W_Tpb6VutDQ_HawfnbWM';
 const CLOUD_TABLE  = 'concert_tracker_concerts';
 const AUTH_REQUIRED = true; // require email magic-link login (RLS restricts data to the owner)
-const PRODUCTION_AUTH_REDIRECT = 'https://concert-tracker-sepia.vercel.app/';
+const PRODUCTION_AUTH_REDIRECT = 'https://concert-tracker-sepia.vercel.app/auth/callback';
 const sb = (window.supabase && SUPABASE_URL && SUPABASE_KEY)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
       auth: {
