@@ -1,0 +1,8 @@
+[project]
+name = "concert-tracker-backend"
+version = "0.1.0"
+description = "FastAPI service for Concert Tracker"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.115,<0.116",
+]

@@ -28,6 +28,10 @@ React + TypeScript
 Mac launchd -> Python backup agent -> SQLite + XLSX
 ```
 
+## Stage 1 Foundation
+
+Vercel Services currently mounts the Vite frontend at `/` and the FastAPI service at `/api`. The only API route is the read-only `/api/v1/health` contract. React uses in-memory fixtures and has no Supabase client or write path.
+
 ## Authority Boundaries
 
 - Supabase is authoritative after migration.

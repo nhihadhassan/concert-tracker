@@ -11,6 +11,7 @@ The production app is currently the legacy single-file dashboard. A checkpointed
 - [Architecture](ARCHITECTURE.md)
 - [Cost budget](COST_BUDGET.md)
 - [Stage 0 checkpoint](docs/checkpoints/STAGE_0.md)
+- [Stage 1 checkpoint](docs/checkpoints/STAGE_1.md)
 
 ## Current Stack
 
@@ -26,6 +27,24 @@ python3 -m http.server 4599
 ```
 
 Then open `http://localhost:4599`.
+
+## Rebuild Development
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install -e '.[dev]'
+npm install --prefix frontend
+npx vercel dev -L
+```
+
+The integrated application is available at `http://localhost:3000`; FastAPI health is at `http://localhost:3000/api/v1/health`.
+
+Run the complete Stage 1 quality gate with:
+
+```bash
+npm run check
+npm run build
+```
 
 ## Stage 0 Baseline
 

@@ -7,7 +7,15 @@
 *.csv
 *.pdf
 *.xlsx
-data/
+/data/
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+frontend/dist/
+frontend/node_modules/
+/backend/build/
 
 # OS/editor noise
 .DS_Store
