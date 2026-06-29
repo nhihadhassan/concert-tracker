@@ -7,8 +7,8 @@
 *.csv
 *.pdf
 *.xlsx
+data/
 
 # OS/editor noise
 .DS_Store
 Thumbs.db
-

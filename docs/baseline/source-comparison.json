@@ -1,0 +1,295 @@
+{
+  "capturedAt": "2026-06-29T16:16:54.147782+00:00",
+  "backupDirectory": "data/backups/stage-0/20260629T161654Z",
+  "sources": {
+    "embeddedSeed": {
+      "count": 45,
+      "checksum": "ec35f56df6c309ca35732fc8cdd7f3ea8392e6d270e9f3ef7ce2fdda7f5c2748"
+    },
+    "sourceWorkbook": {
+      "count": 45,
+      "checksum": "dc440e45b065d85aa94d897797f648cd9c08bfc1e2208ef45b58b5e041cb7ac6"
+    },
+    "browserLocalStorage": {
+      "count": 45,
+      "checksum": "4ac36d222400f62caeca9b51baf212eefb0bb2a17c5e4fc1d82339f88252faae"
+    },
+    "cloudTable": {
+      "status": "complete",
+      "rows": 46,
+      "file": "cloud-table.json",
+      "checksum": "ba096a96a29a8bcb411a505dff9152a674c07aae6a34cf45260289363c0135e1"
+    }
+  },
+  "normalizedKeyComparison": {
+    "seedVsWorkbookMatch": true,
+    "seedOnly": [],
+    "workbookOnly": [],
+    "seedVsBrowserMatch": true,
+    "seedOnlyVsBrowser": [],
+    "browserOnly": [],
+    "cloudVsBrowserMatch": false,
+    "cloudOnly": [
+      "j cole|2026-07-28"
+    ],
+    "browserOnlyVsCloud": []
+  },
+  "coreFieldComparison": {
+    "seedVsWorkbook": {
+      "matchingRecords": 45,
+      "recordsWithDifferences": 29,
+      "differencesByField": {
+        "genre": 17,
+        "spotify": 12
+      },
+      "records": [
+        {
+          "key": "21 savage|2024-05-27",
+          "fields": [
+            "genre"
+          ]
+        },
+        {
+          "key": "central cee|2025-05-25",
+          "fields": [
+            "spotify"
+          ]
+        },
+        {
+          "key": "childish gambino|2024-08-18",
+          "fields": [
+            "genre"
+          ]
+        },
+        {
+          "key": "dave|2026-04-23",
+          "fields": [
+            "spotify"
+          ]
+        },
+        {
+          "key": "denzel curry 2022|2022-09-28",
+          "fields": [
+            "genre"
+          ]
+        },
+        {
+          "key": "denzel curry 2025|2025-04-20",
+          "fields": [
+            "spotify"
+          ]
+        },
+        {
+          "key": "don toliver 2023|2023-06-22",
+          "fields": [
+            "genre"
+          ]
+        },
+        {
+          "key": "don toliver 2024|2024-11-14",
+          "fields": [
+            "spotify"
+          ]
+        },
+        {
+          "key": "dua lipa|2025-09-02",
+          "fields": [
+            "spotify"
+          ]
+        },
+        {
+          "key": "hozier|2025-09-10",
+          "fields": [
+            "spotify"
+          ]
+        },
+        {
+          "key": "j.i.d & smino|2023-03-13",
+          "fields": [
+            "genre"
+          ]
+        },
+        {
+          "key": "jid|2025-10-22",
+          "fields": [
+            "spotify"
+          ]
+        },
+        {
+          "key": "kali uchis|2025-09-17",
+          "fields": [
+            "spotify"
+          ]
+        },
+        {
+          "key": "kendrick lamar & sza|2025-06-13",
+          "fields": [
+            "spotify"
+          ]
+        },
+        {
+          "key": "kendrick lamar|2022-08-12",
+          "fields": [
+            "genre"
+          ]
+        },
+        {
+          "key": "lil tecca|2024-02-28",
+          "fields": [
+            "genre"
+          ]
+        },
+        {
+          "key": "night lovell|2024-03-26",
+          "fields": [
+            "genre"
+          ]
+        },
+        {
+          "key": "offset|2024-03-17",
+          "fields": [
+            "genre"
+          ]
+        },
+        {
+          "key": "remi wolf|2025-04-22",
+          "fields": [
+            "spotify"
+          ]
+        },
+        {
+          "key": "russ|2024-06-25",
+          "fields": [
+            "genre"
+          ]
+        },
+        {
+          "key": "sabrina carpenter|2025-11-11",
+          "fields": [
+            "spotify"
+          ]
+        },
+        {
+          "key": "schoolboy q|2024-07-18",
+          "fields": [
+            "genre"
+          ]
+        },
+        {
+          "key": "ski mask the slump god|2024-07-29",
+          "fields": [
+            "genre"
+          ]
+        },
+        {
+          "key": "swae lee|2023-08-20",
+          "fields": [
+            "genre"
+          ]
+        },
+        {
+          "key": "teezo touchdown|2024-05-07",
+          "fields": [
+            "genre"
+          ]
+        },
+        {
+          "key": "the weeknd 2025|2025-07-28",
+          "fields": [
+            "spotify"
+          ]
+        },
+        {
+          "key": "travis scott|2023-12-29",
+          "fields": [
+            "genre"
+          ]
+        },
+        {
+          "key": "travis scott|2024-01-06",
+          "fields": [
+            "genre"
+          ]
+        },
+        {
+          "key": "yung gravy & bbno$|2022-11-23",
+          "fields": [
+            "genre"
+          ]
+        }
+      ]
+    },
+    "seedVsBrowser": {
+      "matchingRecords": 45,
+      "recordsWithDifferences": 0,
+      "differencesByField": {},
+      "records": []
+    },
+    "browserVsCloud": {
+      "matchingRecords": 45,
+      "recordsWithDifferences": 2,
+      "differencesByField": {
+        "companions": 1,
+        "enjoyment": 2,
+        "realized": 2,
+        "seatScore": 2,
+        "setlist": 2,
+        "spotify": 1,
+        "stage": 2,
+        "status": 2
+      },
+      "records": [
+        {
+          "key": "asap rocky|2026-05-31",
+          "fields": [
+            "enjoyment",
+            "stage",
+            "setlist",
+            "seatScore",
+            "realized",
+            "spotify",
+            "status"
+          ]
+        },
+        {
+          "key": "don toliver|2026-06-05",
+          "fields": [
+            "enjoyment",
+            "stage",
+            "setlist",
+            "seatScore",
+            "realized",
+            "companions",
+            "status"
+          ]
+        }
+      ]
+    }
+  },
+  "files": {
+    "Nhihad's Concerts  (Responses).xlsx": {
+      "bytes": 58504,
+      "sha256": "f9702d842428c8ff6ead425aa7963065656bdb559a4cf9a9a6e3d8b7e2e38d7f"
+    },
+    "browser-localstorage.json": {
+      "bytes": 36306,
+      "sha256": "9a8d85bb8f2da1e39e8a68d3d23ecfb3a0f71fbd1dc5a3b6668c86accb1ceb76"
+    },
+    "cloud-table.json": {
+      "bytes": 47130,
+      "sha256": "e04e832e69ec0df026f91f4ec00115f8648a69e1b5594e840d3cf771963efa94"
+    },
+    "embedded-seed.json": {
+      "bytes": 27360,
+      "sha256": "1c38843a6d71b8f7370798ac92c95eec38bd7006bec98321c02d9c6ff7d965ca"
+    },
+    "legacy-index.html": {
+      "bytes": 98416,
+      "sha256": "b9089f5d3d5727f51f23e196f5827c77b45c348d66be1c269125b32322b66951"
+    },
+    "source-workbook-rows.json": {
+      "bytes": 30077,
+      "sha256": "c87e429b6bf2bce3109f43d9c4038e429c457570bbba0c6fab92bdfef4608c0b"
+    }
+  }
+}

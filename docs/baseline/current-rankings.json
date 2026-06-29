@@ -1,0 +1,422 @@
+[
+  {
+    "rank": 1,
+    "artist": "Kendrick Lamar & SZA",
+    "date": "2025-06-13",
+    "realized": 10,
+    "projected": 9.5,
+    "price": 205,
+    "currentWeightedSuggestion": 10.2,
+    "plannedCappedSuggestion": 10.0
+  },
+  {
+    "rank": 2,
+    "artist": "The Weeknd 2025",
+    "date": "2025-07-28",
+    "realized": 10,
+    "projected": 9.5,
+    "price": 310,
+    "currentWeightedSuggestion": 9.8,
+    "plannedCappedSuggestion": 9.8
+  },
+  {
+    "rank": 3,
+    "artist": "The Weeknd 2022",
+    "date": "2022-09-23",
+    "realized": 9.6,
+    "projected": 8,
+    "price": 120,
+    "currentWeightedSuggestion": 9.7,
+    "plannedCappedSuggestion": 9.7
+  },
+  {
+    "rank": 4,
+    "artist": "Travis Scott",
+    "date": "2023-12-29",
+    "realized": 9.5,
+    "projected": 9,
+    "price": 186.75,
+    "currentWeightedSuggestion": 9.8,
+    "plannedCappedSuggestion": 9.8
+  },
+  {
+    "rank": 5,
+    "artist": "Childish Gambino",
+    "date": "2024-08-18",
+    "realized": 9.5,
+    "projected": 8,
+    "price": 145,
+    "currentWeightedSuggestion": 9.0,
+    "plannedCappedSuggestion": 9.0
+  },
+  {
+    "rank": 6,
+    "artist": "Billie Eilish",
+    "date": "2024-10-01",
+    "realized": 9.5,
+    "projected": 9.5,
+    "price": 164,
+    "currentWeightedSuggestion": 9.7,
+    "plannedCappedSuggestion": 9.7
+  },
+  {
+    "rank": 7,
+    "artist": "Kendrick Lamar",
+    "date": "2022-08-12",
+    "realized": 9.4,
+    "projected": 9.5,
+    "price": 192,
+    "currentWeightedSuggestion": 9.2,
+    "plannedCappedSuggestion": 9.2
+  },
+  {
+    "rank": 8,
+    "artist": "Olivia Rodrigo",
+    "date": "2024-03-29",
+    "realized": 9.4,
+    "projected": 9.5,
+    "price": 184.5,
+    "currentWeightedSuggestion": 9.7,
+    "plannedCappedSuggestion": 9.7
+  },
+  {
+    "rank": 9,
+    "artist": "Noah Kahan",
+    "date": "2024-04-14",
+    "realized": 9.4,
+    "projected": 8.5,
+    "price": 182.5,
+    "currentWeightedSuggestion": 9.8,
+    "plannedCappedSuggestion": 9.8
+  },
+  {
+    "rank": 10,
+    "artist": "Don Toliver 2024",
+    "date": "2024-11-14",
+    "realized": 9.4,
+    "projected": 9,
+    "price": 140.5,
+    "currentWeightedSuggestion": 9.8,
+    "plannedCappedSuggestion": 9.8
+  },
+  {
+    "rank": 11,
+    "artist": "Tyler, the Creator",
+    "date": "2025-07-24",
+    "realized": 9.4,
+    "projected": 8.5,
+    "price": 136,
+    "currentWeightedSuggestion": 9.2,
+    "plannedCappedSuggestion": 9.2
+  },
+  {
+    "rank": 12,
+    "artist": "Sabrina Carpenter",
+    "date": "2025-11-11",
+    "realized": 9.4,
+    "projected": 9,
+    "price": 315,
+    "currentWeightedSuggestion": 8.6,
+    "plannedCappedSuggestion": 8.6
+  },
+  {
+    "rank": 13,
+    "artist": "Don Toliver 2023",
+    "date": "2023-06-22",
+    "realized": 9.2,
+    "projected": 8.5,
+    "price": 91.25,
+    "currentWeightedSuggestion": 9.7,
+    "plannedCappedSuggestion": 9.7
+  },
+  {
+    "rank": 14,
+    "artist": "Dua Lipa",
+    "date": "2025-09-02",
+    "realized": 9.2,
+    "projected": 8.2,
+    "price": 126.5,
+    "currentWeightedSuggestion": 8.6,
+    "plannedCappedSuggestion": 8.6
+  },
+  {
+    "rank": 15,
+    "artist": "Jack Harlow",
+    "date": "2021-11-16",
+    "realized": 9.1,
+    "projected": 7,
+    "price": 45.55,
+    "currentWeightedSuggestion": 9.7,
+    "plannedCappedSuggestion": 9.7
+  },
+  {
+    "rank": 16,
+    "artist": "J.I.D & Smino",
+    "date": "2023-03-13",
+    "realized": 8.9,
+    "projected": 8,
+    "price": 78.75,
+    "currentWeightedSuggestion": 8.8,
+    "plannedCappedSuggestion": 8.8
+  },
+  {
+    "rank": 17,
+    "artist": "21 Savage",
+    "date": "2024-05-27",
+    "realized": 8.8,
+    "projected": 8.2,
+    "price": 72.5,
+    "currentWeightedSuggestion": 8.8,
+    "plannedCappedSuggestion": 8.8
+  },
+  {
+    "rank": 18,
+    "artist": "Hozier",
+    "date": "2025-09-10",
+    "realized": 8.8,
+    "projected": 8,
+    "price": 0,
+    "currentWeightedSuggestion": 8.2,
+    "plannedCappedSuggestion": 8.2
+  },
+  {
+    "rank": 19,
+    "artist": "JID",
+    "date": "2025-10-22",
+    "realized": 8.8,
+    "projected": 8.5,
+    "price": 82,
+    "currentWeightedSuggestion": 9.2,
+    "plannedCappedSuggestion": 9.2
+  },
+  {
+    "rank": 20,
+    "artist": "Night Lovell",
+    "date": "2024-03-26",
+    "realized": 8.7,
+    "projected": 6,
+    "price": 44.44,
+    "currentWeightedSuggestion": 9.3,
+    "plannedCappedSuggestion": 9.3
+  },
+  {
+    "rank": 21,
+    "artist": "Yung Gravy & BBNO$",
+    "date": "2022-11-23",
+    "realized": 8.6,
+    "projected": 7,
+    "price": 50,
+    "currentWeightedSuggestion": 8.7,
+    "plannedCappedSuggestion": 8.7
+  },
+  {
+    "rank": 22,
+    "artist": "Isaiah Rashad",
+    "date": "2022-02-14",
+    "realized": 8.5,
+    "projected": 6,
+    "price": 53.51,
+    "currentWeightedSuggestion": 8.0,
+    "plannedCappedSuggestion": 8.0
+  },
+  {
+    "rank": 23,
+    "artist": "Kali Uchis",
+    "date": "2025-09-17",
+    "realized": 8.5,
+    "projected": 8,
+    "price": 60,
+    "currentWeightedSuggestion": 7.9,
+    "plannedCappedSuggestion": 7.9
+  },
+  {
+    "rank": 24,
+    "artist": "Swae Lee",
+    "date": "2023-08-20",
+    "realized": 8.4,
+    "projected": 7,
+    "price": 45,
+    "currentWeightedSuggestion": 8.2,
+    "plannedCappedSuggestion": 8.2
+  },
+  {
+    "rank": 25,
+    "artist": "Offset",
+    "date": "2024-03-17",
+    "realized": 8.4,
+    "projected": 8,
+    "price": 78.5,
+    "currentWeightedSuggestion": 9.0,
+    "plannedCappedSuggestion": 9.0
+  },
+  {
+    "rank": 26,
+    "artist": "Dave",
+    "date": "2026-04-23",
+    "realized": 8.4,
+    "projected": 8,
+    "price": 107,
+    "currentWeightedSuggestion": 8.7,
+    "plannedCappedSuggestion": 8.7
+  },
+  {
+    "rank": 27,
+    "artist": "Tory Lanes",
+    "date": "2019-01-19",
+    "realized": 8.1,
+    "projected": 7,
+    "price": 40,
+    "currentWeightedSuggestion": 8.0,
+    "plannedCappedSuggestion": 8.0
+  },
+  {
+    "rank": 28,
+    "artist": "Remi Wolf",
+    "date": "2025-04-22",
+    "realized": 8.1,
+    "projected": 7.7,
+    "price": 67.5,
+    "currentWeightedSuggestion": 8.7,
+    "plannedCappedSuggestion": 8.7
+  },
+  {
+    "rank": 29,
+    "artist": "Travis Scott",
+    "date": "2024-01-06",
+    "realized": 8,
+    "projected": 8,
+    "price": 59.34,
+    "currentWeightedSuggestion": null,
+    "plannedCappedSuggestion": null
+  },
+  {
+    "rank": 30,
+    "artist": "Denzel Curry 2025",
+    "date": "2025-04-20",
+    "realized": 7.9,
+    "projected": 7.5,
+    "price": 67.5,
+    "currentWeightedSuggestion": 8.0,
+    "plannedCappedSuggestion": 8.0
+  },
+  {
+    "rank": 31,
+    "artist": "Central Cee",
+    "date": "2025-05-25",
+    "realized": 7.8,
+    "projected": 8,
+    "price": 120,
+    "currentWeightedSuggestion": 7.3,
+    "plannedCappedSuggestion": 7.3
+  },
+  {
+    "rank": 32,
+    "artist": "Train & REO Speedwagon",
+    "date": "2024-07-20",
+    "realized": 7.5,
+    "projected": 7,
+    "price": 25,
+    "currentWeightedSuggestion": 7.3,
+    "plannedCappedSuggestion": 7.3
+  },
+  {
+    "rank": 33,
+    "artist": "Conan Gray",
+    "date": "2024-09-23",
+    "realized": 7.5,
+    "projected": 6.7,
+    "price": 25,
+    "currentWeightedSuggestion": 7.2,
+    "plannedCappedSuggestion": 7.2
+  },
+  {
+    "rank": 34,
+    "artist": "Emei",
+    "date": "2025-03-18",
+    "realized": 7.5,
+    "projected": 6,
+    "price": 0,
+    "currentWeightedSuggestion": 7.9,
+    "plannedCappedSuggestion": 7.9
+  },
+  {
+    "rank": 35,
+    "artist": "Denzel Curry 2022",
+    "date": "2022-09-28",
+    "realized": 7.2,
+    "projected": 7,
+    "price": 47.97,
+    "currentWeightedSuggestion": 7.2,
+    "plannedCappedSuggestion": 7.2
+  },
+  {
+    "rank": 36,
+    "artist": "Pentatonix",
+    "date": "2016-11-07",
+    "realized": 7,
+    "projected": 6,
+    "price": 0,
+    "currentWeightedSuggestion": 8.4,
+    "plannedCappedSuggestion": 8.4
+  },
+  {
+    "rank": 37,
+    "artist": "Russ",
+    "date": "2024-06-25",
+    "realized": 7,
+    "projected": 7,
+    "price": 25,
+    "currentWeightedSuggestion": 7.2,
+    "plannedCappedSuggestion": 7.2
+  },
+  {
+    "rank": 38,
+    "artist": "Teezo Touchdown",
+    "date": "2024-05-07",
+    "realized": 6.6,
+    "projected": 7,
+    "price": 35.31,
+    "currentWeightedSuggestion": 6.6,
+    "plannedCappedSuggestion": 6.6
+  },
+  {
+    "rank": 39,
+    "artist": "Ski Mask The Slump God",
+    "date": "2024-07-29",
+    "realized": 6.2,
+    "projected": 7,
+    "price": 60.5,
+    "currentWeightedSuggestion": 6.3,
+    "plannedCappedSuggestion": 6.3
+  },
+  {
+    "rank": 40,
+    "artist": "Ram Riddlez",
+    "date": "2018-08-30",
+    "realized": 6,
+    "projected": 7,
+    "price": 0,
+    "currentWeightedSuggestion": 6.8,
+    "plannedCappedSuggestion": 6.8
+  },
+  {
+    "rank": 41,
+    "artist": "Lil Tecca",
+    "date": "2024-02-28",
+    "realized": 6,
+    "projected": 8,
+    "price": 101.75,
+    "currentWeightedSuggestion": 6.6,
+    "plannedCappedSuggestion": 6.6
+  },
+  {
+    "rank": 42,
+    "artist": "We Day",
+    "date": "2017-09-27",
+    "realized": 1,
+    "projected": 9,
+    "price": 0,
+    "currentWeightedSuggestion": 2.2,
+    "plannedCappedSuggestion": 2.2
+  }
+]

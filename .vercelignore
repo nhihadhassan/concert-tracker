@@ -3,6 +3,9 @@
 *.xlsx
 *.pdf
 *.csv
+data/
+docs/
+scripts/
 .claude/
 .git/
 PRODUCT.md
