@@ -32,6 +32,16 @@ Mac launchd -> Python backup agent -> SQLite + XLSX
 
 Vercel Services currently mounts the Vite frontend at `/` and the FastAPI service at `/api`. The only API route is the read-only `/api/v1/health` contract. React uses in-memory fixtures and has no Supabase client or write path.
 
+## Stage 2 Authentication Boundary
+
+Stage 2 adds password authentication against the existing `rachel-tracker` Supabase project. The user approved this shared-project exception after both Free-plan project slots were found to be occupied. The browser stores only the Supabase user session and sends its access token to `/api/v1/session`. FastAPI verifies the ES256 signature, issuer, audience, expiry, role, and two-person email allowlist, then confirms active membership through an RLS-protected `app_members` lookup.
+
+The normalized staging schema contains `app_members`, `concerts`, `concert_attendees`, `concert_reviews`, and `rating_rule_versions`. Every table has RLS enabled, audit metadata, soft deletion, and an integer row version. Both members can read the shared library; each member can create and update their own review only. No browser role receives physical delete permission.
+
+The service-role key is used only by local bootstrap and verification scripts. It is never exposed to React, committed to Git, or configured in Vercel.
+
+The legacy `concert_tracker_concerts` table and all `exp_*` tables remain unchanged. Stage 2 added only the five normalized tables, supporting functions, RLS policies, and the rating-rule seed. The production Vercel deployment remains the legacy static app until Stage 8.
+
 ## Authority Boundaries
 
 - Supabase is authoritative after migration.
@@ -40,7 +50,7 @@ Vercel Services currently mounts the Vite frontend at `/` and the FastAPI servic
 - IndexedDB supports temporary offline operation, not an independent source of truth.
 - SQLite and Excel are read-only recovery copies.
 
-## Planned Tables
+## Normalized Tables
 
 - `app_members`
 - `concerts`

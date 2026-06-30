@@ -1,4 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { AuthProvider } from './auth/AuthProvider'
+import type { AuthMember } from './auth/AuthContext'
+import { AuthLoading, LoginPage } from './auth/LoginPage'
+import { useAuth } from './auth/useAuth'
 import { AddConcertDialog } from './components/AddConcertDialog'
 import { AppHeader } from './components/AppHeader'
 import { ConcertCard } from './components/ConcertCard'
@@ -17,7 +21,12 @@ const sortConcerts = (rows: Concert[], sort: string) => [...rows].sort((left, ri
   return right.date.localeCompare(left.date)
 })
 
-function App() {
+interface DashboardProps {
+  member: AuthMember
+  onSignOut: () => void
+}
+
+export function Dashboard({ member, onSignOut }: DashboardProps) {
   const [concerts, setConcerts] = useState(concertFixtures)
   const [darkMode, setDarkMode] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -86,8 +95,10 @@ function App() {
     <div className={darkMode ? 'app theme-dark' : 'app theme-light'}>
       <AppHeader
         darkMode={darkMode}
+        memberName={member.display_name}
         onAdd={() => setDialogOpen(true)}
         onExport={exportCsv}
+        onSignOut={onSignOut}
         onThemeToggle={() => setDarkMode((value) => !value)}
       />
 
@@ -122,6 +133,24 @@ function App() {
       <AddConcertDialog open={dialogOpen} onClose={() => setDialogOpen(false)} onSave={addConcert} />
       {notice ? <div className="toast" role="status">{notice}</div> : null}
     </div>
+  )
+}
+
+function AuthenticatedApp() {
+  const { member, signOut, status } = useAuth()
+
+  if (status === 'loading' || status === 'validating') return <AuthLoading />
+  if (status === 'signed-in' && member) {
+    return <Dashboard member={member} onSignOut={() => void signOut()} />
+  }
+  return <LoginPage />
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AuthenticatedApp />
+    </AuthProvider>
   )
 }
 

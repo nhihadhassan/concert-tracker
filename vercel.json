@@ -6,7 +6,7 @@
       "routePrefix": "/"
     },
     "backend": {
-      "entrypoint": "backend/server.py",
+      "entrypoint": "api.py",
       "routePrefix": "/api",
       "excludeFiles": [
         "data/**",

@@ -1,14 +1,24 @@
 from typing import Literal
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from pydantic import BaseModel
+
+from backend.members import AppMember, require_member
+from backend.settings import SettingsError, get_settings
 
 
 class HealthResponse(BaseModel):
     status: Literal["ok"]
     service: str
     version: str
-    data_mode: Literal["fixtures"]
+    data_mode: Literal["fixtures", "staging"]
+
+
+class SessionResponse(BaseModel):
+    user_id: str
+    email: str
+    display_name: str
+    data_mode: Literal["staging"] = "staging"
 
 
 app = FastAPI(
@@ -21,9 +31,23 @@ app = FastAPI(
 
 @app.get("/v1/health", response_model=HealthResponse, tags=["system"])
 def health() -> HealthResponse:
+    try:
+        get_settings()
+        data_mode = "staging"
+    except SettingsError:
+        data_mode = "fixtures"
     return HealthResponse(
         status="ok",
         service="concert-tracker-api",
         version=app.version,
-        data_mode="fixtures",
+        data_mode=data_mode,
+    )
+
+
+@app.get("/v1/session", response_model=SessionResponse, tags=["auth"])
+def session(member: AppMember = Depends(require_member)) -> SessionResponse:
+    return SessionResponse(
+        user_id=member.user_id,
+        email=member.email,
+        display_name=member.display_name,
     )

@@ -12,6 +12,7 @@ The production app is currently the legacy single-file dashboard. A checkpointed
 - [Cost budget](COST_BUDGET.md)
 - [Stage 0 checkpoint](docs/checkpoints/STAGE_0.md)
 - [Stage 1 checkpoint](docs/checkpoints/STAGE_1.md)
+- [Stage 2 checkpoint](docs/checkpoints/STAGE_2.md)
 
 ## Current Stack
 
@@ -39,12 +40,41 @@ npx vercel dev -L
 
 The integrated application is available at `http://localhost:3000`; FastAPI health is at `http://localhost:3000/api/v1/health`.
 
-Run the complete Stage 1 quality gate with:
+Run the complete rebuild quality gate with:
 
 ```bash
 npm run check
 npm run build
 ```
+
+Without staging environment variables, the React application intentionally fails closed on the sign-in screen. Copy `frontend/.env.example` only for local staging work; never add a service-role key to the frontend environment.
+
+## Stage 2 Staging Setup
+
+After linking the configured Supabase project and applying the migration, configure its URL and keep the service-role key in macOS Keychain. Then create or reset the two password accounts:
+
+```bash
+SUPABASE_URL=https://PROJECT_REF.supabase.co \
+  .venv/bin/python scripts/stage2_setup.py
+```
+
+Use `--generate` to create strong passwords and store them in Keychain instead of entering them. The live verifier reads those Keychain entries and exercises Auth, FastAPI, and every RLS boundary:
+
+```bash
+SUPABASE_URL=https://PROJECT_REF.supabase.co \
+SUPABASE_PUBLISHABLE_KEY=sb_publishable_REPLACE_ME \
+CONCERT_TRACKER_API_URL=https://PREVIEW_URL/api/v1 \
+  .venv/bin/python scripts/stage2_verify.py
+```
+
+Retrieve a generated password locally when needed without putting it in Git or chat:
+
+```bash
+security find-generic-password -a concert-tracker \
+  -s "Concert Tracker Password - owner@example.com" -w
+```
+
+Replace the email in the service name with Rachel's address for her password.
 
 ## Stage 0 Baseline
 
