@@ -42,6 +42,22 @@ The service-role key is used only by local bootstrap and verification scripts. I
 
 The legacy `concert_tracker_concerts` table and all `exp_*` tables remain unchanged. Stage 2 added only the five normalized tables, supporting functions, RLS policies, and the rating-rule seed. The production Vercel deployment remains the legacy static app until Stage 8.
 
+## Stage 3 Calculation Boundary
+
+Stage 3 adds a pure Python domain layer under `backend/domain/`. Rating calculations use
+Decimal arithmetic, exact `3:1:1:1` relative weights, missing-score renormalization,
+half-up rounding, a 10-point cap, documented overrides, and explicit rule versions. Analytics
+consume final personal ratings and never recalculate review formulas.
+
+Authenticated FastAPI endpoints expose the current rule, personal and combined ratings,
+spending, yearly trends, projection error and bias, grouped summaries, repeat artists, and
+rankings. Requests cannot provide custom weights. React remains a display client and does not
+contain a parallel rating implementation.
+
+Stage 3 endpoints are calculation-only: callers provide input snapshots and receive derived
+results. They do not read or write concerts. Database-backed library reads begin in Stage 5
+after the Stage 4 migration dry run.
+
 ## Authority Boundaries
 
 - Supabase is authoritative after migration.

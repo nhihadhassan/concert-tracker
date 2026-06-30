@@ -21,15 +21,42 @@ seat       = 16.6667%
 
 Missing components are omitted and the remaining weights are renormalized. The result is rounded to one decimal. The legacy browser does not cap the suggestion at 10.
 
-## Rebuild Rule
+## Python Rule Version 1
 
-The Python rating engine will use the same weights and missing-value behavior, then cap the calculated result at `10.0`.
+The Python engine in `backend/domain/ratings.py` is the only calculation authority. It uses
+the exact relative weights `3:1:1:1`, which normalize to 50% enjoyment and one sixth each
+for stage, setlist, and seat. Decimal arithmetic and `ROUND_HALF_UP` make midpoint rounding
+deterministic.
+
+For the set of present component scores `P`:
 
 ```text
+uncapped = sum(score[i] * weight[i] for i in P) / sum(weight[i] for i in P)
+calculated = round_half_up(min(uncapped, 10), 1)
 final_rating = rating_override if present, otherwise calculated_rating
+combined_rating = mean(available attendee final ratings)
 ```
 
-An override requires a reason. Each user receives a separate review. The combined rating is the mean of available attendee final ratings, rounded to one decimal and capped at 10.
+The engine also returns the one-decimal uncapped value for transparency. Missing components
+are omitted from both sums. A review with no component scores has no calculated rating.
+
+Overrides must be between 0 and 10 and require a non-empty reason. Each user receives a
+separate review. The combined rating is rounded half up to one decimal and capped at 10.
+Components above 10 remain valid so exceptional historical inputs can be represented, but
+calculated, override, final, and combined ratings cannot exceed 10.
+
+### Golden Examples
+
+| Enjoyment | Stage | Setlist | Seat | Calculated |
+| ---: | ---: | ---: | ---: | ---: |
+| 8 | 7 | 8 | 9 | 8.0 |
+| 10 | missing | 8 | 6 | 8.8 |
+| missing | 7 | 8 | 9 | 8.0 |
+| 11 | 12 | 10 | 9 | 10.0, uncapped 10.7 |
+
+Rule version 1 is returned by every calculation API response. Clients cannot submit custom
+weights. A future rule change must create a new documented rule version and retain old rules
+for historical reviews.
 
 ## Migration Rule
 
@@ -40,4 +67,5 @@ An override requires a reason. Each user receives a separate review. The combine
 
 ## Required Fields
 
-All concerts require artist, date, and venue. Attended concerts additionally require price, seat, genre, and a final realized rating.
+All concerts require artist, date, and venue. Attended concerts additionally require price,
+seat, genre, and a final realized rating.

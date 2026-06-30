@@ -12,18 +12,20 @@ def test_health_contract() -> None:
     assert response.json() == {
         "status": "ok",
         "service": "concert-tracker-api",
-        "version": "0.1.0",
+        "version": "0.2.0",
         "data_mode": "fixtures",
     }
 
 
-def test_no_stage_one_write_routes() -> None:
-    write_methods = {"POST", "PUT", "PATCH", "DELETE"}
-    methods = {
-        method
+def test_stage_three_has_calculation_posts_but_no_persistence_write_routes() -> None:
+    write_routes = {
+        (method, route.path)
         for route in app.routes
         for method in (getattr(route, "methods", None) or set())
-        if method in write_methods
+        if method in {"POST", "PUT", "PATCH", "DELETE"}
     }
 
-    assert methods == set()
+    assert write_routes == {
+        ("POST", "/v1/analytics/calculate"),
+        ("POST", "/v1/ratings/calculate"),
+    }

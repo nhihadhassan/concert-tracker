@@ -3,6 +3,7 @@ from typing import Literal
 from fastapi import Depends, FastAPI
 from pydantic import BaseModel
 
+from backend.calculation_routes import router as calculation_router
 from backend.members import AppMember, require_member
 from backend.settings import SettingsError, get_settings
 
@@ -23,10 +24,12 @@ class SessionResponse(BaseModel):
 
 app = FastAPI(
     title="Concert Tracker API",
-    version="0.1.0",
+    version="0.2.0",
     docs_url="/v1/docs",
     openapi_url="/v1/openapi.json",
 )
+
+app.include_router(calculation_router)
 
 
 @app.get("/v1/health", response_model=HealthResponse, tags=["system"])

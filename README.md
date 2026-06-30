@@ -13,6 +13,8 @@ The production app is currently the legacy single-file dashboard. A checkpointed
 - [Stage 0 checkpoint](docs/checkpoints/STAGE_0.md)
 - [Stage 1 checkpoint](docs/checkpoints/STAGE_1.md)
 - [Stage 2 checkpoint](docs/checkpoints/STAGE_2.md)
+- [Stage 3 API contract](docs/API.md)
+- [Stage 3 checkpoint](docs/checkpoints/STAGE_3.md)
 
 ## Current Stack
 
@@ -75,6 +77,18 @@ security find-generic-password -a concert-tracker \
 ```
 
 Replace the email in the service name with Rachel's address for her password.
+
+## Stage 3 Calculation API
+
+The authenticated API now owns ratings and analytics. Run its golden tests with:
+
+```bash
+.venv/bin/python -m pytest tests/test_ratings.py tests/test_analytics.py \
+  tests/test_calculation_api.py
+```
+
+Interactive OpenAPI documentation is available at `/api/v1/docs` in an integrated Vercel
+preview. The endpoints calculate from supplied snapshots and do not write concert data.
 
 ## Stage 0 Baseline
 
