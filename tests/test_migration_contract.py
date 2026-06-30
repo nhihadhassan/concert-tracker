@@ -1,6 +1,7 @@
 from pathlib import Path
 
 MIGRATION = Path("supabase/migrations/20260630180000_stage2_shared_schema.sql")
+STAGE_FOUR_MIGRATION = Path("supabase/migrations/20260630190000_stage4_companion_preservation.sql")
 TABLES = (
     "app_members",
     "concerts",
@@ -43,3 +44,13 @@ def test_rating_rule_matches_product_contract() -> None:
     assert "0.1666666" in sql
     assert "maximum_rating" in sql
     assert "renormalize_missing" in sql
+
+
+def test_stage_four_preserves_companions_and_legacy_idempotency_key() -> None:
+    sql = STAGE_FOUR_MIGRATION.read_text()
+
+    assert "add column if not exists companions text" in sql
+    assert "add column if not exists legacy_rank integer" in sql
+    assert "create unique index if not exists concerts_legacy_source_id_uidx" in sql
+    assert "create unique index if not exists concerts_legacy_rank_uidx" in sql
+    assert "where legacy_source_id is not null" in sql

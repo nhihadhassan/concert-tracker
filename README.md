@@ -15,6 +15,8 @@ The production app is currently the legacy single-file dashboard. A checkpointed
 - [Stage 2 checkpoint](docs/checkpoints/STAGE_2.md)
 - [Stage 3 API contract](docs/API.md)
 - [Stage 3 checkpoint](docs/checkpoints/STAGE_3.md)
+- [Migration design](docs/MIGRATION.md)
+- [Stage 4 checkpoint](docs/checkpoints/STAGE_4.md)
 
 ## Current Stack
 
@@ -89,6 +91,24 @@ The authenticated API now owns ratings and analytics. Run its golden tests with:
 
 Interactive OpenAPI documentation is available at `/api/v1/docs` in an integrated Vercel
 preview. The endpoints calculate from supplied snapshots and do not write concert data.
+
+## Stage 4 Migration Dry Run
+
+The migration command reads copied backups and writes only to an ignored local output folder.
+It automatically reruns against its first result and fails if the second pass changes anything.
+
+```bash
+.venv/bin/python -m scripts.stage4_migrate \
+  --cloud data/backups/stage-2-pre-schema/TIMESTAMP/concert_tracker_concerts.json \
+  --browser data/backups/stage-0/TIMESTAMP/browser-localstorage.json \
+  --auth-users data/backups/stage-2-pre-schema/TIMESTAMP/auth-users.json \
+  --baseline-rankings docs/baseline/cloud-rankings.json \
+  --existing data/backups/stage-4-pre-dry-run/TIMESTAMP/normalized.json \
+  --rating-rule-version-id UUID \
+  --output data/migrations/stage-4/TIMESTAMP
+```
+
+The committed Stage 4 SQL is pending review and is not applied during the dry run.
 
 ## Stage 0 Baseline
 

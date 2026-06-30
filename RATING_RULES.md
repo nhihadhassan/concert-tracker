@@ -64,6 +64,8 @@ for historical reviews.
 - Store it as an override when it differs from the rebuilt calculation or cannot be reproduced from available components.
 - Convert `rachelScore` into a Rachel legacy review override.
 - Preserve exceptional component inputs above 10, while capping calculated and combined final ratings.
+- Preserve the approved historical tie order in `concerts.legacy_rank`; never depend on export
+  or database row order for equal ratings.
 
 ## Required Fields
 

@@ -23,6 +23,7 @@ class AnalyticsConcert:
     projected_rating: Decimal | None = None
     member_ratings: Mapping[str, Decimal | None] = field(default_factory=dict)
     combined_rating: Decimal | None = None
+    ranking_tiebreaker: int | None = None
 
 
 @dataclass(frozen=True)
@@ -168,7 +169,12 @@ def _build_rankings(
             )
             if rating is not None:
                 rated.append((concert, rating))
-        rated.sort(key=lambda item: item[1], reverse=True)
+        rated.sort(
+            key=lambda item: (
+                -item[1],
+                item[0].ranking_tiebreaker if item[0].ranking_tiebreaker is not None else 2**31,
+            )
+        )
         rankings[scope] = tuple(
             RankingEntry(
                 rank=index,

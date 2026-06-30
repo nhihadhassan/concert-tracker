@@ -58,6 +58,22 @@ Stage 3 endpoints are calculation-only: callers provide input snapshots and rece
 results. They do not read or write concerts. Database-backed library reads begin in Stage 5
 after the Stage 4 migration dry run.
 
+## Stage 4 Migration Boundary
+
+Stage 4 adds a deterministic local migration domain and CLI. The transformer treats the legacy
+Supabase JSON table as authoritative, reconciles browser records by source ID and normalized
+artist/date, and emits normalized concerts, attendees, reviews, and artwork manifests. UUIDv5
+identities and a unique legacy source index make reruns safe.
+
+Historical realized scores become documented overrides only when the Python calculation cannot
+reproduce them. Rachel's legacy scores become separate Rachel overrides. Explicit legacy rank
+values preserve the approved tie order instead of depending on database row order.
+
+The pending Stage 4 schema migration adds `companions` and `legacy_rank` to `concerts`, plus
+unique partial indexes for source and rank identities. It is committed for review but remains
+unapplied until production cutover. Dry-run output and copied staging snapshots remain private
+under ignored `data/` paths.
+
 ## Authority Boundaries
 
 - Supabase is authoritative after migration.
