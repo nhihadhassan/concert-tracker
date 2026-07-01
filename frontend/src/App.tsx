@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { RefreshCw } from 'lucide-react'
+import { CheckCircle2, ListMusic, RefreshCw, Sparkles, Trophy } from 'lucide-react'
+import { AnimatePresence, m } from 'motion/react'
 import { AuthProvider } from './auth/AuthProvider'
 import type { AuthMember } from './auth/AuthContext'
 import { AuthLoading, LoginPage } from './auth/LoginPage'
@@ -84,7 +85,8 @@ export function Dashboard({ accessToken, member, onSignOut }: DashboardProps) {
   const [status, setStatus] = useState('')
   const [genre, setGenre] = useState('')
   const [sort, setSort] = useState('date-desc')
-  const [notice, setNotice] = useState('')
+  const [mobileView, setMobileView] = useState<'concerts' | 'rankings'>('concerts')
+  const [notice, setNotice] = useState<{ message: string; celebratory: boolean } | null>(null)
   const noticeTimer = useRef<number | null>(null)
 
   useEffect(() => () => {
@@ -106,10 +108,10 @@ export function Dashboard({ accessToken, member, onSignOut }: DashboardProps) {
     (library?.concerts ?? []).map((concert) => concert.genre).filter((value): value is string => Boolean(value)),
   )].sort(), [library])
 
-  const flashNotice = (message: string) => {
+  const flashNotice = (message: string, celebratory = false) => {
     if (noticeTimer.current !== null) window.clearTimeout(noticeTimer.current)
-    setNotice(message)
-    noticeTimer.current = window.setTimeout(() => setNotice(''), 2600)
+    setNotice({ message, celebratory })
+    noticeTimer.current = window.setTimeout(() => setNotice(null), 2600)
   }
 
   const openNew = () => {
@@ -142,7 +144,7 @@ export function Dashboard({ accessToken, member, onSignOut }: DashboardProps) {
             }, ...current.concerts],
           }),
         )
-        flashNotice(`${payload.artist} queued for cloud sync`)
+        flashNotice(`${payload.artist} queued for cloud sync`, payload.status === 'Attended')
       } else {
         const update: ConcertUpdate = { ...submission.fields, expected_row_version: editing.row_version }
         await cloud.executeMutation(
@@ -163,7 +165,7 @@ export function Dashboard({ accessToken, member, onSignOut }: DashboardProps) {
             (current) => ({ ...current, concerts: current.concerts.map((concert) => concert.id === editing.id ? { ...concert, reviews: [...concert.reviews.filter((review) => review.reviewer_user_id !== member.user_id), ...optimisticReview(submission, member)], pending: true } : concert) }),
           )
         }
-        flashNotice(`${submission.fields.artist} changes queued`)
+        flashNotice(`${submission.fields.artist} changes queued`, submission.fields.status === 'Attended')
       }
       setDialogOpen(false)
       setEditing(null)
@@ -209,18 +211,22 @@ export function Dashboard({ accessToken, member, onSignOut }: DashboardProps) {
     <div className={darkMode ? 'app theme-dark' : 'app theme-light'}>
       <AppHeader darkMode={darkMode} memberName={member.display_name} pendingCount={cloud.pendingCount} syncState={cloud.syncState} onAdd={openNew} onExport={() => void exportCsv()} onSignOut={onSignOut} onThemeToggle={toggleTheme} />
       <main className="page-shell">
-        <div className="dashboard-column">
+        <nav className="mobile-view-switch" aria-label="Dashboard view">
+          <button type="button" className={mobileView === 'concerts' ? 'active' : ''} aria-pressed={mobileView === 'concerts'} onClick={() => setMobileView('concerts')}><ListMusic size={17} />Concerts</button>
+          <button type="button" className={mobileView === 'rankings' ? 'active' : ''} aria-pressed={mobileView === 'rankings'} onClick={() => setMobileView('rankings')}><Trophy size={17} />Rankings</button>
+        </nav>
+        <div className={`dashboard-column mobile-view-${mobileView}`}>
           <StatsStrip concerts={library.concerts} />
           {cloud.error ? <div className="sync-error-banner" role="status">{cloud.error}<button type="button" onClick={() => void cloud.flushOutbox()}>Retry sync</button></div> : null}
           <FiltersBar genres={genres} genre={genre} search={search} sort={sort} status={status} onGenreChange={setGenre} onSearchChange={setSearch} onSortChange={setSort} onStatusChange={setStatus} />
           <p className="list-meta">Showing {filteredConcerts.length} of {library.concerts.length} cloud concerts</p>
-          {filteredConcerts.length ? <section className="concert-grid" aria-label="Concerts">{filteredConcerts.map((concert) => <ConcertCard key={concert.id} concert={concert} onDelete={(row) => void deleteConcert(row)} onEdit={(row) => { setEditing(row); setFormError(''); setDialogOpen(true) }} />)}</section> : <section className="empty-state"><h2>{library.concerts.length ? 'No concerts match' : 'Add the first staging concert'}</h2><p>{library.concerts.length ? 'Clear a filter or try another artist or venue.' : 'The shared normalized library is empty and ready for testing.'}</p>{!library.concerts.length ? <button className="button button-primary" type="button" onClick={openNew}>Add concert</button> : null}</section>}
+          {filteredConcerts.length ? <section className="concert-grid" aria-label="Concerts">{filteredConcerts.map((concert, index) => <ConcertCard key={concert.id} concert={concert} index={index} onDelete={(row) => void deleteConcert(row)} onEdit={(row) => { setEditing(row); setFormError(''); setDialogOpen(true) }} />)}</section> : <section className="empty-state"><h2>{library.concerts.length ? 'No concerts match' : 'Add the first staging concert'}</h2><p>{library.concerts.length ? 'Clear a filter or try another artist or venue.' : 'The shared normalized library is empty and ready for testing.'}</p>{!library.concerts.length ? <button className="button button-primary" type="button" onClick={openNew}>Add concert</button> : null}</section>}
         </div>
-        <RankedSummary combined={combinedRankings} concerts={library.concerts} memberName={member.display_name} personal={personalRankings} />
+        <div className={`ranking-column mobile-view-${mobileView}`}><RankedSummary combined={combinedRankings} concerts={library.concerts} memberName={member.display_name} personal={personalRankings} /></div>
       </main>
       <AddConcertDialog concert={editing} currentUserId={member.user_id} error={formError} members={library.members} open={dialogOpen} saving={saving} onClose={() => { setDialogOpen(false); setEditing(null) }} onSave={saveConcert} />
       <ConflictDialog conflict={cloud.conflict} onDiscard={() => void cloud.discardConflict()} onRetry={() => void cloud.retryConflict()} />
-      {notice ? <div className="toast" role="status">{notice}</div> : null}
+      <AnimatePresence>{notice ? <m.div className={`toast${notice.celebratory ? ' toast-celebration' : ''}`} role="status" initial={{ opacity: 0, y: 12, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 8 }} transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}>{notice.celebratory ? <Sparkles size={18} /> : <CheckCircle2 size={18} />}{notice.message}</m.div> : null}</AnimatePresence>
     </div>
   )
 }

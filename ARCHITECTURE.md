@@ -98,6 +98,24 @@ not a second write path.
 CSV exports and all personal and combined ratings remain FastAPI responses. React renders the
 returned results and contains no rating formula.
 
+## Stage 6 Presentation Boundary
+
+Stage 6 keeps responsive presentation and motion entirely in React and CSS. The open-source
+`motion` package is lazy-loaded with DOM animation features only. It coordinates card entry,
+rating changes, ranked-row layout changes, dialog transitions, artwork crossfades, count updates,
+sync feedback, and save notices. `MotionConfig` follows the user's reduced-motion preference,
+and CSS removes residual transitions and transforms under `prefers-reduced-motion`.
+
+Mobile presentation switches between Concerts and Rankings without changing cloud state. Search
+remains visible while status, genre, and sorting controls collapse behind one filter button. The
+normalized staging API remains the source for every rendered value; presentation code contains
+no ratings, analytics, or synchronization rules.
+
+Soft delete requires an authenticated member to retain RLS visibility of the resulting deleted
+row while PostgreSQL checks the update. Stage 6 adds member-only deleted-row select policies for
+concerts, attendees, and reviews. FastAPI library queries continue to request
+`deleted_at=is.null`, so deleted records never return in the application snapshot.
+
 ## Authority Boundaries
 
 - Supabase is authoritative after migration.

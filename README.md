@@ -18,6 +18,7 @@ The production app is currently the legacy single-file dashboard. A checkpointed
 - [Migration design](docs/MIGRATION.md)
 - [Stage 4 checkpoint](docs/checkpoints/STAGE_4.md)
 - [Stage 5 checkpoint](docs/checkpoints/STAGE_5.md)
+- [Stage 6 checkpoint](docs/checkpoints/STAGE_6.md)
 
 ## Current Stack
 
@@ -132,6 +133,14 @@ explicit conflict dialog.
 
 Cloud API routes, request shapes, status codes, and CSV behavior are documented in
 [`docs/API.md`](docs/API.md).
+
+## Stage 6 Interface And Motion
+
+The mobile dashboard now uses dedicated Concerts and Rankings views, compact paired totals,
+a full-width next-concert panel, and collapsed secondary filters. The concert form is grouped
+into Event, Attendance, Your review, and Details sections. Motion is loaded lazily, limited to
+short state transitions, and disabled or simplified when the operating system requests reduced
+motion.
 
 ## Stage 0 Baseline
 

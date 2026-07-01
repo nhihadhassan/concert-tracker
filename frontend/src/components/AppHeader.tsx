@@ -1,4 +1,5 @@
 import { Cloud, Download, LogOut, Mic2, Moon, Plus, RefreshCw, Sun, TriangleAlert, WifiOff } from 'lucide-react'
+import { AnimatePresence, m } from 'motion/react'
 import type { SyncState } from '../types'
 
 interface AppHeaderProps {
@@ -32,7 +33,7 @@ export function AppHeader(props: AppHeaderProps) {
           <span className="brand-mark" aria-hidden="true"><Mic2 size={22} strokeWidth={2.3} /></span>
           <div className="brand-copy">
             <h1>Nhihad's Concerts</h1>
-            <p>{props.memberName} <span aria-hidden="true">·</span> <span className={`sync-label sync-${props.syncState}`}><SyncIcon size={13} />{sync.label}</span></p>
+            <p>{props.memberName} <span aria-hidden="true">·</span> <AnimatePresence mode="popLayout" initial={false}><m.span key={`${props.syncState}-${sync.label}`} className={`sync-label sync-${props.syncState}`} initial={{ opacity: 0, y: 3 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -3 }}><SyncIcon size={13} />{sync.label}</m.span></AnimatePresence></p>
           </div>
         </div>
         <div className="header-actions">

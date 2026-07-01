@@ -1,8 +1,10 @@
 import { Armchair, CalendarDays, Image, MapPin, Music2, Pencil, Trash2, Users } from 'lucide-react'
+import { AnimatePresence, m, useReducedMotion } from 'motion/react'
 import type { Concert } from '../types'
 
 interface ConcertCardProps {
   concert: Concert
+  index: number
   onDelete: (concert: Concert) => void
   onEdit: (concert: Concert) => void
 }
@@ -20,14 +22,23 @@ const ratingTone = (rating: number | null) => {
   return 'rating-low'
 }
 
-export function ConcertCard({ concert, onDelete, onEdit }: ConcertCardProps) {
+export function ConcertCard({ concert, index, onDelete, onEdit }: ConcertCardProps) {
   const activeAttendees = concert.attendees.filter((attendee) => attendee.attendance_status !== 'Did Not Attend')
+  const reduceMotion = useReducedMotion()
   return (
-    <article className={`concert-card${concert.pending ? ' concert-pending' : ''}`} id={`concert-${concert.id}`}>
+    <m.article
+      className={`concert-card${concert.pending ? ' concert-pending' : ''}`}
+      id={`concert-${concert.id}`}
+      layout="position"
+      initial={reduceMotion ? false : { opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: reduceMotion ? 0 : Math.min(index, 5) * 0.035, duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+      whileHover={reduceMotion ? undefined : { y: -2 }}
+    >
       <div className="concert-card-head">
-        {concert.image ? <img className="concert-art" src={concert.image} alt={`${concert.artist} artwork`} width="58" height="58" loading="lazy" decoding="async" /> : <span className="concert-art concert-art-empty" aria-hidden="true"><Image size={22} /></span>}
+        <AnimatePresence mode="wait" initial={false}>{concert.image ? <m.img key={concert.image} className="concert-art" src={concert.image} alt={`${concert.artist} artwork`} width="58" height="58" loading="lazy" decoding="async" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} /> : <m.span key="empty-art" className="concert-art concert-art-empty" aria-hidden="true" initial={{ opacity: 0 }} animate={{ opacity: 1 }}><Image size={22} /></m.span>}</AnimatePresence>
         <div className="concert-title"><h3>{concert.artist}</h3><p title={concert.tour ?? ''}>{concert.tour || 'Tour not set'}</p></div>
-        <div className={`rating-badge ${ratingTone(concert.personal_rating)}`} title="Your rating"><strong>{concert.personal_rating ?? 'N/A'}</strong><span>{concert.personal_rating === null ? 'unrated' : '/10'}</span></div>
+        <AnimatePresence mode="popLayout" initial={false}><m.div key={concert.personal_rating ?? 'unrated'} className={`rating-badge ${ratingTone(concert.personal_rating)}`} title="Your rating" initial={reduceMotion ? false : { opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.94 }} transition={{ type: 'spring', stiffness: 380, damping: 30, mass: 0.8 }}><strong>{concert.personal_rating ?? 'N/A'}</strong><span>{concert.personal_rating === null ? 'unrated' : '/10'}</span></m.div></AnimatePresence>
       </div>
       {concert.combined_rating !== null ? <span className="projected">combined {concert.combined_rating}{concert.projected !== null ? ` · proj ${concert.projected}` : ''}</span> : concert.projected !== null ? <span className="projected">proj {concert.projected}</span> : null}
       <div className="concert-meta"><span><CalendarDays size={16} />{formatDate(concert.date)}</span><span><MapPin size={16} />{concert.venue}</span></div>
@@ -47,6 +58,6 @@ export function ConcertCard({ concert, onDelete, onEdit }: ConcertCardProps) {
         <button className="button button-secondary compact-action" type="button" onClick={() => onEdit(concert)} aria-label={`Edit ${concert.artist}`}><Pencil size={16} /><span>Edit</span></button>
         <button className="icon-button danger-action" type="button" onClick={() => onDelete(concert)} title={`Delete ${concert.artist}`} aria-label={`Delete ${concert.artist}`}><Trash2 size={17} /></button>
       </div>
-    </article>
+    </m.article>
   )
 }

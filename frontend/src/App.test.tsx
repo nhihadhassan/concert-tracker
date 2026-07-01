@@ -93,7 +93,27 @@ describe('Concert Tracker cloud shell', () => {
     render(<Dashboard accessToken="token" member={member} onSignOut={() => undefined} />)
     fireEvent.click(screen.getByRole('button', { name: 'Add concert' }))
     expect(screen.getByRole('heading', { name: 'Add concert' })).toBeInTheDocument()
-    expect(screen.getByText('Your review')).toBeInTheDocument()
+    expect(screen.getByText('Your review', { selector: 'legend' })).toBeInTheDocument()
+    expect(screen.getByRole('navigation', { name: 'Concert form sections' })).toBeInTheDocument()
+  })
+
+  it('switches between the mobile concerts and rankings views', () => {
+    render(<Dashboard accessToken="token" member={member} onSignOut={() => undefined} />)
+    const concertsButton = screen.getByRole('button', { name: 'Concerts' })
+    const rankingsButton = screen.getByRole('button', { name: 'Rankings' })
+    expect(concertsButton).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.click(rankingsButton)
+    expect(rankingsButton).toHaveAttribute('aria-pressed', 'true')
+    expect(concertsButton).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('expands secondary filters without hiding search', () => {
+    render(<Dashboard accessToken="token" member={member} onSignOut={() => undefined} />)
+    const filterButton = screen.getByRole('button', { name: 'Filters' })
+    expect(filterButton).toHaveAttribute('aria-expanded', 'false')
+    fireEvent.click(filterButton)
+    expect(filterButton).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByPlaceholderText('e.g. Kendrick, Scotiabank...')).toBeInTheDocument()
   })
 
   it('fails closed when staging auth is not configured', async () => {

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Image, X } from 'lucide-react'
+import { AnimatePresence, m } from 'motion/react'
 import type {
   Concert,
   ConcertFormSubmission,
@@ -95,9 +96,12 @@ export function AddConcertDialog({
 
   return (
     <dialog ref={dialogRef} className="concert-dialog" onClose={onClose} onCancel={onClose}>
-      <form
+      <m.form
         key={concert?.id ?? 'new-concert'}
         className="dialog-shell"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
         onSubmit={(event) => void handleSubmit(event)}
       >
         <div className="dialog-head">
@@ -110,7 +114,14 @@ export function AddConcertDialog({
           </button>
         </div>
 
-        <fieldset className="form-section">
+        <nav className="form-section-nav" aria-label="Concert form sections">
+          <a href="#concert-form-event"><span>1</span>Event</a>
+          <a href="#concert-form-attendance"><span>2</span>Attendance</a>
+          <a href="#concert-form-review"><span>3</span>Your review</a>
+          <a href="#concert-form-details"><span>4</span>Details</a>
+        </nav>
+
+        <fieldset className="form-section" id="concert-form-event">
           <legend>Event</legend>
           <div className="form-grid">
             <label className="field field-wide"><span>Artist</span><input name="artist" required defaultValue={concert?.artist} /></label>
@@ -119,14 +130,14 @@ export function AddConcertDialog({
             <label className="field"><span>Status</span><select name="status" defaultValue={concert?.status ?? 'Want to Go'}><option>Want to Go</option><option>Attended</option><option>Cancelled</option></select></label>
             <label className="field field-wide"><span>Venue</span><input name="venue" required defaultValue={concert?.venue} /></label>
             <label className="field"><span>Price</span><input name="price" type="number" min="0" step="0.01" defaultValue={concert?.price ?? ''} /></label>
-            <label className="field"><span>Projected rating</span><input name="projected" type="number" min="0" step="0.1" defaultValue={concert?.projected ?? ''} /></label>
+            <label className="field"><span>Projected rating</span><input name="projected" type="number" min="0" max="10" step="0.1" defaultValue={concert?.projected ?? ''} /></label>
             <label className="field"><span>Genre</span><input name="genre" defaultValue={concert?.genre ?? ''} /></label>
             <label className="field"><span>Type</span><input name="type" defaultValue={concert?.type ?? 'Concert'} /></label>
             <label className="field field-wide"><span>Seat</span><input name="seat" defaultValue={concert?.seat ?? ''} /></label>
           </div>
         </fieldset>
 
-        <fieldset className="form-section">
+        <fieldset className="form-section" id="concert-form-attendance">
           <legend>Attendance</legend>
           <div className="attendance-options">
             {members.map((member) => {
@@ -139,24 +150,24 @@ export function AddConcertDialog({
           <label className="field"><span>Other companions</span><input name="companions" defaultValue={concert?.companions ?? ''} /></label>
         </fieldset>
 
-        <fieldset className="form-section">
+        <fieldset className="form-section" id="concert-form-review">
           <legend>Your review</legend>
           <div className="score-grid">
-            <label className="field"><span>Enjoyment</span><input name="enjoyment" type="number" min="0" step="0.1" defaultValue={personalReview?.enjoyment_score ?? ''} /></label>
-            <label className="field"><span>Stage</span><input name="stage" type="number" min="0" step="0.1" defaultValue={personalReview?.stage_score ?? ''} /></label>
-            <label className="field"><span>Setlist</span><input name="setlist" type="number" min="0" step="0.1" defaultValue={personalReview?.setlist_score ?? ''} /></label>
-            <label className="field"><span>Seat</span><input name="seatScore" type="number" min="0" step="0.1" defaultValue={personalReview?.seat_score ?? ''} /></label>
+            <label className="field"><span>Enjoyment</span><input name="enjoyment" type="number" min="0" max="10" step="0.1" defaultValue={personalReview?.enjoyment_score ?? ''} /></label>
+            <label className="field"><span>Stage</span><input name="stage" type="number" min="0" max="10" step="0.1" defaultValue={personalReview?.stage_score ?? ''} /></label>
+            <label className="field"><span>Setlist</span><input name="setlist" type="number" min="0" max="10" step="0.1" defaultValue={personalReview?.setlist_score ?? ''} /></label>
+            <label className="field"><span>Seat</span><input name="seatScore" type="number" min="0" max="10" step="0.1" defaultValue={personalReview?.seat_score ?? ''} /></label>
           </div>
           {personalReview?.is_overridden ? <p className="override-note">Historical override: {personalReview.override_rating}/10. Component edits remain visible, while the documented override stays authoritative.</p> : null}
           <label className="field"><span>Review notes</span><textarea name="reviewNotes" rows={3} defaultValue={personalReview?.notes ?? ''} /></label>
         </fieldset>
 
-        <fieldset className="form-section">
+        <fieldset className="form-section" id="concert-form-details">
           <legend>Details</legend>
           <div className="form-grid">
             <label className="field field-wide"><span>Artwork URL</span><input name="image" value={imageUrl} onChange={(event) => setImageUrl(event.target.value)} /></label>
             <div className="image-preview field-wide">
-              {imageUrl ? <img src={imageUrl} alt="Artwork preview" /> : <span><Image size={18} />No artwork selected</span>}
+              <AnimatePresence mode="wait" initial={false}>{imageUrl ? <m.img key={imageUrl} src={imageUrl} alt="Artwork preview" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} /> : <m.span key="empty-preview" initial={{ opacity: 0 }} animate={{ opacity: 1 }}><Image size={18} />No artwork selected</m.span>}</AnimatePresence>
             </div>
             <label className="field field-wide"><span>Spotify setlist URL</span><input name="spotify" type="url" defaultValue={concert?.spotify_url ?? ''} /></label>
             <label className="field field-wide"><span>Event notes</span><textarea name="notes" rows={3} defaultValue={concert?.notes ?? ''} /></label>
@@ -168,7 +179,7 @@ export function AddConcertDialog({
           <button className="button button-secondary" type="button" onClick={onClose}>Cancel</button>
           <button className="button button-primary" type="submit" disabled={saving}>{saving ? 'Saving...' : concert ? 'Save changes' : 'Save concert'}</button>
         </div>
-      </form>
+      </m.form>
     </dialog>
   )
 }

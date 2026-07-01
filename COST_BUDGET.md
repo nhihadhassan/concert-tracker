@@ -47,3 +47,12 @@ Official reference: https://supabase.com/pricing
   tables; the normalized library remains empty until production migration.
 - Offline caching uses browser IndexedDB and adds no hosted storage cost.
 - The 46-row legacy table and production static deployment remain unchanged.
+
+## Stage 6 Snapshot
+
+- Motion is an open-source client dependency and adds no hosted service, API, worker, or fee.
+- The preview remains one Vite static service and one 24.26 MB FastAPI function on Vercel Hobby.
+- The production JavaScript bundle is 165.73 kB gzip; Motion DOM features are loaded lazily.
+- Three small RLS policies were added. Normalized active concerts remain at zero and the legacy
+  table remains at 46 rows.
+- Production still serves the legacy June 24 deployment; Stage 6 is preview-only.
