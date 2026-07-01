@@ -2,6 +2,7 @@ import { Search } from 'lucide-react'
 import type { ConcertStatus } from '../types'
 
 interface FiltersBarProps {
+  genres: string[]
   genre: string
   search: string
   sort: string
@@ -36,9 +37,7 @@ export function FiltersBar(props: FiltersBarProps) {
         <span>Genre</span>
         <select value={props.genre} onChange={(event) => props.onGenreChange(event.target.value)}>
           <option value="">All genres</option>
-          <option>Hip-Hop</option>
-          <option>Latin</option>
-          <option>Pop</option>
+          {props.genres.map((genre) => <option key={genre}>{genre}</option>)}
         </select>
       </label>
 

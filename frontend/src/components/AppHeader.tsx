@@ -1,48 +1,47 @@
-import { Download, LogOut, Mic2, Moon, Plus, Sun } from 'lucide-react'
+import { Cloud, Download, LogOut, Mic2, Moon, Plus, RefreshCw, Sun, TriangleAlert, WifiOff } from 'lucide-react'
+import type { SyncState } from '../types'
 
 interface AppHeaderProps {
   darkMode: boolean
   memberName: string
+  pendingCount: number
+  syncState: SyncState
   onAdd: () => void
   onExport: () => void
   onSignOut: () => void
   onThemeToggle: () => void
 }
 
-export function AppHeader({ darkMode, memberName, onAdd, onExport, onSignOut, onThemeToggle }: AppHeaderProps) {
+const syncDisplay = (state: SyncState, pendingCount: number) => {
+  if (state === 'offline') return { icon: WifiOff, label: pendingCount ? `Offline, ${pendingCount} pending` : 'Offline' }
+  if (state === 'syncing') return { icon: RefreshCw, label: `Syncing ${pendingCount || ''}`.trim() }
+  if (state === 'pending') return { icon: Cloud, label: `${pendingCount} pending` }
+  if (state === 'conflict') return { icon: TriangleAlert, label: 'Needs review' }
+  if (state === 'error') return { icon: TriangleAlert, label: pendingCount ? `Sync error, ${pendingCount} pending` : 'Sync error' }
+  if (state === 'loading') return { icon: RefreshCw, label: 'Loading' }
+  return { icon: Cloud, label: 'Synced' }
+}
+
+export function AppHeader(props: AppHeaderProps) {
+  const sync = syncDisplay(props.syncState, props.pendingCount)
+  const SyncIcon = sync.icon
   return (
     <header className="app-header">
       <div className="header-inner">
         <div className="brand-lockup">
-          <span className="brand-mark" aria-hidden="true">
-            <Mic2 size={22} strokeWidth={2.3} />
-          </span>
+          <span className="brand-mark" aria-hidden="true"><Mic2 size={22} strokeWidth={2.3} /></span>
           <div className="brand-copy">
             <h1>Nhihad's Concerts</h1>
-            <p>
-              Personal concert tracker <span aria-hidden="true">·</span>{' '}
-              <span className="sync-label"><span className="sync-dot" />{memberName} · Staging access</span>
-            </p>
+            <p>{props.memberName} <span aria-hidden="true">·</span> <span className={`sync-label sync-${props.syncState}`}><SyncIcon size={13} />{sync.label}</span></p>
           </div>
         </div>
-
         <div className="header-actions">
-          <button className="button button-secondary button-icon" type="button" onClick={onThemeToggle} title={darkMode ? 'Use light theme' : 'Use dark theme'}>
-            {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-            <span className="button-label">{darkMode ? 'Light' : 'Dark'}</span>
+          <button className="button button-secondary button-icon" type="button" onClick={props.onThemeToggle} title={props.darkMode ? 'Use light theme' : 'Use dark theme'}>
+            {props.darkMode ? <Sun size={18} /> : <Moon size={18} />}<span className="button-label">{props.darkMode ? 'Light' : 'Dark'}</span>
           </button>
-          <button className="button button-secondary" type="button" onClick={onExport}>
-            <Download size={18} />
-            <span>Export CSV</span>
-          </button>
-          <button className="button button-primary" type="button" onClick={onAdd}>
-            <Plus size={18} />
-            <span>Add concert</span>
-          </button>
-          <button className="button button-secondary sign-out" type="button" onClick={onSignOut}>
-            <LogOut size={18} />
-            <span>Sign out</span>
-          </button>
+          <button className="button button-secondary" type="button" onClick={props.onExport}><Download size={18} /><span>Export CSV</span></button>
+          <button className="button button-primary" type="button" onClick={props.onAdd}><Plus size={18} /><span>Add concert</span></button>
+          <button className="button button-secondary sign-out" type="button" onClick={props.onSignOut} aria-label="Sign out"><LogOut size={18} /><span>Sign out</span></button>
         </div>
       </div>
     </header>

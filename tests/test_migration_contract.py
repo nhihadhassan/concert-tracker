@@ -2,6 +2,7 @@ from pathlib import Path
 
 MIGRATION = Path("supabase/migrations/20260630180000_stage2_shared_schema.sql")
 STAGE_FOUR_MIGRATION = Path("supabase/migrations/20260630190000_stage4_companion_preservation.sql")
+STAGE_FIVE_MIGRATION = Path("supabase/migrations/20260701010000_stage5_functional_cloud.sql")
 TABLES = (
     "app_members",
     "concerts",
@@ -54,3 +55,15 @@ def test_stage_four_preserves_companions_and_legacy_idempotency_key() -> None:
     assert "create unique index if not exists concerts_legacy_source_id_uidx" in sql
     assert "create unique index if not exists concerts_legacy_rank_uidx" in sql
     assert "where legacy_source_id is not null" in sql
+
+
+def test_stage_five_adds_idempotency_and_realtime_without_legacy_changes() -> None:
+    sql = STAGE_FIVE_MIGRATION.read_text()
+
+    assert sql.count("add column if not exists last_mutation_id uuid") == 3
+    assert "create table if not exists public.api_idempotency_keys" in sql
+    assert "user_id = (select auth.uid())" in sql
+    assert "alter table public.api_idempotency_keys enable row level security" in sql
+    assert "alter publication supabase_realtime add table" in sql
+    assert "concert_tracker_concerts" not in sql
+    assert "exp_" not in sql

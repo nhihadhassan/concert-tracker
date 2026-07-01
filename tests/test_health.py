@@ -12,12 +12,12 @@ def test_health_contract() -> None:
     assert response.json() == {
         "status": "ok",
         "service": "concert-tracker-api",
-        "version": "0.2.0",
+        "version": "0.3.0",
         "data_mode": "fixtures",
     }
 
 
-def test_stage_three_has_calculation_posts_but_no_persistence_write_routes() -> None:
+def test_stage_five_exposes_only_reviewed_write_routes() -> None:
     write_routes = {
         (method, route.path)
         for route in app.routes
@@ -26,6 +26,11 @@ def test_stage_three_has_calculation_posts_but_no_persistence_write_routes() -> 
     }
 
     assert write_routes == {
+        ("DELETE", "/v1/concerts/{concert_id}"),
         ("POST", "/v1/analytics/calculate"),
+        ("POST", "/v1/concerts"),
         ("POST", "/v1/ratings/calculate"),
+        ("PATCH", "/v1/concerts/{concert_id}"),
+        ("PUT", "/v1/concerts/{concert_id}/attendees"),
+        ("PUT", "/v1/concerts/{concert_id}/review"),
     }

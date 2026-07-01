@@ -69,10 +69,34 @@ Historical realized scores become documented overrides only when the Python calc
 reproduce them. Rachel's legacy scores become separate Rachel overrides. Explicit legacy rank
 values preserve the approved tie order instead of depending on database row order.
 
-The pending Stage 4 schema migration adds `companions` and `legacy_rank` to `concerts`, plus
-unique partial indexes for source and rank identities. It is committed for review but remains
-unapplied until production cutover. Dry-run output and copied staging snapshots remain private
-under ignored `data/` paths.
+The Stage 4 schema migration adds `companions` and `legacy_rank` to `concerts`, plus unique
+partial indexes for source and rank identities. Dry-run output and copied staging snapshots
+remain private under ignored `data/` paths.
+
+The Stage 4 companion-preservation migration was applied at the start of Stage 5 so the empty
+normalized staging tables match the approved destination contract. The 46-row legacy table was
+not migrated or modified.
+
+## Stage 5 Cloud Application Boundary
+
+Stage 5 connects React to authenticated, database-backed FastAPI routes. The browser sends the
+member's Supabase access token to `/api/v1`; FastAPI validates the session, then uses that same
+token for PostgREST calls so every database operation remains subject to RLS. Service-role
+credentials are not used by the deployed application.
+
+TanStack Query owns the cloud snapshot. IndexedDB stores the latest successful snapshot and a
+temporary mutation outbox. Queued writes carry UUID idempotency keys, while updates and deletes
+carry integer row versions. FastAPI returns HTTP `409` with the current cloud row when a stale
+version is detected. The conflict dialog can discard the queued local change or retry it against
+the current version; silent last-write-wins behavior is not allowed.
+
+`api_idempotency_keys` records successful responses per member and request key. The concerts,
+attendees, and reviews tables also retain the last mutation ID so interrupted create flows can
+recover safely. Supabase Realtime is used only to invalidate affected TanStack Query data; it is
+not a second write path.
+
+CSV exports and all personal and combined ratings remain FastAPI responses. React renders the
+returned results and contains no rating formula.
 
 ## Authority Boundaries
 
@@ -89,5 +113,6 @@ under ignored `data/` paths.
 - `concert_attendees`
 - `concert_reviews`
 - `rating_rule_versions`
+- `api_idempotency_keys`
 
 Production schema work begins only after the Stage 1 preview shell and Stage 2 staging checkpoint are approved.

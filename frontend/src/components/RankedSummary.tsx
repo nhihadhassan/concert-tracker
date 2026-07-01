@@ -1,66 +1,23 @@
 import { useMemo, useState } from 'react'
-import { Eye, EyeOff, Trophy } from 'lucide-react'
-import { rankings } from '../data/fixtures'
-import type { RankingRow } from '../types'
+import { Trophy } from 'lucide-react'
+import type { Concert, RankingRow } from '../types'
 
-type SortKey = keyof RankingRow
+interface RankedSummaryProps {
+  combined: RankingRow[]
+  concerts: Concert[]
+  memberName: string
+  personal: RankingRow[]
+}
 
-const formatMoney = (value: number) =>
-  new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(value)
-
-export function RankedSummary() {
-  const [hideProjected, setHideProjected] = useState(false)
-  const [sort, setSort] = useState<{ key: SortKey; direction: 1 | -1 }>({ key: 'rating', direction: -1 })
-
-  const rows = useMemo(() => [...rankings].sort((left, right) => {
-    const a = left[sort.key]
-    const b = right[sort.key]
-    if (typeof a === 'string' && typeof b === 'string') return a.localeCompare(b) * sort.direction
-    return ((Number(a ?? -1) - Number(b ?? -1)) * sort.direction)
-  }), [sort])
-
-  const changeSort = (key: SortKey) => {
-    setSort((current) => ({ key, direction: current.key === key ? (current.direction * -1) as 1 | -1 : key === 'artist' ? 1 : -1 }))
-  }
-
-  const heading = (key: SortKey, label: string) => (
-    <button type="button" onClick={() => changeSort(key)}>
-      {label}{sort.key === key ? <span aria-hidden="true"> {sort.direction === -1 ? '▼' : '▲'}</span> : null}
-    </button>
-  )
-
+export function RankedSummary({ combined, concerts, memberName, personal }: RankedSummaryProps) {
+  const [scope, setScope] = useState<'personal' | 'combined'>('personal')
+  const rows = scope === 'personal' ? personal : combined
+  const concertById = useMemo(() => new Map(concerts.map((concert) => [concert.id, concert])), [concerts])
   return (
     <aside className="ranking-panel" aria-label="Ranked summary">
-      <div className="ranking-head">
-        <h2><Trophy size={18} />Ranked Summary</h2>
-        <button className="button button-secondary ranking-toggle" type="button" onClick={() => setHideProjected((value) => !value)}>
-          {hideProjected ? <Eye size={16} /> : <EyeOff size={16} />}
-          {hideProjected ? 'Show Ant' : 'Hide Ant'}
-        </button>
-      </div>
+      <div className="ranking-head"><h2><Trophy size={18} />Ranked Summary</h2><div className="segmented" aria-label="Ranking scope"><button type="button" className={scope === 'personal' ? 'active' : ''} onClick={() => setScope('personal')}>{memberName}</button><button type="button" className={scope === 'combined' ? 'active' : ''} onClick={() => setScope('combined')}>Combined</button></div></div>
       <div className="ranking-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th>{heading('artist', 'Artist')}</th>
-              <th>{heading('rating', 'Rating')}</th>
-              {!hideProjected ? <th>{heading('projected', 'Ant')}</th> : null}
-              <th>{heading('year', 'Year')}</th>
-              <th>{heading('price', 'Price')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={`${row.artist}-${row.year}`}>
-                <td title={row.artist}>{row.artist}</td>
-                <td><strong>{row.rating}</strong></td>
-                {!hideProjected ? <td>{row.projected ?? 'N/A'}</td> : null}
-                <td>{row.year}</td>
-                <td>{formatMoney(row.price)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        {rows.length ? <table><thead><tr><th>Artist</th><th>Rating</th><th>Proj</th><th>Year</th></tr></thead><tbody>{rows.map((row) => { const concert = concertById.get(row.concert_id); return <tr key={`${scope}-${row.concert_id}`}><td title={row.artist}>{row.artist}</td><td><strong>{row.rating}</strong></td><td>{concert?.projected ?? 'N/A'}</td><td>{row.concert_date.slice(0, 4)}</td></tr> })}</tbody></table> : <div className="ranking-empty">No ratings yet</div>}
       </div>
     </aside>
   )

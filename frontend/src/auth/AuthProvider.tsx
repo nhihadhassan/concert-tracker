@@ -70,6 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [session])
 
   const value = useMemo<AuthContextValue>(() => ({
+    accessToken: session?.access_token ?? null,
     error,
     member,
     status,
@@ -94,7 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setError('')
       setStatus('signed-out')
     },
-  }), [error, member, status])
+  }), [error, member, session?.access_token, status])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

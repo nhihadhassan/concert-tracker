@@ -38,3 +38,12 @@ Official reference: https://supabase.com/pricing
 - Vercel project: `concert-tracker` on the existing Hobby account.
 - Supabase endpoint: resumed and reachable; anonymous table reads return no protected rows.
 - Current protected cloud scale: 46 concerts and two planned users, far below documented free limits.
+
+## Stage 5 Snapshot
+
+- One Vite static service and one small FastAPI function remain on Vercel Hobby.
+- The deployed Python bundle contains no pandas, background worker, or paid integration.
+- Supabase adds one small idempotency table and Realtime publication entries for three normalized
+  tables; the normalized library remains empty until production migration.
+- Offline caching uses browser IndexedDB and adds no hosted storage cost.
+- The 46-row legacy table and production static deployment remain unchanged.

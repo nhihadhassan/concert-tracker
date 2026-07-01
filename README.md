@@ -17,6 +17,7 @@ The production app is currently the legacy single-file dashboard. A checkpointed
 - [Stage 3 checkpoint](docs/checkpoints/STAGE_3.md)
 - [Migration design](docs/MIGRATION.md)
 - [Stage 4 checkpoint](docs/checkpoints/STAGE_4.md)
+- [Stage 5 checkpoint](docs/checkpoints/STAGE_5.md)
 
 ## Current Stack
 
@@ -108,7 +109,29 @@ It automatically reruns against its first result and fails if the second pass ch
   --output data/migrations/stage-4/TIMESTAMP
 ```
 
-The committed Stage 4 SQL is pending review and is not applied during the dry run.
+The Stage 4 SQL was applied to the empty normalized staging schema at the start of Stage 5. The
+dry-run destination is still local-only and the 46 legacy rows remain untouched.
+
+## Stage 5 Cloud Workflows
+
+The React application now reads and writes the empty normalized staging library through FastAPI.
+For split local development, run the API and Vite proxy in separate terminals:
+
+```bash
+SUPABASE_URL=https://PROJECT_REF.supabase.co \
+SUPABASE_PUBLISHABLE_KEY=sb_publishable_REPLACE_ME \
+  .venv/bin/uvicorn backend.server:app --port 8001
+
+npm --prefix frontend run dev -- --port 3011
+```
+
+The Vite proxy maps `/api` to port `8001`. Sign in with either Keychain-managed member password.
+The browser caches the latest library snapshot and queues temporary offline mutations in
+IndexedDB. Reconnecting replays each mutation with its idempotency key; stale edits open an
+explicit conflict dialog.
+
+Cloud API routes, request shapes, status codes, and CSV behavior are documented in
+[`docs/API.md`](docs/API.md).
 
 ## Stage 0 Baseline
 

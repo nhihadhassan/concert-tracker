@@ -1,35 +1,85 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { RefreshCw } from 'lucide-react'
 import { AuthProvider } from './auth/AuthProvider'
 import type { AuthMember } from './auth/AuthContext'
 import { AuthLoading, LoginPage } from './auth/LoginPage'
 import { useAuth } from './auth/useAuth'
 import { AddConcertDialog } from './components/AddConcertDialog'
 import { AppHeader } from './components/AppHeader'
+import { ConflictDialog } from './components/ConflictDialog'
 import { ConcertCard } from './components/ConcertCard'
 import { FiltersBar } from './components/FiltersBar'
 import { RankedSummary } from './components/RankedSummary'
 import { StatsStrip } from './components/StatsStrip'
-import { concerts as concertFixtures } from './data/fixtures'
-import type { Concert } from './types'
+import { useConcertLibrary } from './hooks/useConcertLibrary'
+import { downloadCsv } from './lib/api'
+import type {
+  AttendanceWrite,
+  Concert,
+  ConcertCreate,
+  ConcertFormSubmission,
+  ConcertUpdate,
+  QueuedMutation,
+  Review,
+} from './types'
 import './App.css'
 
 const sortConcerts = (rows: Concert[], sort: string) => [...rows].sort((left, right) => {
   if (sort === 'date-asc') return left.date.localeCompare(right.date)
-  if (sort === 'price-desc') return right.price - left.price
-  if (sort === 'rating-desc') return (right.realized ?? -1) - (left.realized ?? -1)
+  if (sort === 'price-desc') return (right.price ?? -1) - (left.price ?? -1)
+  if (sort === 'rating-desc') return (right.personal_rating ?? -1) - (left.personal_rating ?? -1)
   if (sort === 'artist-asc') return left.artist.localeCompare(right.artist)
   return right.date.localeCompare(left.date)
 })
 
+const makeMutation = (
+  method: QueuedMutation['method'],
+  path: string,
+  body: unknown,
+  label: string,
+): QueuedMutation => ({
+  id: crypto.randomUUID(),
+  idempotencyKey: crypto.randomUUID(),
+  method,
+  path,
+  body,
+  label,
+  createdAt: new Date().toISOString(),
+})
+
+const optimisticReview = (submission: ConcertFormSubmission, member: AuthMember): Review[] => {
+  if (!submission.review) return []
+  return [{
+    id: submission.review.id,
+    reviewer_user_id: member.user_id,
+    reviewer_name: member.display_name,
+    enjoyment_score: submission.review.enjoyment_score,
+    stage_score: submission.review.stage_score,
+    setlist_score: submission.review.setlist_score,
+    seat_score: submission.review.seat_score,
+    override_rating: submission.review.override_rating,
+    override_reason: submission.review.override_reason,
+    notes: submission.review.notes,
+    calculated_rating: null,
+    final_rating: null,
+    is_overridden: submission.review.override_rating !== null,
+    row_version: submission.review.expected_row_version ?? 1,
+  }]
+}
+
 interface DashboardProps {
+  accessToken: string
   member: AuthMember
   onSignOut: () => void
 }
 
-export function Dashboard({ member, onSignOut }: DashboardProps) {
-  const [concerts, setConcerts] = useState(concertFixtures)
-  const [darkMode, setDarkMode] = useState(true)
+export function Dashboard({ accessToken, member, onSignOut }: DashboardProps) {
+  const cloud = useConcertLibrary(accessToken)
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('concert-theme') !== 'light')
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [editing, setEditing] = useState<Concert | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [formError, setFormError] = useState('')
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('')
   const [genre, setGenre] = useState('')
@@ -41,117 +91,149 @@ export function Dashboard({ member, onSignOut }: DashboardProps) {
     if (noticeTimer.current !== null) window.clearTimeout(noticeTimer.current)
   }, [])
 
+  const library = cloud.library
   const filteredConcerts = useMemo(() => {
+    if (!library) return []
     const query = search.trim().toLowerCase()
-    return sortConcerts(concerts.filter((concert) => {
+    return sortConcerts(library.concerts.filter((concert) => {
       if (status && concert.status !== status) return false
       if (genre && concert.genre !== genre) return false
       if (query && !`${concert.artist} ${concert.venue}`.toLowerCase().includes(query)) return false
       return true
     }), sort)
-  }, [concerts, genre, search, sort, status])
+  }, [genre, library, search, sort, status])
+  const genres = useMemo(() => [...new Set(
+    (library?.concerts ?? []).map((concert) => concert.genre).filter((value): value is string => Boolean(value)),
+  )].sort(), [library])
 
   const flashNotice = (message: string) => {
     if (noticeTimer.current !== null) window.clearTimeout(noticeTimer.current)
     setNotice(message)
-    noticeTimer.current = window.setTimeout(() => setNotice(''), 2400)
+    noticeTimer.current = window.setTimeout(() => setNotice(''), 2600)
   }
 
-  const addConcert = (concert: Concert) => {
-    setConcerts((current) => [concert, ...current])
-    setDialogOpen(false)
-    flashNotice(`${concert.artist} added to this preview`)
+  const openNew = () => {
+    setEditing(null)
+    setFormError('')
+    setDialogOpen(true)
   }
 
-  const deleteConcert = (id: string) => {
-    const concert = concerts.find((item) => item.id === id)
-    setConcerts((current) => current.filter((item) => item.id !== id))
-    if (concert) flashNotice(`${concert.artist} removed from this preview`)
+  const saveConcert = async (submission: ConcertFormSubmission) => {
+    if (!library) return
+    setSaving(true)
+    setFormError('')
+    try {
+      if (!editing) {
+        const id = crypto.randomUUID()
+        const payload: ConcertCreate = { id, ...submission.fields, attendee_user_ids: submission.attendee_user_ids, review: submission.review }
+        await cloud.executeMutation(
+          makeMutation('POST', '/v1/concerts', payload, `Add ${payload.artist}`),
+          (current) => ({
+            ...current,
+            concerts: [{
+              id,
+              ...submission.fields,
+              row_version: 1,
+              attendees: current.members.filter((row) => submission.attendee_user_ids.includes(row.user_id) || row.user_id === member.user_id).map((row) => ({ user_id: row.user_id, display_name: row.display_name, attendance_status: submission.fields.status === 'Attended' ? 'Attended' : submission.fields.status === 'Cancelled' ? 'Did Not Attend' : 'Planned', row_version: 1 })),
+              reviews: optimisticReview(submission, member),
+              personal_rating: null,
+              combined_rating: null,
+              pending: true,
+            }, ...current.concerts],
+          }),
+        )
+        flashNotice(`${payload.artist} queued for cloud sync`)
+      } else {
+        const update: ConcertUpdate = { ...submission.fields, expected_row_version: editing.row_version }
+        await cloud.executeMutation(
+          makeMutation('PATCH', `/v1/concerts/${editing.id}`, update, `Edit ${editing.artist}`),
+          (current) => ({ ...current, concerts: current.concerts.map((concert) => concert.id === editing.id ? { ...concert, ...submission.fields, pending: true } : concert) }),
+        )
+        const attendance: AttendanceWrite = {
+          attendee_user_ids: submission.attendee_user_ids,
+          expected_versions: Object.fromEntries(editing.attendees.map((row) => [row.user_id, row.row_version])),
+        }
+        await cloud.executeMutation(
+          makeMutation('PUT', `/v1/concerts/${editing.id}/attendees`, attendance, `Update ${editing.artist} attendance`),
+          (current) => current,
+        )
+        if (submission.review) {
+          await cloud.executeMutation(
+            makeMutation('PUT', `/v1/concerts/${editing.id}/review`, submission.review, `Review ${editing.artist}`),
+            (current) => ({ ...current, concerts: current.concerts.map((concert) => concert.id === editing.id ? { ...concert, reviews: [...concert.reviews.filter((review) => review.reviewer_user_id !== member.user_id), ...optimisticReview(submission, member)], pending: true } : concert) }),
+          )
+        }
+        flashNotice(`${submission.fields.artist} changes queued`)
+      }
+      setDialogOpen(false)
+      setEditing(null)
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : 'Concert could not be saved.')
+    } finally {
+      setSaving(false)
+    }
   }
 
-  const exportCsv = () => {
-    const header = ['Artist', 'Tour', 'Date', 'Venue', 'Price', 'Genre', 'Status', 'Rating']
-    const lines = concerts.map((concert) => [
-      concert.artist,
-      concert.tour,
-      concert.date,
-      concert.venue,
-      concert.price,
-      concert.genre,
-      concert.status,
-      concert.realized ?? '',
-    ].map((value) => `"${String(value).replaceAll('"', '""')}"`).join(','))
-    const blob = new Blob([[header.join(','), ...lines].join('\n')], { type: 'text/csv' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = 'concert-tracker-stage-1-preview.csv'
-    link.click()
-    URL.revokeObjectURL(url)
-    flashNotice('Preview CSV exported')
+  const deleteConcert = async (concert: Concert) => {
+    if (!window.confirm(`Delete ${concert.artist}? This removes it from the shared library.`)) return
+    await cloud.executeMutation(
+      makeMutation('DELETE', `/v1/concerts/${concert.id}`, { expected_row_version: concert.row_version }, `Delete ${concert.artist}`),
+      (current) => ({ ...current, concerts: current.concerts.filter((row) => row.id !== concert.id) }),
+    )
+    flashNotice(`${concert.artist} queued for deletion`)
   }
 
+  const exportCsv = async () => {
+    try {
+      await downloadCsv(accessToken)
+      flashNotice('Cloud CSV exported')
+    } catch (error) {
+      flashNotice(error instanceof Error ? error.message : 'CSV export failed')
+    }
+  }
+
+  const toggleTheme = () => {
+    setDarkMode((value) => {
+      localStorage.setItem('concert-theme', value ? 'light' : 'dark')
+      return !value
+    })
+  }
+
+  if (!library) {
+    return <main className="app auth-page theme-dark"><section className="auth-panel auth-skeleton" aria-label="Loading concert library"><div className="skeleton skeleton-title" /><div className="skeleton skeleton-field" /><div className="skeleton skeleton-field" />{cloud.error ? <p className="auth-error" role="alert">{cloud.error}</p> : null}<button className="button button-secondary" type="button" onClick={() => void cloud.refetch()}><RefreshCw size={17} />Retry</button></section></main>
+  }
+
+  const personalRankings = library.analytics.rankings[member.user_id] ?? []
+  const combinedRankings = library.analytics.rankings.combined ?? []
   return (
     <div className={darkMode ? 'app theme-dark' : 'app theme-light'}>
-      <AppHeader
-        darkMode={darkMode}
-        memberName={member.display_name}
-        onAdd={() => setDialogOpen(true)}
-        onExport={exportCsv}
-        onSignOut={onSignOut}
-        onThemeToggle={() => setDarkMode((value) => !value)}
-      />
-
+      <AppHeader darkMode={darkMode} memberName={member.display_name} pendingCount={cloud.pendingCount} syncState={cloud.syncState} onAdd={openNew} onExport={() => void exportCsv()} onSignOut={onSignOut} onThemeToggle={toggleTheme} />
       <main className="page-shell">
         <div className="dashboard-column">
-          <StatsStrip />
-          <FiltersBar
-            genre={genre}
-            search={search}
-            sort={sort}
-            status={status}
-            onGenreChange={setGenre}
-            onSearchChange={setSearch}
-            onSortChange={setSort}
-            onStatusChange={setStatus}
-          />
-          <p className="list-meta">Showing {filteredConcerts.length} fixture concerts from the {45}-concert baseline</p>
-          {filteredConcerts.length ? (
-            <section className="concert-grid" aria-label="Concerts">
-              {filteredConcerts.map((concert) => <ConcertCard key={concert.id} concert={concert} onDelete={deleteConcert} />)}
-            </section>
-          ) : (
-            <section className="empty-state">
-              <h2>No concerts match</h2>
-              <p>Clear a filter or try another artist or venue.</p>
-            </section>
-          )}
+          <StatsStrip concerts={library.concerts} />
+          {cloud.error ? <div className="sync-error-banner" role="status">{cloud.error}<button type="button" onClick={() => void cloud.flushOutbox()}>Retry sync</button></div> : null}
+          <FiltersBar genres={genres} genre={genre} search={search} sort={sort} status={status} onGenreChange={setGenre} onSearchChange={setSearch} onSortChange={setSort} onStatusChange={setStatus} />
+          <p className="list-meta">Showing {filteredConcerts.length} of {library.concerts.length} cloud concerts</p>
+          {filteredConcerts.length ? <section className="concert-grid" aria-label="Concerts">{filteredConcerts.map((concert) => <ConcertCard key={concert.id} concert={concert} onDelete={(row) => void deleteConcert(row)} onEdit={(row) => { setEditing(row); setFormError(''); setDialogOpen(true) }} />)}</section> : <section className="empty-state"><h2>{library.concerts.length ? 'No concerts match' : 'Add the first staging concert'}</h2><p>{library.concerts.length ? 'Clear a filter or try another artist or venue.' : 'The shared normalized library is empty and ready for testing.'}</p>{!library.concerts.length ? <button className="button button-primary" type="button" onClick={openNew}>Add concert</button> : null}</section>}
         </div>
-        <RankedSummary />
+        <RankedSummary combined={combinedRankings} concerts={library.concerts} memberName={member.display_name} personal={personalRankings} />
       </main>
-
-      <AddConcertDialog open={dialogOpen} onClose={() => setDialogOpen(false)} onSave={addConcert} />
+      <AddConcertDialog concert={editing} currentUserId={member.user_id} error={formError} members={library.members} open={dialogOpen} saving={saving} onClose={() => { setDialogOpen(false); setEditing(null) }} onSave={saveConcert} />
+      <ConflictDialog conflict={cloud.conflict} onDiscard={() => void cloud.discardConflict()} onRetry={() => void cloud.retryConflict()} />
       {notice ? <div className="toast" role="status">{notice}</div> : null}
     </div>
   )
 }
 
 function AuthenticatedApp() {
-  const { member, signOut, status } = useAuth()
-
+  const { accessToken, member, signOut, status } = useAuth()
   if (status === 'loading' || status === 'validating') return <AuthLoading />
-  if (status === 'signed-in' && member) {
-    return <Dashboard member={member} onSignOut={() => void signOut()} />
-  }
+  if (status === 'signed-in' && member && accessToken) return <Dashboard accessToken={accessToken} member={member} onSignOut={() => void signOut()} />
   return <LoginPage />
 }
 
 function App() {
-  return (
-    <AuthProvider>
-      <AuthenticatedApp />
-    </AuthProvider>
-  )
+  return <AuthProvider><AuthenticatedApp /></AuthProvider>
 }
 
 export default App

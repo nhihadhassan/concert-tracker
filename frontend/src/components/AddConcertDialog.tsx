@@ -1,80 +1,172 @@
-import { useEffect, useRef } from 'react'
-import { X } from 'lucide-react'
-import type { Concert, ConcertStatus } from '../types'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Image, X } from 'lucide-react'
+import type {
+  Concert,
+  ConcertFormSubmission,
+  ConcertStatus,
+  MemberSummary,
+  ReviewWrite,
+} from '../types'
 
-interface AddConcertDialogProps {
+interface ConcertDialogProps {
+  concert: Concert | null
+  currentUserId: string
+  error: string
+  members: MemberSummary[]
   open: boolean
+  saving: boolean
   onClose: () => void
-  onSave: (concert: Concert) => void
+  onSave: (submission: ConcertFormSubmission) => Promise<void>
 }
 
-export function AddConcertDialog({ open, onClose, onSave }: AddConcertDialogProps) {
+const numberOrNull = (value: FormDataEntryValue | null) => {
+  const text = String(value ?? '').trim()
+  return text ? Number(text) : null
+}
+
+export function AddConcertDialog({
+  concert,
+  currentUserId,
+  error,
+  members,
+  open,
+  saving,
+  onClose,
+  onSave,
+}: ConcertDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
+  const [imageUrl, setImageUrl] = useState(concert?.image ?? '')
+  const personalReview = useMemo(
+    () => concert?.reviews.find((review) => review.reviewer_user_id === currentUserId) ?? null,
+    [concert, currentUserId],
+  )
 
   useEffect(() => {
     const dialog = dialogRef.current
     if (!dialog) return
     if (open && !dialog.open) dialog.showModal()
     if (!open && dialog.open) dialog.close()
-  }, [open])
+    if (open) setImageUrl(concert?.image ?? '')
+  }, [concert, open])
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const form = new FormData(event.currentTarget)
-    const artist = String(form.get('artist') ?? '').trim()
-    const date = String(form.get('date') ?? '')
-    const venue = String(form.get('venue') ?? '').trim()
-    if (!artist || !date || !venue) return
-
-    onSave({
-      id: `preview-${Date.now()}`,
-      artist,
-      tour: String(form.get('tour') ?? '').trim() || 'Tour details pending',
-      date,
-      venue,
-      price: Number(form.get('price') ?? 0),
-      genre: String(form.get('genre') ?? 'Other'),
-      projected: null,
-      realized: null,
-      seat: String(form.get('seat') ?? '').trim() || 'TBD',
-      status: String(form.get('status') ?? 'Want to Go') as ConcertStatus,
-      companions: String(form.get('companions') ?? '').trim() || 'TBD',
-      rachelAttended: form.get('rachelAttended') === 'on',
-      image: 'https://is1-ssl.mzstatic.com/image/thumb/Music126/v4/6f/6e/5f/6f6e5f75-7a2c-91c0-6ecc-5ed0c93e89e1/842812133862.jpg/400x400bb.jpg',
-      type: 'Concert',
+    const reviewValues = {
+      enjoyment_score: numberOrNull(form.get('enjoyment')),
+      stage_score: numberOrNull(form.get('stage')),
+      setlist_score: numberOrNull(form.get('setlist')),
+      seat_score: numberOrNull(form.get('seatScore')),
+    }
+    const hasReview = Boolean(personalReview)
+      || Object.values(reviewValues).some((value) => value !== null)
+      || Boolean(String(form.get('reviewNotes') ?? '').trim())
+    const review: ReviewWrite | null = hasReview ? {
+      id: personalReview?.id ?? crypto.randomUUID(),
+      expected_row_version: personalReview?.row_version ?? null,
+      ...reviewValues,
+      override_rating: personalReview?.override_rating ?? null,
+      override_reason: personalReview?.override_reason ?? null,
+      notes: String(form.get('reviewNotes') ?? '').trim() || null,
+    } : null
+    await onSave({
+      fields: {
+        artist: String(form.get('artist') ?? '').trim(),
+        tour: String(form.get('tour') ?? '').trim() || null,
+        date: String(form.get('date') ?? ''),
+        venue: String(form.get('venue') ?? '').trim(),
+        price: numberOrNull(form.get('price')),
+        genre: String(form.get('genre') ?? '').trim() || null,
+        projected: numberOrNull(form.get('projected')),
+        seat: String(form.get('seat') ?? '').trim() || null,
+        status: String(form.get('status') ?? 'Want to Go') as ConcertStatus,
+        type: String(form.get('type') ?? '').trim() || 'Concert',
+        spotify_url: String(form.get('spotify') ?? '').trim() || null,
+        image: String(form.get('image') ?? '').trim() || null,
+        notes: String(form.get('notes') ?? '').trim() || null,
+        companions: String(form.get('companions') ?? '').trim() || null,
+      },
+      attendee_user_ids: members
+        .filter((member) => form.get(`attendee-${member.user_id}`) === 'on')
+        .map((member) => member.user_id),
+      review,
     })
-    event.currentTarget.reset()
   }
 
   return (
     <dialog ref={dialogRef} className="concert-dialog" onClose={onClose} onCancel={onClose}>
-      <form method="dialog" className="dialog-shell" onSubmit={handleSubmit}>
+      <form
+        key={concert?.id ?? 'new-concert'}
+        className="dialog-shell"
+        onSubmit={(event) => void handleSubmit(event)}
+      >
         <div className="dialog-head">
           <div>
-            <h2>Add concert</h2>
-            <p>New entries stay in this preview until the cloud stages are approved.</p>
+            <h2>{concert ? 'Edit concert' : 'Add concert'}</h2>
+            <p>{concert ? 'Update the shared event and your own review.' : 'Add an event to the shared cloud library.'}</p>
           </div>
-          <button className="icon-button" type="button" onClick={onClose} title="Close" aria-label="Close add concert form">
+          <button className="icon-button" type="button" onClick={onClose} title="Close" aria-label="Close concert form">
             <X size={20} />
           </button>
         </div>
 
-        <div className="form-grid">
-          <label className="field field-wide"><span>Artist</span><input name="artist" required /></label>
-          <label className="field field-wide"><span>Tour name</span><input name="tour" /></label>
-          <label className="field"><span>Date</span><input name="date" type="date" required /></label>
-          <label className="field"><span>Price</span><input name="price" type="number" min="0" step="0.01" /></label>
-          <label className="field field-wide"><span>Venue</span><input name="venue" required /></label>
-          <label className="field"><span>Genre</span><select name="genre"><option>Hip-Hop</option><option>Pop</option><option>Latin</option><option>Rock</option><option>Other</option></select></label>
-          <label className="field"><span>Status</span><select name="status"><option>Want to Go</option><option>Attended</option><option>Cancelled</option></select></label>
-          <label className="field field-wide"><span>Seat</span><input name="seat" /></label>
-          <label className="field field-wide"><span>Who are you going with?</span><input name="companions" /></label>
-          <label className="check-field field-wide"><input name="rachelAttended" type="checkbox" /><span>Rachel attended</span></label>
-        </div>
+        <fieldset className="form-section">
+          <legend>Event</legend>
+          <div className="form-grid">
+            <label className="field field-wide"><span>Artist</span><input name="artist" required defaultValue={concert?.artist} /></label>
+            <label className="field field-wide"><span>Tour name</span><input name="tour" defaultValue={concert?.tour ?? ''} /></label>
+            <label className="field"><span>Date</span><input name="date" type="date" required defaultValue={concert?.date} /></label>
+            <label className="field"><span>Status</span><select name="status" defaultValue={concert?.status ?? 'Want to Go'}><option>Want to Go</option><option>Attended</option><option>Cancelled</option></select></label>
+            <label className="field field-wide"><span>Venue</span><input name="venue" required defaultValue={concert?.venue} /></label>
+            <label className="field"><span>Price</span><input name="price" type="number" min="0" step="0.01" defaultValue={concert?.price ?? ''} /></label>
+            <label className="field"><span>Projected rating</span><input name="projected" type="number" min="0" step="0.1" defaultValue={concert?.projected ?? ''} /></label>
+            <label className="field"><span>Genre</span><input name="genre" defaultValue={concert?.genre ?? ''} /></label>
+            <label className="field"><span>Type</span><input name="type" defaultValue={concert?.type ?? 'Concert'} /></label>
+            <label className="field field-wide"><span>Seat</span><input name="seat" defaultValue={concert?.seat ?? ''} /></label>
+          </div>
+        </fieldset>
 
+        <fieldset className="form-section">
+          <legend>Attendance</legend>
+          <div className="attendance-options">
+            {members.map((member) => {
+              const checked = member.user_id === currentUserId || concert?.attendees.some(
+                (attendee) => attendee.user_id === member.user_id && attendee.attendance_status !== 'Did Not Attend',
+              )
+              return <label className="check-field" key={member.user_id}><input name={`attendee-${member.user_id}`} type="checkbox" defaultChecked={checked} /><span>{member.display_name} attended</span></label>
+            })}
+          </div>
+          <label className="field"><span>Other companions</span><input name="companions" defaultValue={concert?.companions ?? ''} /></label>
+        </fieldset>
+
+        <fieldset className="form-section">
+          <legend>Your review</legend>
+          <div className="score-grid">
+            <label className="field"><span>Enjoyment</span><input name="enjoyment" type="number" min="0" step="0.1" defaultValue={personalReview?.enjoyment_score ?? ''} /></label>
+            <label className="field"><span>Stage</span><input name="stage" type="number" min="0" step="0.1" defaultValue={personalReview?.stage_score ?? ''} /></label>
+            <label className="field"><span>Setlist</span><input name="setlist" type="number" min="0" step="0.1" defaultValue={personalReview?.setlist_score ?? ''} /></label>
+            <label className="field"><span>Seat</span><input name="seatScore" type="number" min="0" step="0.1" defaultValue={personalReview?.seat_score ?? ''} /></label>
+          </div>
+          {personalReview?.is_overridden ? <p className="override-note">Historical override: {personalReview.override_rating}/10. Component edits remain visible, while the documented override stays authoritative.</p> : null}
+          <label className="field"><span>Review notes</span><textarea name="reviewNotes" rows={3} defaultValue={personalReview?.notes ?? ''} /></label>
+        </fieldset>
+
+        <fieldset className="form-section">
+          <legend>Details</legend>
+          <div className="form-grid">
+            <label className="field field-wide"><span>Artwork URL</span><input name="image" value={imageUrl} onChange={(event) => setImageUrl(event.target.value)} /></label>
+            <div className="image-preview field-wide">
+              {imageUrl ? <img src={imageUrl} alt="Artwork preview" /> : <span><Image size={18} />No artwork selected</span>}
+            </div>
+            <label className="field field-wide"><span>Spotify setlist URL</span><input name="spotify" type="url" defaultValue={concert?.spotify_url ?? ''} /></label>
+            <label className="field field-wide"><span>Event notes</span><textarea name="notes" rows={3} defaultValue={concert?.notes ?? ''} /></label>
+          </div>
+        </fieldset>
+
+        {error ? <p className="form-error" role="alert">{error}</p> : null}
         <div className="dialog-actions">
           <button className="button button-secondary" type="button" onClick={onClose}>Cancel</button>
-          <button className="button button-primary" type="submit">Save concert</button>
+          <button className="button button-primary" type="submit" disabled={saving}>{saving ? 'Saving...' : concert ? 'Save changes' : 'Save concert'}</button>
         </div>
       </form>
     </dialog>

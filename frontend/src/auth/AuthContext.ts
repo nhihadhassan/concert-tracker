@@ -10,6 +10,7 @@ export interface AuthMember {
 export type AuthStatus = 'loading' | 'signed-out' | 'signing-in' | 'validating' | 'signed-in' | 'error'
 
 export interface AuthContextValue {
+  accessToken: string | null
   error: string
   member: AuthMember | null
   signIn: (email: string, password: string) => Promise<void>
