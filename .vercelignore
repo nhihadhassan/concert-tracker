@@ -6,6 +6,7 @@
 /data/
 docs/
 scripts/
+sync/
 tests/
 .venv/
 __pycache__/

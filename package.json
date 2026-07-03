@@ -6,11 +6,11 @@
     "build": "npm ci --prefix frontend && npm run build --prefix frontend",
     "dev": "npm run dev --prefix frontend",
     "lint": "npm run lint --prefix frontend && npm run lint:python",
-    "lint:python": ".venv/bin/python -m ruff check api.py backend tests scripts/stage2_setup.py scripts/stage2_verify.py scripts/stage4_migrate.py",
+    "lint:python": ".venv/bin/python -m ruff check api.py backend sync tests scripts/stage2_setup.py scripts/stage2_verify.py scripts/stage4_migrate.py",
     "typecheck": "npm run typecheck --prefix frontend",
     "test:frontend": "npm run test:run --prefix frontend",
     "test:backend": ".venv/bin/python -m pytest",
-    "format:check": ".venv/bin/python -m ruff format --check api.py backend tests scripts/stage2_setup.py scripts/stage2_verify.py scripts/stage4_migrate.py",
+    "format:check": ".venv/bin/python -m ruff format --check api.py backend sync tests scripts/stage2_setup.py scripts/stage2_verify.py scripts/stage4_migrate.py",
     "check": "npm run lint && npm run typecheck && npm run test:frontend && npm run test:backend && npm run format:check"
   },
   "engines": {

@@ -116,6 +116,29 @@ row while PostgreSQL checks the update. Stage 6 adds member-only deleted-row sel
 concerts, attendees, and reviews. FastAPI library queries continue to request
 `deleted_at=is.null`, so deleted records never return in the application snapshot.
 
+## Stage 7 Local Recovery Boundary
+
+Stage 7 adds a Mac-only Python backup process under `sync/`. It authenticates as Nhihad with a
+Supabase refresh token stored in Keychain, falling back to the existing Keychain password only
+when the refresh token is missing or expired. Access tokens remain in memory. The agent invokes
+the same `build_library` Python path as FastAPI, so ratings, combined rankings, and analytics are
+not reimplemented in the backup layer.
+
+One canonical flattened snapshot feeds the SQLite and Excel writers. Each table receives a
+deterministic SHA-256 checksum. SQLite is built and integrity-checked in a same-directory
+temporary file before `os.replace`; Excel and dated archives use the same atomic-copy pattern.
+Interrupted runs therefore leave the previous recovery copies in place.
+
+Python orchestrates the backup. The required local artifact runtime renders the six-sheet Excel
+workbook from a private JSON handoff and reopens the saved `.xlsx` for visual and formula-error
+verification during checkpoint runs. The workbook runtime, LaunchAgent, configuration, refresh
+token, logs, SQLite database, and Excel exports remain local and are excluded from Git and
+Vercel.
+
+`com.nhihad.concert-tracker-backup` runs at 2:00 AM through launchd. `RunAtLoad` invokes a
+24-hour freshness check at login, so a sleeping or powered-off Mac catches up without creating
+duplicate hourly backups. The cloud remains authoritative; SQLite and Excel never write back.
+
 ## Authority Boundaries
 
 - Supabase is authoritative after migration.

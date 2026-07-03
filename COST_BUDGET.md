@@ -56,3 +56,12 @@ Official reference: https://supabase.com/pricing
 - Three small RLS policies were added. Normalized active concerts remain at zero and the legacy
   table remains at 46 rows.
 - Production still serves the legacy June 24 deployment; Stage 6 is preview-only.
+
+## Stage 7 Snapshot
+
+- The backup agent runs on the existing Mac with launchd and adds no hosted worker or scheduler.
+- SQLite uses Python's standard library. Excel uses the existing local artifact runtime.
+- Backups, logs, configuration, and credentials remain local and are excluded from Vercel.
+- Thirty workbook archives at the current data scale remain negligible compared with cloud
+  storage quotas because they consume no Supabase or Vercel storage.
+- No paid API, email, monitor, domain, database, storage service, or plan upgrade was added.

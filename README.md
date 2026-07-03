@@ -19,6 +19,8 @@ The production app is currently the legacy single-file dashboard. A checkpointed
 - [Stage 4 checkpoint](docs/checkpoints/STAGE_4.md)
 - [Stage 5 checkpoint](docs/checkpoints/STAGE_5.md)
 - [Stage 6 checkpoint](docs/checkpoints/STAGE_6.md)
+- [Backup and restore](docs/BACKUP_RESTORE.md)
+- [Stage 7 checkpoint](docs/checkpoints/STAGE_7.md)
 
 ## Current Stack
 
@@ -141,6 +143,21 @@ a full-width next-concert panel, and collapsed secondary filters. The concert fo
 into Event, Attendance, Your review, and Details sections. Motion is loaded lazily, limited to
 short state transitions, and disabled or simplified when the operating system requests reduced
 motion.
+
+## Stage 7 Local Backup
+
+The Mac LaunchAgent runs at 2:00 AM in the computer's local Toronto timezone and catches up at
+login when the last successful backup is at least 24 hours old. Run an immediate backup with:
+
+```bash
+.venv/bin/python -m sync.backup --now
+```
+
+SQLite is written atomically to `data/concert_tracker.sqlite3`. The latest workbook is
+`data/exports/concerts-latest.xlsx`, with 30 dated archives retained under
+`data/exports/archive/`. Configuration and the rotating refresh token stay in macOS Application
+Support and Keychain, respectively. See [Backup and restore](docs/BACKUP_RESTORE.md) for status,
+installation, recovery, and uninstall commands.
 
 ## Stage 0 Baseline
 
