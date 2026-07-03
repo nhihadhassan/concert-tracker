@@ -40,7 +40,10 @@ The normalized staging schema contains `app_members`, `concerts`, `concert_atten
 
 The service-role key is used only by local bootstrap and verification scripts. It is never exposed to React, committed to Git, or configured in Vercel.
 
-The legacy `concert_tracker_concerts` table and all `exp_*` tables remain unchanged. Stage 2 added only the five normalized tables, supporting functions, RLS policies, and the rating-rule seed. The production Vercel deployment remains the legacy static app until Stage 8.
+The legacy `concert_tracker_concerts` table and all `exp_*` tables remain unchanged. Stage 2
+added only the five normalized tables, supporting functions, RLS policies, and the rating-rule
+seed. Stage 8 made the normalized React/FastAPI application authoritative while retaining the
+legacy table and deployment for rollback.
 
 ## Stage 3 Calculation Boundary
 
@@ -139,6 +142,21 @@ Vercel.
 24-hour freshness check at login, so a sleeping or powered-off Mac catches up without creating
 duplicate hourly backups. The cloud remains authoritative; SQLite and Excel never write back.
 
+## Stage 8 Production Boundary
+
+Stage 8 reconciles the full shared Supabase migration history before applying new SQL. The
+cutover loader uses the local service-role credential only, refuses conflicting deterministic
+IDs or unexpected active rows, inserts only missing rows in dependency order, and verifies the
+complete destination after every run. Repeating the loader performs zero writes.
+
+The production browser receives only the Supabase publishable key. FastAPI validates each
+member access token and forwards it to PostgREST, so production reads and writes remain governed
+by RLS. The Vercel function has no service-role credential.
+
+The original 46-row JSON table, legacy static deployment, pre/post-cutover JSON exports, and
+local SQLite/Excel files remain rollback assets during Stage 9. Soft-deleted verification rows
+remain audit history but are excluded from the active concert graph.
+
 ## Authority Boundaries
 
 - Supabase is authoritative after migration.
@@ -156,4 +174,5 @@ duplicate hourly backups. The cloud remains authoritative; SQLite and Excel neve
 - `rating_rule_versions`
 - `api_idempotency_keys`
 
-Production schema work begins only after the Stage 1 preview shell and Stage 2 staging checkpoint are approved.
+Production currently serves the normalized architecture. Legacy cleanup requires the complete
+Stage 9 observation checkpoint and explicit approval.

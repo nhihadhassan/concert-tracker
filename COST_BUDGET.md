@@ -65,3 +65,13 @@ Official reference: https://supabase.com/pricing
 - Thirty workbook archives at the current data scale remain negligible compared with cloud
   storage quotas because they consume no Supabase or Vercel storage.
 - No paid API, email, monitor, domain, database, storage service, or plan upgrade was added.
+
+## Stage 8 Snapshot
+
+- Production remains one Vite static frontend and one 10.8 MB FastAPI function on Vercel Hobby.
+- Supabase Free stores 46 active concerts, 66 attendee rows, 54 reviews, two members, and small
+  audit/idempotency tables.
+- The 46-row legacy table is retained temporarily for rollback and remains negligible in size.
+- Browser assets total approximately 166 kB gzip for JavaScript and 5.3 kB gzip for CSS.
+- Backups and the 30-workbook retention policy remain on the existing Mac, not cloud storage.
+- No paid API, monitor, domain, scheduler, service, or automatic upgrade was added.

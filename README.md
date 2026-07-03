@@ -2,7 +2,8 @@
 
 A private shared concert tracker for logging, rating, and comparing upcoming and attended shows.
 
-The production app is currently the legacy single-file dashboard. A checkpointed React, FastAPI, and Supabase rebuild is beginning with recoverable baselines and no production changes.
+The production application uses React, TypeScript, FastAPI, and Supabase. The legacy static
+dashboard and table remain available during the 30-day stabilization period.
 
 ## Documentation
 
@@ -21,21 +22,19 @@ The production app is currently the legacy single-file dashboard. A checkpointed
 - [Stage 6 checkpoint](docs/checkpoints/STAGE_6.md)
 - [Backup and restore](docs/BACKUP_RESTORE.md)
 - [Stage 7 checkpoint](docs/checkpoints/STAGE_7.md)
+- [Stage 8 checkpoint](docs/checkpoints/STAGE_8.md)
 
 ## Current Stack
 
-- Vanilla HTML, CSS, and JavaScript
-- Tailwind via CDN
-- Browser `localStorage` with optional Supabase synchronization
-- Vercel static hosting
+- React, Vite, and TypeScript
+- FastAPI on Vercel Functions
+- Supabase Auth, Postgres, RLS, and Realtime
+- TanStack Query with IndexedDB snapshot/outbox support
+- Local atomic SQLite and Excel backups through macOS launchd
 
-## Local Preview
+## Production
 
-```bash
-python3 -m http.server 4599
-```
-
-Then open `http://localhost:4599`.
+`https://concert-tracker-sepia.vercel.app`
 
 ## Rebuild Development
 
@@ -158,6 +157,22 @@ SQLite is written atomically to `data/concert_tracker.sqlite3`. The latest workb
 `data/exports/archive/`. Configuration and the rotating refresh token stay in macOS Application
 Support and Keychain, respectively. See [Backup and restore](docs/BACKUP_RESTORE.md) for status,
 installation, recovery, and uninstall commands.
+
+## Stage 8 Production Cutover
+
+The reviewed migration loaded 46 concerts, 66 attendees, and 54 separate member reviews into
+the normalized cloud schema. Run the conflict-safe verifier with:
+
+```bash
+SUPABASE_URL=https://PROJECT_REF.supabase.co \
+  .venv/bin/python -m scripts.stage8_cutover verify \
+  --normalized data/migrations/stage-4/TIMESTAMP/normalized.json \
+  --output data/migrations/stage-8/TIMESTAMP
+```
+
+The live two-user CRUD smoke test is available as `python -m scripts.stage8_verify`; it creates
+and then soft-deletes a clearly labelled verification concert. Production and rollback evidence
+is recorded in [Stage 8 checkpoint](docs/checkpoints/STAGE_8.md).
 
 ## Stage 0 Baseline
 

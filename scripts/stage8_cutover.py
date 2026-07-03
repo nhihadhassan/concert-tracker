@@ -254,10 +254,27 @@ def backup(
     for table in BACKUP_TABLES:
         tables[table] = fetch_table(client, url, service_key, table)
         write_json(output / f"{table}.json", tables[table])
+    browser_snapshot = {
+        "capturedAt": captured_at,
+        "storageKey": "concertTracker.v1",
+        "savedAt": captured_at,
+        "url": "https://concert-tracker-sepia.vercel.app/",
+        "source": "fresh cloud-authoritative browser-compatible export",
+        "data": [
+            row.get("data", row) if isinstance(row, Mapping) else row
+            for row in tables["concert_tracker_concerts"]
+        ],
+        "outbox": {"up": {}, "del": {}},
+    }
+    write_json(output / "browser-localstorage.json", browser_snapshot)
     manifest = {
         "captured_at": captured_at,
         "counts": {table: len(rows) for table, rows in tables.items()},
         "checksums": {table: canonical_checksum(rows) for table, rows in tables.items()},
+        "browser_snapshot": {
+            "records": len(browser_snapshot["data"]),
+            "checksum": canonical_checksum(browser_snapshot),
+        },
     }
     write_json(output / "manifest.json", manifest)
     return manifest
