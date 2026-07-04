@@ -23,6 +23,8 @@ dashboard and table remain available during the 30-day stabilization period.
 - [Backup and restore](docs/BACKUP_RESTORE.md)
 - [Stage 7 checkpoint](docs/checkpoints/STAGE_7.md)
 - [Stage 8 checkpoint](docs/checkpoints/STAGE_8.md)
+- [Production stabilization](docs/STABILIZATION.md)
+- [Stage 9 checkpoint](docs/checkpoints/STAGE_9.md)
 
 ## Current Stack
 
@@ -173,6 +175,18 @@ SUPABASE_URL=https://PROJECT_REF.supabase.co \
 The live two-user CRUD smoke test is available as `python -m scripts.stage8_verify`; it creates
 and then soft-deletes a clearly labelled verification concert. Production and rollback evidence
 is recorded in [Stage 8 checkpoint](docs/checkpoints/STAGE_8.md).
+
+## Stage 9 Stabilization
+
+Run the read-only health audit with:
+
+```bash
+.venv/bin/python -m scripts.stage9_monitor
+```
+
+The same audit runs weekly through the Codex app. Legacy cleanup remains blocked until the full
+30-day observation period ends on August 2, 2026 and receives explicit approval. See the
+[stabilization runbook](docs/STABILIZATION.md).
 
 ## Stage 0 Baseline
 

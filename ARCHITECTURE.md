@@ -157,6 +157,19 @@ The original 46-row JSON table, legacy static deployment, pre/post-cutover JSON 
 local SQLite/Excel files remain rollback assets during Stage 9. Soft-deleted verification rows
 remain audit history but are excluded from the active concert graph.
 
+## Stage 9 Observation Boundary
+
+Stage 9 adds a read-only local monitor. It authenticates through the same Keychain-backed owner
+session as the backup agent, rebuilds the canonical dataset, and compares cloud counts and
+checksums with the latest local state. It also opens SQLite read-only, validates the Excel ZIP
+package, probes the production health/auth boundary, checks the expected Vercel deployment and
+error window, and reads Supabase database size through the linked CLI.
+
+Monitoring reports are private local artifacts. The weekly Codex automation invokes only this
+read-only command and is prohibited from deploying, changing cloud data, merging, or deleting
+rollback assets. Cleanup has no automatic path and remains gated until thirty elapsed days plus
+explicit approval.
+
 ## Authority Boundaries
 
 - Supabase is authoritative after migration.

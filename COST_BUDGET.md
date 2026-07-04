@@ -75,3 +75,13 @@ Official reference: https://supabase.com/pricing
 - Browser assets total approximately 166 kB gzip for JavaScript and 5.3 kB gzip for CSS.
 - Backups and the 30-workbook retention policy remain on the existing Mac, not cloud storage.
 - No paid API, monitor, domain, scheduler, service, or automatic upgrade was added.
+
+## Stage 9 Snapshot
+
+- Initial Supabase database usage is 16 MB, or 3.2% of the 500 MB free allowance.
+- Production remains one static frontend and one 10.8 MB FastAPI function on Vercel Hobby.
+- The monitor runs locally and writes ignored JSON reports; it adds no hosted service.
+- The weekly Codex automation invokes the local read-only monitor and cannot alter cloud data.
+- Exact Vercel invocation, CPU, memory, and egress percentages require a weekly Usage dashboard
+  review because the project CLI does not expose those quota totals.
+- The 70% stop threshold remains active for every Vercel and Supabase allowance.
