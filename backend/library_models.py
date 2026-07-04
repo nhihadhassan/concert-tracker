@@ -68,6 +68,7 @@ class LibraryResponse(BaseModel):
     members: List[MemberSummary]
     concerts: List[ConcertResponse]
     analytics: AnalyticsResponse
+    personal_analytics: AnalyticsResponse
 
 
 class ReviewWrite(StrictInput):

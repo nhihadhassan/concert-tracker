@@ -14,4 +14,6 @@ if (!HTMLDialogElement.prototype.close) {
   }
 }
 
+Object.defineProperty(window, 'scrollTo', { value: () => undefined, writable: true })
+
 afterEach(cleanup)

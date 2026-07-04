@@ -99,6 +99,15 @@ def test_analytics_cover_spending_projection_groups_and_rankings() -> None:
     assert result.repeat_artists[0].concerts == 2
     assert result.venue_summaries[0].key == "Scotiabank Arena"
     assert result.venue_summaries[0].concerts == 4
+    assert [(row.year, row.month, row.concerts, row.attended) for row in result.monthly_trends] == [
+        (2020, 1, 1, 0),
+        (2023, 6, 1, 1),
+        (2024, 11, 1, 1),
+        (2026, 7, 1, 0),
+    ]
+    assert result.most_attended_weekday is not None
+    assert result.most_attended_weekday.weekday == "Thursday"
+    assert result.most_attended_weekday.count == 2
     assert result.rankings["combined"][0].concert_id == "b"
     assert result.rankings["nhihad"][0].rating == Decimal("10")
 
@@ -111,7 +120,28 @@ def test_empty_analytics_are_well_formed() -> None:
     assert result.date_last is None
     assert result.spending.total_spent_excluding_cancelled == Decimal("0.00")
     assert result.projection.compared_concerts == 0
+    assert result.monthly_trends == ()
+    assert result.most_attended_weekday is None
     assert result.rankings == {"combined": ()}
+
+
+def test_most_attended_weekday_ties_resolve_monday_through_sunday() -> None:
+    result = calculate_analytics(
+        [
+            concert("monday", "Monday Artist", date(2024, 1, 1)),
+            concert("tuesday", "Tuesday Artist", date(2024, 1, 2)),
+            concert(
+                "cancelled-monday",
+                "Cancelled Artist",
+                date(2024, 1, 8),
+                status="Cancelled",
+            ),
+        ]
+    )
+
+    assert result.most_attended_weekday is not None
+    assert result.most_attended_weekday.weekday == "Monday"
+    assert result.most_attended_weekday.count == 1
 
 
 def test_cloud_totals_and_historical_rank_order_match_stage_zero_fixtures() -> None:

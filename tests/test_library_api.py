@@ -184,6 +184,9 @@ def test_library_starts_empty_with_typed_analytics() -> None:
     assert response.json()["concerts"] == []
     assert len(response.json()["members"]) == 2
     assert response.json()["analytics"]["total_concerts"] == 0
+    assert response.json()["personal_analytics"]["total_concerts"] == 0
+    assert response.json()["analytics"]["monthly_trends"] == []
+    assert response.json()["analytics"]["most_attended_weekday"] is None
 
 
 def test_create_is_idempotent_and_returns_cloud_library() -> None:
@@ -205,6 +208,48 @@ def test_create_is_idempotent_and_returns_cloud_library() -> None:
     assert len(rest.data["concerts"]) == 1
     assert len(rest.data["concert_attendees"]) == 2
     assert library.json()["concerts"][0]["artist"] == "Little Simz"
+
+
+def test_library_returns_shared_and_current_member_analytics() -> None:
+    rest = InMemoryRest()
+    client = client_for(rest)
+    try:
+        create_concert(client)
+        shared_only_id = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+        shared_only = deepcopy(rest.data["concerts"][0])
+        shared_only.update(
+            {
+                "id": shared_only_id,
+                "artist": "Rachel Only",
+                "concert_date": "2026-10-05",
+                "status": "Attended",
+            }
+        )
+        rest.data["concerts"].append(shared_only)
+        attendee = deepcopy(
+            next(row for row in rest.data["concert_attendees"] if row["user_id"] == RACHEL_ID)
+        )
+        attendee.update(
+            {
+                "concert_id": shared_only_id,
+                "attendance_status": "Attended",
+            }
+        )
+        rest.data["concert_attendees"].append(attendee)
+
+        library = client.get("/v1/library")
+    finally:
+        clear_overrides()
+
+    body = library.json()
+    assert body["analytics"]["total_concerts"] == 2
+    assert body["personal_analytics"]["total_concerts"] == 1
+    assert body["analytics"]["status_counts"] == {"Want to Go": 1, "Attended": 1}
+    assert body["personal_analytics"]["status_counts"] == {"Want to Go": 1}
+    assert body["analytics"]["monthly_trends"] == [
+        {"year": 2026, "month": 9, "concerts": 1, "attended": 0},
+        {"year": 2026, "month": 10, "concerts": 1, "attended": 1},
+    ]
 
 
 def test_stale_update_returns_conflict_with_current_row() -> None:

@@ -7,6 +7,7 @@ interface ConcertCardProps {
   index: number
   onDelete: (concert: Concert) => void
   onEdit: (concert: Concert) => void
+  onOpen: (concert: Concert) => void
 }
 
 const formatMoney = (value: number | null) => value === null ? 'Price not set' :
@@ -22,7 +23,7 @@ const ratingTone = (rating: number | null) => {
   return 'rating-low'
 }
 
-export function ConcertCard({ concert, index, onDelete, onEdit }: ConcertCardProps) {
+export function ConcertCard({ concert, index, onDelete, onEdit, onOpen }: ConcertCardProps) {
   const activeAttendees = concert.attendees.filter((attendee) => attendee.attendance_status !== 'Did Not Attend')
   const reduceMotion = useReducedMotion()
   return (
@@ -35,7 +36,7 @@ export function ConcertCard({ concert, index, onDelete, onEdit }: ConcertCardPro
       transition={{ delay: reduceMotion ? 0 : Math.min(index, 5) * 0.035, duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
       whileHover={reduceMotion ? undefined : { y: -2 }}
     >
-      <div className={`concert-visual${concert.image ? '' : ' concert-visual-empty'}`}>
+      <button id={`concert-open-${concert.id}`} className={`concert-visual${concert.image ? '' : ' concert-visual-empty'}`} type="button" onClick={() => onOpen(concert)} aria-label={`View ${concert.artist} details`}>
         <AnimatePresence mode="wait" initial={false}>{concert.image ? <m.img key={concert.image} className="concert-art" src={concert.image} alt={`${concert.artist} artwork`} loading="lazy" decoding="async" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} /> : <m.span key="empty-art" className="concert-art concert-art-empty" aria-hidden="true" initial={{ opacity: 0 }} animate={{ opacity: 1 }}><Image size={34} /></m.span>}</AnimatePresence>
         <span className="concert-image-scrim" aria-hidden="true" />
         <div className="concert-visual-top">
@@ -46,7 +47,7 @@ export function ConcertCard({ concert, index, onDelete, onEdit }: ConcertCardPro
           <div className="concert-title"><h3>{concert.artist}</h3><p title={concert.tour ?? ''}>{concert.tour || 'Tour not set'}</p><span className="concert-venue"><MapPin size={14} />{concert.venue}</span></div>
           <AnimatePresence mode="popLayout" initial={false}><m.div key={concert.personal_rating ?? 'unrated'} className={`rating-badge ${ratingTone(concert.personal_rating)}`} title="Your rating" initial={reduceMotion ? false : { opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.94 }} transition={{ type: 'spring', stiffness: 380, damping: 30, mass: 0.8 }}><Star size={16} fill="currentColor" aria-hidden="true" /><strong>{concert.personal_rating ?? 'N/A'}</strong><span>{concert.personal_rating === null ? 'unrated' : '/10'}</span></m.div></AnimatePresence>
         </div>
-      </div>
+      </button>
       <div className="concert-card-body">
         <div className="concert-meta"><span><CalendarDays size={16} />{formatDate(concert.date)}</span><strong className="concert-price">{formatMoney(concert.price)}</strong></div>
         <div className="chips">

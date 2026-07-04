@@ -1,8 +1,9 @@
-import { Cloud, Download, LogOut, Mic2, Moon, Plus, RefreshCw, Sun, TriangleAlert, WifiOff } from 'lucide-react'
+import { BarChart3, Cloud, Download, ListMusic, LogOut, Mic2, Moon, Plus, RefreshCw, Sun, TriangleAlert, WifiOff } from 'lucide-react'
 import { AnimatePresence, m } from 'motion/react'
 import type { SyncState } from '../types'
 
 interface AppHeaderProps {
+  activeView: 'concerts' | 'stats'
   darkMode: boolean
   memberName: string
   pendingCount: number
@@ -11,6 +12,7 @@ interface AppHeaderProps {
   onExport: () => void
   onSignOut: () => void
   onThemeToggle: () => void
+  onViewChange: (view: 'concerts' | 'stats') => void
 }
 
 const syncDisplay = (state: SyncState, pendingCount: number) => {
@@ -36,6 +38,10 @@ export function AppHeader(props: AppHeaderProps) {
             <p>{props.memberName} <span aria-hidden="true">·</span> <AnimatePresence mode="popLayout" initial={false}><m.span key={`${props.syncState}-${sync.label}`} className={`sync-label sync-${props.syncState}`} initial={{ opacity: 0, y: 3 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -3 }}><SyncIcon size={13} />{sync.label}</m.span></AnimatePresence></p>
           </div>
         </div>
+        <nav className="primary-nav" aria-label="Primary navigation">
+          <button type="button" className={props.activeView === 'concerts' ? 'active' : ''} aria-current={props.activeView === 'concerts' ? 'page' : undefined} onClick={() => props.onViewChange('concerts')}><ListMusic size={17} />Concerts</button>
+          <button type="button" className={props.activeView === 'stats' ? 'active' : ''} aria-current={props.activeView === 'stats' ? 'page' : undefined} onClick={() => props.onViewChange('stats')}><BarChart3 size={17} />Stats</button>
+        </nav>
         <div className="header-actions">
           <button className="button button-secondary button-icon" type="button" onClick={props.onThemeToggle} title={props.darkMode ? 'Use light theme' : 'Use dark theme'}>
             {props.darkMode ? <Sun size={18} /> : <Moon size={18} />}<span className="button-label">{props.darkMode ? 'Light' : 'Dark'}</span>

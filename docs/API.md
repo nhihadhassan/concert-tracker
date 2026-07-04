@@ -28,7 +28,8 @@ more personal reviews. The response contains:
 - Combined and per-member rating counts and averages.
 - Projection mean absolute error, root mean square error, signed bias, and percentage within
   one point.
-- Yearly, artist, genre, and venue summaries.
+- Yearly and monthly trends, artist, genre, and venue summaries, plus the most-attended
+  weekday (with Monday-through-Sunday tie resolution).
 - Repeat artists and stable personal/combined ranking lists.
 
 Money is rounded to two decimals. Rating averages and projection errors use two decimals;
@@ -53,8 +54,11 @@ PostgREST, so Supabase RLS authorizes every read and write.
 
 ### `GET /api/v1/library`
 
-Returns active members, the current rating rule, all non-deleted concerts with attendees and
-separate reviews, and server-calculated rankings and analytics.
+Returns active members, all non-deleted concerts with attendees and separate reviews, and two
+server-calculated analytics views. `analytics` remains the full shared library; additive
+`personal_analytics` includes records connected to the signed-in member's attendance. Both
+analytics objects count attended, upcoming, and cancelled records and include monthly trends,
+the most-attended weekday, summaries, spending, projections, and rankings.
 
 ### `POST /api/v1/concerts`
 

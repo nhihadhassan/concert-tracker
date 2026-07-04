@@ -236,6 +236,7 @@ def build_library(
 
     response_concerts: list[ConcertResponse] = []
     analytics_rows: list[AnalyticsConcert] = []
+    personal_analytics_rows: list[AnalyticsConcert] = []
     for concert in concerts:
         concert_id = str(concert["id"])
         review_responses = []
@@ -300,29 +301,41 @@ def build_library(
                 combined_rating=_float(combined),
             )
         )
-        analytics_rows.append(
-            AnalyticsConcert(
-                concert_id=concert_id,
-                artist=concert["artist"],
-                concert_date=date.fromisoformat(str(concert["concert_date"])),
-                venue=concert["venue"],
-                status=concert["status"],
-                price=Decimal(str(concert["price"])) if concert.get("price") is not None else None,
-                genre=concert.get("genre"),
-                projected_rating=Decimal(str(concert["projected_rating"]))
-                if concert.get("projected_rating") is not None
-                else None,
-                member_ratings=member_ratings,
-                combined_rating=combined,
-                ranking_tiebreaker=concert.get("legacy_rank"),
-            )
+        analytics_row = AnalyticsConcert(
+            concert_id=concert_id,
+            artist=concert["artist"],
+            concert_date=date.fromisoformat(str(concert["concert_date"])),
+            venue=concert["venue"],
+            status=concert["status"],
+            price=Decimal(str(concert["price"])) if concert.get("price") is not None else None,
+            genre=concert.get("genre"),
+            projected_rating=Decimal(str(concert["projected_rating"]))
+            if concert.get("projected_rating") is not None
+            else None,
+            member_ratings=member_ratings,
+            combined_rating=combined,
+            ranking_tiebreaker=concert.get("legacy_rank"),
         )
+        analytics_rows.append(analytics_row)
+        current_attendee = next(
+            (row for row in attendee_responses if row.user_id == current_user_id),
+            None,
+        )
+        if current_attendee and (
+            concert["status"] == "Cancelled"
+            or current_attendee.attendance_status != "Did Not Attend"
+        ):
+            personal_analytics_rows.append(analytics_row)
 
     analytics: AnalyticsResponse = analytics_response(calculate_analytics(analytics_rows))
+    personal_analytics: AnalyticsResponse = analytics_response(
+        calculate_analytics(personal_analytics_rows)
+    )
     return LibraryResponse(
         members=[MemberSummary.model_validate(row) for row in members],
         concerts=response_concerts,
         analytics=analytics,
+        personal_analytics=personal_analytics,
     )
 
 

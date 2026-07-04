@@ -106,6 +106,18 @@ class YearlyTrendResponse(BaseModel):
     average_combined_rating: Optional[float]
 
 
+class MonthlyTrendResponse(BaseModel):
+    year: int
+    month: int
+    concerts: int
+    attended: int
+
+
+class WeekdaySummaryResponse(BaseModel):
+    weekday: str
+    count: int
+
+
 class GroupSummaryResponse(BaseModel):
     key: str
     concerts: int
@@ -131,6 +143,8 @@ class AnalyticsResponse(BaseModel):
     rating_summaries: List[RatingSummaryResponse]
     projection: ProjectionResponse
     yearly_trends: List[YearlyTrendResponse]
+    monthly_trends: List[MonthlyTrendResponse]
+    most_attended_weekday: Optional[WeekdaySummaryResponse]
     artist_summaries: List[GroupSummaryResponse]
     genre_summaries: List[GroupSummaryResponse]
     venue_summaries: List[GroupSummaryResponse]

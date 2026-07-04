@@ -63,6 +63,48 @@ export interface RankingRow {
   rating: number
 }
 
+export interface RatingSummary {
+  scope: string
+  rated_concerts: number
+  average_rating: number | null
+}
+
+export interface ProjectionSummary {
+  compared_concerts: number
+  mean_absolute_error: number | null
+  root_mean_square_error: number | null
+  bias: number | null
+  within_one_point_percent: number | null
+}
+
+export interface YearlyTrend {
+  year: number
+  concerts: number
+  attended: number
+  total_spent: number
+  average_combined_rating: number | null
+}
+
+export interface MonthlyTrend {
+  year: number
+  month: number
+  concerts: number
+  attended: number
+}
+
+export interface GroupSummary {
+  key: string
+  concerts: number
+  attended: number
+  total_spent: number
+  average_combined_rating: number | null
+}
+
+export interface WeekdaySummary {
+  weekday: string
+  count: number
+}
+
 export interface Analytics {
   total_concerts: number
   status_counts: Record<string, number>
@@ -75,6 +117,15 @@ export interface Analytics {
     priced_concerts: number
     average_attended_ticket: number | null
   }
+  rating_summaries: RatingSummary[]
+  projection: ProjectionSummary
+  yearly_trends: YearlyTrend[]
+  monthly_trends: MonthlyTrend[]
+  most_attended_weekday: WeekdaySummary | null
+  artist_summaries: GroupSummary[]
+  genre_summaries: GroupSummary[]
+  venue_summaries: GroupSummary[]
+  repeat_artists: GroupSummary[]
   rankings: Record<string, RankingRow[]>
 }
 
@@ -82,6 +133,7 @@ export interface LibraryResponse {
   members: MemberSummary[]
   concerts: Concert[]
   analytics: Analytics
+  personal_analytics: Analytics
 }
 
 export interface ReviewWrite {

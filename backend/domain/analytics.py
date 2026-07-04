@@ -61,6 +61,20 @@ class YearlyTrend:
 
 
 @dataclass(frozen=True)
+class MonthlyTrend:
+    year: int
+    month: int
+    concerts: int
+    attended: int
+
+
+@dataclass(frozen=True)
+class WeekdaySummary:
+    weekday: str
+    count: int
+
+
+@dataclass(frozen=True)
 class GroupSummary:
     key: str
     concerts: int
@@ -88,6 +102,8 @@ class AnalyticsResult:
     rating_summaries: tuple[RatingSummary, ...]
     projection: ProjectionSummary
     yearly_trends: tuple[YearlyTrend, ...]
+    monthly_trends: tuple[MonthlyTrend, ...]
+    most_attended_weekday: WeekdaySummary | None
     artist_summaries: tuple[GroupSummary, ...]
     genre_summaries: tuple[GroupSummary, ...]
     venue_summaries: tuple[GroupSummary, ...]
@@ -287,6 +303,41 @@ def calculate_analytics(concerts: Iterable[AnalyticsConcert]) -> AnalyticsResult
         for year, items in sorted(by_year.items())
     )
 
+    by_month: dict[tuple[int, int], list[AnalyticsConcert]] = defaultdict(list)
+    for row in rows:
+        by_month[(row.concert_date.year, row.concert_date.month)].append(row)
+    monthly_trends = tuple(
+        MonthlyTrend(
+            year=year,
+            month=month,
+            concerts=len(items),
+            attended=sum(item.status == "Attended" for item in items),
+        )
+        for (year, month), items in sorted(by_month.items())
+    )
+
+    weekday_order = (
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday",
+    )
+    attended_weekdays = Counter(
+        row.concert_date.strftime("%A") for row in rows if row.status == "Attended"
+    )
+    most_attended_weekday = None
+    if attended_weekdays:
+        highest_count = max(attended_weekdays.values())
+        most_attended_weekday = WeekdaySummary(
+            weekday=next(
+                weekday for weekday in weekday_order if attended_weekdays[weekday] == highest_count
+            ),
+            count=highest_count,
+        )
+
     artist_summaries = _group_summaries(rows, lambda row: _display_artist(row.artist))
     genre_summaries = _group_summaries(rows, lambda row: _display_genre(row.genre))
     venue_summaries = _group_summaries(rows, lambda row: _display_venue(row.venue))
@@ -300,6 +351,8 @@ def calculate_analytics(concerts: Iterable[AnalyticsConcert]) -> AnalyticsResult
         rating_summaries=tuple(rating_summaries),
         projection=projection,
         yearly_trends=yearly_trends,
+        monthly_trends=monthly_trends,
+        most_attended_weekday=most_attended_weekday,
         artist_summaries=artist_summaries,
         genre_summaries=genre_summaries,
         venue_summaries=venue_summaries,

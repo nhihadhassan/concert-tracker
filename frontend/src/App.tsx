@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { CheckCircle2, ListMusic, RefreshCw, Sparkles, Trophy } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { ArrowLeft, CheckCircle2, RefreshCw, Sparkles } from 'lucide-react'
 import { AnimatePresence, m } from 'motion/react'
 import { AuthProvider } from './auth/AuthProvider'
 import type { AuthMember } from './auth/AuthContext'
@@ -7,11 +7,12 @@ import { AuthLoading, LoginPage } from './auth/LoginPage'
 import { useAuth } from './auth/useAuth'
 import { AddConcertDialog } from './components/AddConcertDialog'
 import { AppHeader } from './components/AppHeader'
+import { ConcertDetail } from './components/ConcertDetail'
 import { ConflictDialog } from './components/ConflictDialog'
 import { ConcertCard } from './components/ConcertCard'
 import { FiltersBar } from './components/FiltersBar'
-import { RankedSummary } from './components/RankedSummary'
 import { StatsStrip } from './components/StatsStrip'
+import { StatsDashboard } from './components/StatsDashboard'
 import { useConcertLibrary } from './hooks/useConcertLibrary'
 import { downloadCsv } from './lib/api'
 import type {
@@ -32,6 +33,32 @@ const sortConcerts = (rows: Concert[], sort: string) => [...rows].sort((left, ri
   if (sort === 'artist-asc') return left.artist.localeCompare(right.artist)
   return right.date.localeCompare(left.date)
 })
+
+type DashboardRoute =
+  | { kind: 'concerts' }
+  | { kind: 'stats'; scope: 'personal' | 'shared' }
+  | { kind: 'detail'; concertId: string }
+
+const readDashboardRoute = (): DashboardRoute => {
+  const params = new URLSearchParams(window.location.search)
+  const concertId = params.get('concert')
+  if (concertId) return { kind: 'detail', concertId }
+  if (params.get('view') === 'stats') {
+    return { kind: 'stats', scope: params.get('scope') === 'shared' ? 'shared' : 'personal' }
+  }
+  return { kind: 'concerts' }
+}
+
+const routeUrl = (route: DashboardRoute) => {
+  const params = new URLSearchParams()
+  if (route.kind === 'detail') params.set('concert', route.concertId)
+  if (route.kind === 'stats') {
+    params.set('view', 'stats')
+    params.set('scope', route.scope)
+  }
+  const query = params.toString()
+  return `${window.location.pathname}${query ? `?${query}` : ''}`
+}
 
 const makeMutation = (
   method: QueuedMutation['method'],
@@ -85,12 +112,38 @@ export function Dashboard({ accessToken, member, onSignOut }: DashboardProps) {
   const [status, setStatus] = useState('')
   const [genre, setGenre] = useState('')
   const [sort, setSort] = useState('date-desc')
-  const [mobileView, setMobileView] = useState<'concerts' | 'rankings'>('concerts')
+  const [route, setRoute] = useState<DashboardRoute>(readDashboardRoute)
   const [notice, setNotice] = useState<{ message: string; celebratory: boolean } | null>(null)
   const noticeTimer = useRef<number | null>(null)
+  const returnFocusConcertId = useRef<string | null>(null)
 
   useEffect(() => () => {
     if (noticeTimer.current !== null) window.clearTimeout(noticeTimer.current)
+  }, [])
+
+  useEffect(() => {
+    const onPopState = () => setRoute(readDashboardRoute())
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [])
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'auto' })
+    const frame = window.requestAnimationFrame(() => {
+      if (route.kind === 'concerts' && returnFocusConcertId.current) {
+        document.getElementById(`concert-open-${returnFocusConcertId.current}`)?.focus()
+        returnFocusConcertId.current = null
+        return
+      }
+      document.querySelector<HTMLElement>('[data-view-heading]')?.focus()
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [route])
+
+  const navigate = useCallback((nextRoute: DashboardRoute, replace = false) => {
+    const method = replace ? 'replaceState' : 'pushState'
+    window.history[method]({ concertTracker: true }, '', routeUrl(nextRoute))
+    setRoute(nextRoute)
   }, [])
 
   const library = cloud.library
@@ -177,12 +230,13 @@ export function Dashboard({ accessToken, member, onSignOut }: DashboardProps) {
   }
 
   const deleteConcert = async (concert: Concert) => {
-    if (!window.confirm(`Delete ${concert.artist}? This removes it from the shared library.`)) return
+    if (!window.confirm(`Delete ${concert.artist}? This removes it from the shared library.`)) return false
     await cloud.executeMutation(
       makeMutation('DELETE', `/v1/concerts/${concert.id}`, { expected_row_version: concert.row_version }, `Delete ${concert.artist}`),
       (current) => ({ ...current, concerts: current.concerts.filter((row) => row.id !== concert.id) }),
     )
     flashNotice(`${concert.artist} queued for deletion`)
+    return true
   }
 
   const exportCsv = async () => {
@@ -205,21 +259,26 @@ export function Dashboard({ accessToken, member, onSignOut }: DashboardProps) {
     return <main className="app auth-page theme-dark"><section className="auth-panel auth-skeleton" aria-label="Loading concert library"><div className="skeleton skeleton-title" /><div className="skeleton skeleton-field" /><div className="skeleton skeleton-field" />{cloud.error ? <p className="auth-error" role="alert">{cloud.error}</p> : null}<button className="button button-secondary" type="button" onClick={() => void cloud.refetch()}><RefreshCw size={17} />Retry</button></section></main>
   }
 
-  const personalRankings = library.analytics.rankings[member.user_id] ?? []
   const combinedRankings = library.analytics.rankings.combined ?? []
+  const personalScopedRankings = library.personal_analytics.rankings[member.user_id] ?? []
+  const selectedConcert = route.kind === 'detail' ? library.concerts.find((concert) => concert.id === route.concertId) : null
+  const activeView = route.kind === 'stats' ? 'stats' : 'concerts'
+  const backToConcerts = () => {
+    navigate({ kind: 'concerts' }, true)
+  }
+  const openConcert = (concert: Concert) => {
+    returnFocusConcertId.current = concert.id
+    navigate({ kind: 'detail', concertId: concert.id })
+  }
   return (
     <div className={darkMode ? 'app theme-dark' : 'app theme-light'}>
-      <AppHeader darkMode={darkMode} memberName={member.display_name} pendingCount={cloud.pendingCount} syncState={cloud.syncState} onAdd={openNew} onExport={() => void exportCsv()} onSignOut={onSignOut} onThemeToggle={toggleTheme} />
-      <main className="page-shell">
-        <nav className="mobile-view-switch" aria-label="Dashboard view">
-          <button type="button" className={mobileView === 'concerts' ? 'active' : ''} aria-pressed={mobileView === 'concerts'} onClick={() => setMobileView('concerts')}><ListMusic size={17} />Concerts</button>
-          <button type="button" className={mobileView === 'rankings' ? 'active' : ''} aria-pressed={mobileView === 'rankings'} onClick={() => setMobileView('rankings')}><Trophy size={17} />Rankings</button>
-        </nav>
-        <div className={`dashboard-column mobile-view-${mobileView}`}>
+      <AppHeader activeView={activeView} darkMode={darkMode} memberName={member.display_name} pendingCount={cloud.pendingCount} syncState={cloud.syncState} onAdd={openNew} onExport={() => void exportCsv()} onSignOut={onSignOut} onThemeToggle={toggleTheme} onViewChange={(view) => navigate(view === 'stats' ? { kind: 'stats', scope: 'personal' } : { kind: 'concerts' })} />
+      {route.kind === 'concerts' ? <main className="page-shell page-shell-feed">
+        <div className="dashboard-column">
           <section className="journal-heading" aria-labelledby="journal-title">
             <div>
               <p className="journal-kicker">Concert memory journal</p>
-              <h2 id="journal-title">Past shows</h2>
+              <h2 id="journal-title" data-view-heading tabIndex={-1}>Past shows</h2>
             </div>
             <span>{library.concerts.filter((concert) => concert.status === 'Attended').length} memories</span>
           </section>
@@ -227,10 +286,9 @@ export function Dashboard({ accessToken, member, onSignOut }: DashboardProps) {
           {cloud.error ? <div className="sync-error-banner" role="status">{cloud.error}<button type="button" onClick={() => void cloud.flushOutbox()}>Retry sync</button></div> : null}
           <FiltersBar genres={genres} genre={genre} search={search} sort={sort} status={status} onGenreChange={setGenre} onSearchChange={setSearch} onSortChange={setSort} onStatusChange={setStatus} />
           <p className="list-meta">Showing {filteredConcerts.length} of {library.concerts.length} cloud concerts</p>
-          {filteredConcerts.length ? <section className="concert-grid" aria-label="Concerts">{filteredConcerts.map((concert, index) => <ConcertCard key={concert.id} concert={concert} index={index} onDelete={(row) => void deleteConcert(row)} onEdit={(row) => { setEditing(row); setFormError(''); setDialogOpen(true) }} />)}</section> : <section className="empty-state"><h2>{library.concerts.length ? 'No concerts match' : 'Add the first staging concert'}</h2><p>{library.concerts.length ? 'Clear a filter or try another artist or venue.' : 'The shared normalized library is empty and ready for testing.'}</p>{!library.concerts.length ? <button className="button button-primary" type="button" onClick={openNew}>Add concert</button> : null}</section>}
+          {filteredConcerts.length ? <section className="concert-grid" aria-label="Concerts">{filteredConcerts.map((concert, index) => <ConcertCard key={concert.id} concert={concert} index={index} onDelete={(row) => void deleteConcert(row)} onEdit={(row) => { setEditing(row); setFormError(''); setDialogOpen(true) }} onOpen={openConcert} />)}</section> : <section className="empty-state"><h2>{library.concerts.length ? 'No concerts match' : 'Add the first staging concert'}</h2><p>{library.concerts.length ? 'Clear a filter or try another artist or venue.' : 'The shared normalized library is empty and ready for testing.'}</p>{!library.concerts.length ? <button className="button button-primary" type="button" onClick={openNew}>Add concert</button> : null}</section>}
         </div>
-        <div className={`ranking-column mobile-view-${mobileView}`}><RankedSummary combined={combinedRankings} concerts={library.concerts} memberName={member.display_name} personal={personalRankings} /></div>
-      </main>
+      </main> : route.kind === 'stats' ? <main className="feature-shell"><StatsDashboard analytics={route.scope === 'personal' ? library.personal_analytics : library.analytics} memberName={member.display_name} rankings={route.scope === 'personal' ? personalScopedRankings : combinedRankings} scope={route.scope} onScopeChange={(scope) => navigate({ kind: 'stats', scope }, true)} /></main> : <main className="feature-shell">{selectedConcert ? <ConcertDetail concert={selectedConcert} member={member} onBack={backToConcerts} onEdit={(row) => { setEditing(row); setFormError(''); setDialogOpen(true) }} onDelete={(row) => { void deleteConcert(row).then((deleted) => { if (deleted) navigate({ kind: 'concerts' }, true) }) }} /> : <section className="detail-not-found"><ArrowLeft size={22} aria-hidden="true" /><h1 data-view-heading tabIndex={-1}>Concert not found</h1><p>This concert may have been deleted or is not available in your library.</p><button className="button button-primary" type="button" onClick={() => navigate({ kind: 'concerts' }, true)}>Back to concerts</button></section>}</main>}
       <AddConcertDialog concert={editing} currentUserId={member.user_id} error={formError} members={library.members} open={dialogOpen} saving={saving} onClose={() => { setDialogOpen(false); setEditing(null) }} onSave={saveConcert} />
       <ConflictDialog conflict={cloud.conflict} onDiscard={() => void cloud.discardConflict()} onRetry={() => void cloud.retryConflict()} />
       <AnimatePresence>{notice ? <m.div className={`toast${notice.celebratory ? ' toast-celebration' : ''}`} role="status" initial={{ opacity: 0, y: 12, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 8 }} transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}>{notice.celebratory ? <Sparkles size={18} /> : <CheckCircle2 size={18} />}{notice.message}</m.div> : null}</AnimatePresence>

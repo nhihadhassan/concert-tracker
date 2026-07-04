@@ -9,6 +9,7 @@ from backend.api_models import (
     AnalyticsResponse,
     ConcertRatingResponse,
     GroupSummaryResponse,
+    MonthlyTrendResponse,
     ProjectionResponse,
     RankingEntryResponse,
     RatingCalculationRequest,
@@ -18,6 +19,7 @@ from backend.api_models import (
     ReviewCalculationInput,
     ReviewRatingResponse,
     SpendingResponse,
+    WeekdaySummaryResponse,
     YearlyTrendResponse,
 )
 from backend.domain.analytics import (
@@ -145,6 +147,23 @@ def analytics_response(result: AnalyticsResult) -> AnalyticsResponse:
             )
             for row in result.yearly_trends
         ],
+        monthly_trends=[
+            MonthlyTrendResponse(
+                year=row.year,
+                month=row.month,
+                concerts=row.concerts,
+                attended=row.attended,
+            )
+            for row in result.monthly_trends
+        ],
+        most_attended_weekday=(
+            WeekdaySummaryResponse(
+                weekday=result.most_attended_weekday.weekday,
+                count=result.most_attended_weekday.count,
+            )
+            if result.most_attended_weekday
+            else None
+        ),
         artist_summaries=[group_response(row) for row in result.artist_summaries],
         genre_summaries=[group_response(row) for row in result.genre_summaries],
         venue_summaries=[group_response(row) for row in result.venue_summaries],
