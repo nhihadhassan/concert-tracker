@@ -1,0 +1,15 @@
+{
+  "totalConcerts": 46,
+  "statusCounts": {
+    "Attended": 44,
+    "Cancelled": 1,
+    "Want to Go": 1
+  },
+  "totalSpentExcludingCancelled": 4353.12,
+  "ratedConcerts": 44,
+  "averageRealizedRating": 8.29,
+  "dateRange": {
+    "first": "2016-11-07",
+    "last": "2026-07-28"
+  }
+}

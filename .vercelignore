@@ -3,6 +3,13 @@
 *.xlsx
 *.pdf
 *.csv
+/data/
+docs/
+scripts/
+sync/
+tests/
+.venv/
+__pycache__/
 .claude/
 .git/
 PRODUCT.md

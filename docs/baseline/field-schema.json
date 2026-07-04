@@ -1,0 +1,41 @@
+{
+  "source": "legacy index.html and source workbook",
+  "fields": [
+    "timestamp",
+    "artist",
+    "tour",
+    "date",
+    "venue",
+    "price",
+    "genre",
+    "projScore",
+    "enjoyment",
+    "stage",
+    "setlist",
+    "seatScore",
+    "realized",
+    "spotify",
+    "seat",
+    "notes",
+    "companions",
+    "type",
+    "rachelScore",
+    "status",
+    "rachelAttended",
+    "ownerEmail",
+    "id"
+  ],
+  "required": {
+    "all": [
+      "artist",
+      "date",
+      "venue"
+    ],
+    "Attended": [
+      "price",
+      "seat",
+      "genre",
+      "realized"
+    ]
+  }
+}

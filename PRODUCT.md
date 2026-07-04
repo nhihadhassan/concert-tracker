@@ -1,33 +1,35 @@
-# Product
+# Concert Tracker Product
 
 ## Register
 
-product
+Product dashboard. Design serves repeated data entry, comparison, and browsing.
 
 ## Users
 
-Nhihad uses this on desktop and phone to log concerts, browse attended shows, compare anticipated and realized ratings, and keep upcoming shows close at hand. The context is personal and recurring: quick updates after buying a ticket or seeing a show, plus casual browsing through concert history.
+Nhihad and Rachel use the tracker on desktop and mobile. Both will share the complete concert library while keeping separate personal reviews and ratings.
 
-## Product Purpose
+## Purpose
 
-This local concert tracker replaces a Google Form and spreadsheet workflow with a single-file web app. It stores all data in the browser, keeps the original form fields intact, and makes the collection easier to scan through stats, cards, a ranked summary table, filters, ratings, artwork, and CSV export.
+Concert Tracker records upcoming, attended, and cancelled shows; preserves music memories; compares anticipated and realized ratings; and keeps a recoverable cloud and local history.
 
-## Brand Personality
+## Current Product
 
-Personal, energetic, and practical. The interface should feel like a polished private dashboard for music memories: efficient first, with personality coming from artist artwork, rating color, and concert details rather than marketing flourish.
+The production application is a single `index.html` file hosted on Vercel. It embeds 45 seed concerts, stores browser changes in `localStorage`, and attempts authenticated synchronization to a Supabase JSON-blob table. A temporary PIN opens local-only mode.
 
-## Anti-references
+## Target Product
 
-Do not make it feel like a SaaS landing page, a generic analytics dashboard, or an over-decorated music streaming clone. Avoid decorative gradients, hero sections, exaggerated cards, and copy that explains the obvious instead of helping the user manage concerts.
+The staged rebuild will use React and TypeScript for the interface, FastAPI for domain rules and analytics, normalized Supabase tables for authoritative data, and a daily Mac backup to SQLite and Excel.
 
-## Design Principles
+## Product Principles
 
-1. Keep the data scannable before adding expression.
-2. Preserve the Google Form field model so existing tracking habits still work.
-3. Let concert identity come from artwork, artist names, dates, venues, and ratings.
-4. Make mobile updates easy with clear controls, large hit targets, and no cramped actions.
-5. Treat dark mode, keyboard use, empty states, and offline/local-only behavior as first-class.
+1. Preserve data before changing architecture.
+2. Keep the current dashboard recognizable and scannable.
+3. Put calculations and validation in one tested Python domain layer.
+4. Give synchronization states honest, specific labels.
+5. Keep routine workflows fast on desktop and mobile.
+6. Add motion to communicate state and concert energy, never to delay work.
+7. Remain within free infrastructure tiers until usage proves otherwise.
 
-## Accessibility & Inclusion
+## Accessibility
 
-Target WCAG AA contrast and visible keyboard focus. Support reduced motion. Keep touch targets at least 44px where practical, preserve semantic labels for form controls, and avoid relying on color alone for status or rating meaning.
+Target WCAG AA contrast, visible focus, semantic controls, 44px touch targets where practical, keyboard operation, and complete reduced-motion behavior.
