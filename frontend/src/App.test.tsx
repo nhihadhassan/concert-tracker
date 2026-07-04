@@ -86,6 +86,11 @@ describe('Concert Tracker cloud shell', () => {
     expect(screen.getByRole('heading', { name: "Nhihad's Concerts" })).toBeInTheDocument()
     expect(screen.getByText('Total concerts')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Kali Uchis' })).toBeInTheDocument()
+    expect(screen.getByRole('complementary', { name: 'Ranked summary' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Ranked Summary' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Nhihad' })).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.click(screen.getByRole('button', { name: 'Combined' }))
+    expect(screen.getByRole('button', { name: 'Combined' })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByText('Synced')).toBeInTheDocument()
   })
 
