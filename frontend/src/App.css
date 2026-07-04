@@ -750,32 +750,22 @@
   position: sticky;
   top: 0;
   z-index: 2;
-  padding: 0;
-  color: #ffffff;
-  background: #5b5ee8;
-  text-align: right;
-}
-
-.ranking-scroll th:first-child,
-.ranking-scroll td:first-child {
-  width: 38%;
-  text-align: left;
-}
-
-.ranking-scroll th button {
-  width: 100%;
-  min-height: 38px;
-  padding: 0 8px;
-  border: 0;
-  color: inherit;
-  background: transparent;
+  padding: 11px 8px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+  background: var(--surface-soft);
   font-size: 0.73rem;
   font-weight: 750;
-  text-align: inherit;
+  text-align: center;
 }
 
-.ranking-scroll th button:hover {
-  background: rgba(0, 0, 0, 0.14);
+.ranking-scroll th:first-child {
+  width: 50%;
+}
+
+.ranking-scroll td:first-child {
+  width: 50%;
+  text-align: left;
 }
 
 .ranking-scroll td {
@@ -2041,11 +2031,6 @@
 }
 
 .segmented button.active {
-  color: #2c0051;
-  background: #ddb7ff;
-}
-
-.ranking-scroll th {
   color: #2c0051;
   background: #ddb7ff;
 }
