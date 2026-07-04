@@ -216,6 +216,13 @@ export function Dashboard({ accessToken, member, onSignOut }: DashboardProps) {
           <button type="button" className={mobileView === 'rankings' ? 'active' : ''} aria-pressed={mobileView === 'rankings'} onClick={() => setMobileView('rankings')}><Trophy size={17} />Rankings</button>
         </nav>
         <div className={`dashboard-column mobile-view-${mobileView}`}>
+          <section className="journal-heading" aria-labelledby="journal-title">
+            <div>
+              <p className="journal-kicker">Concert memory journal</p>
+              <h2 id="journal-title">Past shows</h2>
+            </div>
+            <span>{library.concerts.filter((concert) => concert.status === 'Attended').length} memories</span>
+          </section>
           <StatsStrip concerts={library.concerts} />
           {cloud.error ? <div className="sync-error-banner" role="status">{cloud.error}<button type="button" onClick={() => void cloud.flushOutbox()}>Retry sync</button></div> : null}
           <FiltersBar genres={genres} genre={genre} search={search} sort={sort} status={status} onGenreChange={setGenre} onSearchChange={setSearch} onSortChange={setSort} onStatusChange={setStatus} />

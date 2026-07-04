@@ -1589,3 +1589,544 @@
     animation: none;
   }
 }
+
+/* Midnight Live: Stitch Concert Memory Journal direction */
+.app {
+  --bg: #0b1326;
+  --surface: rgba(23, 31, 51, 0.72);
+  --surface-raised: #171f33;
+  --surface-soft: rgba(45, 52, 73, 0.72);
+  --border: rgba(221, 183, 255, 0.12);
+  --border-strong: rgba(221, 183, 255, 0.28);
+  --text: #dae2fd;
+  --text-muted: #cfc2d6;
+  --text-subtle: #a99caf;
+  --primary: #b76dff;
+  --primary-hover: #c98fff;
+  --focus: #44e2cd;
+  --shadow: 0 22px 60px rgba(3, 7, 18, 0.38), 0 0 32px rgba(183, 109, 255, 0.08);
+  position: relative;
+  overflow-x: clip;
+  font-family: "Hanken Grotesk", ui-sans-serif, system-ui, sans-serif;
+  background:
+    radial-gradient(circle at 8% 2%, rgba(183, 109, 255, 0.16), transparent 25rem),
+    radial-gradient(circle at 92% 18%, rgba(68, 226, 205, 0.1), transparent 30rem),
+    var(--bg);
+}
+
+.app::before {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background-image: linear-gradient(rgba(221, 183, 255, 0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(221, 183, 255, 0.025) 1px, transparent 1px);
+  background-size: 48px 48px;
+  content: "";
+  pointer-events: none;
+  mask-image: linear-gradient(to bottom, black, transparent 72%);
+}
+
+.app > * {
+  position: relative;
+  z-index: 1;
+}
+
+.app.theme-light {
+  --bg: #eef0f8;
+  --surface: rgba(255, 255, 255, 0.78);
+  --surface-raised: #ffffff;
+  --surface-soft: rgba(224, 222, 239, 0.78);
+  --border: rgba(73, 0, 128, 0.12);
+  --border-strong: rgba(73, 0, 128, 0.28);
+  --text: #17142a;
+  --text-muted: #584f63;
+  --text-subtle: #6e6478;
+  --primary: #842bd2;
+  --primary-hover: #6900b3;
+  --focus: #007f72;
+}
+
+.app-header {
+  border-bottom-color: rgba(221, 183, 255, 0.12);
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+  backdrop-filter: blur(24px) saturate(135%);
+  box-shadow: 0 0 32px rgba(183, 109, 255, 0.11);
+}
+
+.header-inner {
+  width: min(1480px, calc(100% - 64px));
+  min-height: 84px;
+}
+
+.brand-mark {
+  border: 1px solid rgba(221, 183, 255, 0.28);
+  border-radius: 12px;
+  color: #f0dbff;
+  background: linear-gradient(145deg, rgba(183, 109, 255, 0.9), rgba(227, 100, 167, 0.72));
+  box-shadow: 0 0 22px rgba(183, 109, 255, 0.28);
+}
+
+.brand-copy h1,
+.journal-heading h2,
+.concert-title h3,
+.stat-panel > strong,
+.ranking-head h2,
+.dialog-head h2,
+.empty-state h2 {
+  font-family: Sora, "Hanken Grotesk", sans-serif;
+}
+
+.brand-copy h1 {
+  color: #ddb7ff;
+  font-size: 1.22rem;
+  letter-spacing: -0.035em;
+}
+
+.brand-copy p {
+  color: var(--text-muted);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.68rem;
+}
+
+.button,
+.icon-button,
+.text-action {
+  border-radius: 9px;
+}
+
+.button-primary {
+  color: #2c0051;
+  background: linear-gradient(135deg, #ddb7ff, #ffafd3);
+  border-color: rgba(240, 219, 255, 0.8);
+  box-shadow: 0 0 20px rgba(221, 183, 255, 0.25);
+}
+
+.button-primary:hover:not(:disabled) {
+  color: #2c0051;
+  background: linear-gradient(135deg, #f0dbff, #ffc7df);
+  border-color: #f0dbff;
+  box-shadow: 0 0 28px rgba(221, 183, 255, 0.36);
+}
+
+.button-secondary,
+.icon-button {
+  background: rgba(23, 31, 51, 0.42);
+  backdrop-filter: blur(12px);
+}
+
+.page-shell {
+  grid-template-columns: minmax(0, 1fr) 380px;
+  gap: 24px;
+  width: min(1480px, calc(100% - 64px));
+  margin-top: 40px;
+}
+
+.journal-heading {
+  display: flex;
+  min-height: 72px;
+  margin-bottom: 18px;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.journal-heading h2 {
+  margin-top: 4px;
+  font-size: 2rem;
+  line-height: 1.12;
+  letter-spacing: -0.035em;
+}
+
+.journal-kicker,
+.journal-heading > span,
+.stat-label,
+.genre-chip {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.journal-kicker {
+  color: #44e2cd;
+}
+
+.journal-heading > span {
+  padding: 7px 10px;
+  border: 1px solid rgba(68, 226, 205, 0.34);
+  border-radius: 999px;
+  color: #62fae3;
+  background: rgba(68, 226, 205, 0.09);
+}
+
+.stats-strip {
+  gap: 12px;
+}
+
+.stat-panel,
+.ranking-panel,
+.empty-state,
+.filters {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: linear-gradient(145deg, rgba(34, 42, 61, 0.72), rgba(19, 27, 46, 0.66));
+  backdrop-filter: blur(24px) saturate(125%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.stat-panel {
+  min-height: 116px;
+  border-radius: 14px;
+}
+
+.stat-panel > strong {
+  color: #f0dbff;
+  font-size: 1.65rem;
+}
+
+.filters {
+  margin-top: 20px;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+}
+
+.field input,
+.field select,
+.field textarea {
+  border-radius: 9px;
+  background: rgba(6, 14, 32, 0.7);
+}
+
+.theme-light .field input,
+.theme-light .field select,
+.theme-light .field textarea {
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.list-meta {
+  margin-top: 26px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.72rem;
+}
+
+.concert-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.concert-card {
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+  border-color: rgba(255, 255, 255, 0.11);
+  border-radius: 16px;
+  background: rgba(23, 31, 51, 0.7);
+  backdrop-filter: blur(24px) saturate(120%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 18px 50px rgba(3, 7, 18, 0.2);
+}
+
+.concert-card:hover {
+  border-color: rgba(221, 183, 255, 0.38);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 24px 65px rgba(3, 7, 18, 0.34), 0 0 30px rgba(183, 109, 255, 0.1);
+}
+
+.concert-visual {
+  position: relative;
+  min-height: 265px;
+  overflow: hidden;
+  background: #060e20;
+}
+
+.concert-visual-empty {
+  background:
+    radial-gradient(circle at 28% 28%, rgba(68, 226, 205, 0.2), transparent 25%),
+    radial-gradient(circle at 75% 35%, rgba(227, 100, 167, 0.25), transparent 28%),
+    linear-gradient(145deg, #171f33, #060e20);
+}
+
+.concert-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+  object-fit: cover;
+  background: transparent;
+  transition: transform 400ms cubic-bezier(0.22, 1, 0.36, 1), filter 240ms ease-out;
+}
+
+.concert-card:hover .concert-art:not(.concert-art-empty) {
+  transform: scale(1.025);
+  filter: saturate(1.08);
+}
+
+.concert-art-empty {
+  display: grid;
+  place-items: center;
+  color: rgba(221, 183, 255, 0.7);
+  background: transparent;
+}
+
+.concert-image-scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, rgba(6, 14, 32, 0.05) 18%, rgba(6, 14, 32, 0.48) 55%, rgba(6, 14, 32, 0.97) 100%);
+}
+
+.concert-visual-top {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  left: 14px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.genre-chip {
+  max-width: 70%;
+  padding: 5px 9px;
+  overflow: hidden;
+  border: 1px solid rgba(68, 226, 205, 0.62);
+  border-radius: 999px;
+  color: #62fae3;
+  background: rgba(6, 14, 32, 0.58);
+  backdrop-filter: blur(12px);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.concert-card-head {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  left: 16px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 58px;
+  align-items: end;
+  gap: 14px;
+}
+
+.concert-title {
+  padding-top: 0;
+}
+
+.concert-title h3 {
+  color: #f0dbff;
+  font-size: 1.18rem;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+}
+
+.concert-title p {
+  color: #ddd2e2;
+  font-size: 0.78rem;
+}
+
+.concert-venue {
+  display: flex;
+  min-width: 0;
+  margin-top: 7px;
+  align-items: center;
+  gap: 5px;
+  overflow: hidden;
+  color: #cfc2d6;
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.concert-venue svg {
+  flex: 0 0 auto;
+  color: #44e2cd;
+}
+
+.rating-badge {
+  width: 58px;
+  height: 66px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  color: #dae2fd;
+  background: rgba(34, 42, 61, 0.76);
+  backdrop-filter: blur(16px);
+}
+
+.rating-badge svg {
+  color: #44e2cd;
+}
+
+.rating-badge strong {
+  margin-top: 3px;
+  font-family: Sora, sans-serif;
+  font-size: 1.05rem;
+}
+
+.rating-badge span {
+  margin-top: 2px;
+  color: #cfc2d6;
+}
+
+.concert-card-body {
+  display: flex;
+  min-height: 180px;
+  padding: 15px 16px 16px;
+  flex: 1;
+  flex-direction: column;
+}
+
+.concert-meta {
+  display: flex;
+  margin-top: 0;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.7rem;
+}
+
+.concert-price {
+  margin-top: 0;
+  color: #62fae3;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.chips {
+  margin-top: 12px;
+}
+
+.chip,
+.status-chip {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  background: rgba(45, 52, 73, 0.58);
+}
+
+.projected {
+  align-self: flex-start;
+  margin-top: 10px;
+  color: var(--text-subtle);
+  font-family: "JetBrains Mono", monospace;
+}
+
+.card-actions {
+  margin-top: auto;
+  border-top-color: rgba(255, 255, 255, 0.08);
+}
+
+.ranking-panel {
+  top: 108px;
+  border-radius: 16px;
+}
+
+.ranking-head {
+  min-height: 70px;
+  padding: 14px 16px;
+}
+
+.ranking-head h2 {
+  font-size: 0.95rem;
+}
+
+.ranking-head h2 svg,
+.ranking-scroll td:nth-child(2) strong {
+  color: #44e2cd;
+}
+
+.segmented,
+.segmented button {
+  border-radius: 999px;
+}
+
+.segmented button.active {
+  color: #2c0051;
+  background: #ddb7ff;
+}
+
+.ranking-scroll th {
+  color: #2c0051;
+  background: #ddb7ff;
+}
+
+.ranking-scroll tbody tr:hover {
+  background: rgba(68, 226, 205, 0.06);
+}
+
+@media (max-width: 1240px) {
+  .page-shell {
+    grid-template-columns: minmax(0, 1fr) 340px;
+  }
+
+  .concert-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 960px) {
+  .header-inner,
+  .page-shell {
+    width: min(100% - 40px, 1480px);
+  }
+
+  .page-shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .concert-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .header-inner,
+  .page-shell {
+    width: min(100% - 28px, 1480px);
+  }
+
+  .journal-heading {
+    min-height: 56px;
+    margin-top: 6px;
+  }
+
+  .journal-heading h2 {
+    font-size: 1.55rem;
+  }
+
+  .journal-kicker {
+    display: none;
+  }
+
+  .filters {
+    padding: 10px;
+  }
+
+  .concert-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .concert-visual {
+    min-height: 290px;
+  }
+}
+
+@media (max-width: 480px) {
+  .journal-heading > span {
+    display: none;
+  }
+
+  .concert-visual {
+    min-height: 260px;
+  }
+
+  .concert-card-body {
+    min-height: 168px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .concert-card:hover .concert-art:not(.concert-art-empty) {
+    transform: none;
+  }
+}
