@@ -22,7 +22,6 @@ from sync.config import atomic_write_text, load_config
 from sync.storage import build_dataset
 
 PRODUCTION_URL = "https://concert-tracker-sepia.vercel.app"
-PRODUCTION_DEPLOYMENT = "dpl_BDb3RD5NCTZUcNyryUzrzfvKA8g4"
 OBSERVATION_STARTED = datetime(2026, 7, 3, 17, 45, tzinfo=timezone.utc)
 CLEANUP_EARLIEST = OBSERVATION_STARTED + timedelta(days=30)
 MAX_BACKUP_AGE = timedelta(hours=26)
@@ -174,10 +173,11 @@ def run_monitor(now: datetime | None = None) -> dict[str, Any]:
         deployment_data = {}
     deployment_ok = (
         deployment.returncode == 0
-        and deployment_data.get("id") == PRODUCTION_DEPLOYMENT
+        and deployment_data.get("target") == "production"
         and deployment_data.get("readyState") == "READY"
         and "concert-tracker-sepia.vercel.app" in deployment_data.get("aliases", [])
     )
+    deployment_id = str(deployment_data.get("id") or "")
     checks.append(
         Check(
             "vercel_deployment",
@@ -190,7 +190,7 @@ def run_monitor(now: datetime | None = None) -> dict[str, Any]:
             "npx",
             "vercel",
             "logs",
-            PRODUCTION_DEPLOYMENT,
+            deployment_id,
             "--level",
             "error",
             "--since",
@@ -229,6 +229,7 @@ def run_monitor(now: datetime | None = None) -> dict[str, Any]:
     report = {
         "captured_at": captured_at.isoformat(),
         "production_url": PRODUCTION_URL,
+        "production_deployment": deployment_id,
         "checks": [asdict(check) for check in checks],
         "passed": all(check.passed for check in checks),
         "cloud_counts": dataset.metadata["counts"],

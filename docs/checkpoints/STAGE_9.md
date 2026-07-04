@@ -23,7 +23,7 @@ Earliest completion: 2026-08-02 1:45 PM Toronto
 - Cloud/local deterministic checksums: exact match.
 - SQLite integrity: `ok` with exact counts.
 - Excel package: valid.
-- Vercel deployment: `dpl_BDb3RD5NCTZUcNyryUzrzfvKA8g4`, Ready.
+- Current Git-backed Vercel deployment: `dpl_8PCRPoL36XaMdXoC5RGzefJpjbac`, Ready.
 - Vercel production errors in the seven-day window: none.
 - Supabase database: 16 MB, 3.2% of the 500 MB free limit.
 - Backup: fresh and below the 26-hour monitor threshold.
