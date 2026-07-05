@@ -1800,8 +1800,8 @@
 }
 
 .concert-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
 }
 
 .concert-card {
@@ -1822,7 +1822,7 @@
 
 .concert-visual {
   position: relative;
-  min-height: 265px;
+  min-height: 225px;
   overflow: hidden;
   background: #060e20;
 }
@@ -1934,7 +1934,8 @@
 
 .rating-badge {
   width: 58px;
-  height: 66px;
+  min-height: 78px;
+  padding: 7px 4px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 10px;
   color: #dae2fd;
@@ -1957,10 +1958,22 @@
   color: #cfc2d6;
 }
 
+.rating-badge small {
+  margin-top: 5px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  color: #62fae3;
+  font-family: var(--font-data);
+  font-size: 0.56rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
 .concert-card-body {
   display: flex;
-  min-height: 180px;
-  padding: 15px 16px 16px;
+  min-height: 168px;
+  padding: 13px 14px 14px;
   flex: 1;
   flex-direction: column;
 }
@@ -2173,7 +2186,7 @@
 }
 
 .page-shell-feed .concert-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .concert-visual {
@@ -2997,6 +3010,12 @@ a.detail-setlist:hover {
   outline-offset: 2px;
 }
 
+@media (max-width: 1320px) {
+  .page-shell-feed .concert-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 1240px) {
   .page-shell-feed {
     grid-template-columns: minmax(0, 1fr) 340px;
@@ -3062,6 +3081,10 @@ a.detail-setlist:hover {
 @media (max-width: 720px) {
   .app {
     padding-bottom: 78px;
+  }
+
+  .page-shell-feed .concert-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .primary-nav {

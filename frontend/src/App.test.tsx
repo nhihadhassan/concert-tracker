@@ -33,7 +33,7 @@ const library: LibraryResponse = {
     artist: 'Kali Uchis',
     tour: 'Sincerely,',
     date: '2025-09-17',
-    venue: 'Scotiabank Arena',
+    venue: 'Scotiabank Arena (40 Bay St., Toronto, ON M5J 2X2)',
     price: 60,
     genre: 'Latin',
     projected: 8,
@@ -86,6 +86,12 @@ describe('Concert Tracker cloud shell', () => {
     expect(screen.getByRole('heading', { name: "Nhihad's Concerts" })).toBeInTheDocument()
     expect(screen.getByText('Total concerts')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Kali Uchis' })).toBeInTheDocument()
+    expect(screen.getByText('Scotiabank Arena')).toBeInTheDocument()
+    expect(screen.queryByText(/40 Bay St/)).not.toBeInTheDocument()
+    expect(screen.getByText('Proj 8')).toBeInTheDocument()
+    expect(screen.queryByText(/combined 8\.5/i)).not.toBeInTheDocument()
+    expect(screen.queryByText('Past shows')).not.toBeInTheDocument()
+    expect(screen.queryByText('Concert memory journal')).not.toBeInTheDocument()
     expect(screen.getByRole('complementary', { name: 'Ranked summary' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Ranked Summary' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Combined' })).not.toBeInTheDocument()
@@ -130,7 +136,7 @@ describe('Concert Tracker cloud shell', () => {
     expect(screen.getByText('Shared event note')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Back to concerts' }))
     expect(window.location.search).toBe('')
-    expect(screen.getByRole('heading', { name: 'Past shows' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Concert totals' })).toBeInTheDocument()
     await waitFor(() => expect(screen.getByRole('button', { name: 'View Kali Uchis details' })).toHaveFocus())
   })
 

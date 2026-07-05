@@ -274,15 +274,8 @@ export function Dashboard({ accessToken, member, onSignOut }: DashboardProps) {
   return (
     <div className={darkMode ? 'app theme-dark' : 'app theme-light'}>
       <AppHeader activeView={activeView} darkMode={darkMode} memberName={member.display_name} pendingCount={cloud.pendingCount} syncState={cloud.syncState} onAdd={openNew} onExport={() => void exportCsv()} onSignOut={onSignOut} onThemeToggle={toggleTheme} onViewChange={(view) => navigate(view === 'stats' ? { kind: 'stats', scope: 'personal' } : { kind: 'concerts' })} />
-      {route.kind === 'concerts' ? <main className="page-shell page-shell-feed">
+      {route.kind === 'concerts' ? <main className="page-shell page-shell-feed" data-view-heading tabIndex={-1}>
         <div className="dashboard-column">
-          <section className="journal-heading" aria-labelledby="journal-title">
-            <div>
-              <p className="journal-kicker">Concert memory journal</p>
-              <h2 id="journal-title" data-view-heading tabIndex={-1}>Past shows</h2>
-            </div>
-            <span>{library.concerts.filter((concert) => concert.status === 'Attended').length} memories</span>
-          </section>
           <StatsStrip concerts={library.concerts} />
           {cloud.error ? <div className="sync-error-banner" role="status">{cloud.error}<button type="button" onClick={() => void cloud.flushOutbox()}>Retry sync</button></div> : null}
           <FiltersBar genres={genres} genre={genre} search={search} sort={sort} status={status} onGenreChange={setGenre} onSearchChange={setSearch} onSortChange={setSort} onStatusChange={setStatus} />
