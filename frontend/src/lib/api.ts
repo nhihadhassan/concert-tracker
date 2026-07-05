@@ -1,4 +1,4 @@
-import type { LibraryResponse, QueuedMutation } from '../types'
+import type { ArtworkSearchResponse, LibraryResponse, QueuedMutation } from '../types'
 
 export class ApiError extends Error {
   status: number
@@ -40,6 +40,13 @@ export async function apiRequest<T>(
 
 export const fetchLibrary = (accessToken: string) =>
   apiRequest<LibraryResponse>(accessToken, '/v1/library')
+
+export const searchArtwork = (accessToken: string, query: string, signal?: AbortSignal) =>
+  apiRequest<ArtworkSearchResponse>(
+    accessToken,
+    `/v1/artwork/search?q=${encodeURIComponent(query)}`,
+    { signal },
+  )
 
 export const sendQueuedMutation = (accessToken: string, mutation: QueuedMutation) => {
   const query = mutation.method === 'DELETE' && mutation.body && typeof mutation.body === 'object'

@@ -2,6 +2,21 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Analytics, LibraryResponse } from './types'
 
+vi.mock('./lib/api', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./lib/api')>()
+  return {
+    ...actual,
+    searchArtwork: vi.fn().mockResolvedValue({
+      results: [{
+        url: 'https://example.com/sincerely.jpg',
+        title: 'Sincerely',
+        artist: 'Kali Uchis',
+        store_url: 'https://music.apple.com/ca/album/sincerely',
+      }],
+    }),
+  }
+})
+
 const analytics: Analytics = {
   total_concerts: 1,
   status_counts: { Attended: 1 },
@@ -113,6 +128,19 @@ describe('Concert Tracker cloud shell', () => {
     expect(screen.getByRole('heading', { name: 'Add concert' })).toBeInTheDocument()
     expect(screen.getByText('Your review', { selector: 'legend' })).toBeInTheDocument()
     expect(screen.getByRole('navigation', { name: 'Concert form sections' })).toBeInTheDocument()
+  })
+
+  it('preloads and selects artwork while editing a concert', async () => {
+    render(<Dashboard accessToken="token" member={member} onSignOut={() => undefined} />)
+    fireEvent.click(screen.getByRole('button', { name: 'View Kali Uchis details' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Kali Uchis' }))
+    const artworkOption = await screen.findByRole('button', { name: 'Use Sincerely artwork' })
+    fireEvent.click(artworkOption)
+    expect(artworkOption).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('img', { name: 'Artwork preview' })).toHaveAttribute(
+      'src',
+      'https://example.com/sincerely.jpg',
+    )
   })
 
   it('switches between concerts and stats with rankings inside stats', () => {

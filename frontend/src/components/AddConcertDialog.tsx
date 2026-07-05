@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { Image, X } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Check, Image, LoaderCircle, Search, X } from 'lucide-react'
 import { AnimatePresence, m } from 'motion/react'
+import { searchArtwork } from '../lib/api'
 import type {
+  ArtworkOption,
   Concert,
   ConcertFormSubmission,
   ConcertStatus,
@@ -10,6 +12,7 @@ import type {
 } from '../types'
 
 interface ConcertDialogProps {
+  accessToken: string
   concert: Concert | null
   currentUserId: string
   error: string
@@ -25,7 +28,14 @@ const numberOrNull = (value: FormDataEntryValue | null) => {
   return text ? Number(text) : null
 }
 
+const cleanArtistName = (value: string) => value
+  .replace(/\b(19|20)\d{2}\b/g, ' ')
+  .split(/\s+(?:ft\.?|feat\.?|x|&|,|\/)\s+/i)[0]
+  .replace(/\s+/g, ' ')
+  .trim()
+
 export function AddConcertDialog({
+  accessToken,
   concert,
   currentUserId,
   error,
@@ -36,19 +46,59 @@ export function AddConcertDialog({
   onSave,
 }: ConcertDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
+  const artworkRequest = useRef<AbortController | null>(null)
   const [imageUrl, setImageUrl] = useState(concert?.image ?? '')
+  const [artworkQuery, setArtworkQuery] = useState('')
+  const [artworkResults, setArtworkResults] = useState<ArtworkOption[]>([])
+  const [artworkLoading, setArtworkLoading] = useState(false)
+  const [artworkError, setArtworkError] = useState('')
   const personalReview = useMemo(
     () => concert?.reviews.find((review) => review.reviewer_user_id === currentUserId) ?? null,
     [concert, currentUserId],
   )
+
+  const loadArtwork = useCallback(async (query: string) => {
+    const trimmedQuery = query.trim()
+    if (!trimmedQuery) {
+      setArtworkResults([])
+      setArtworkError('Enter an artist, album, or tour name.')
+      return
+    }
+    artworkRequest.current?.abort()
+    const controller = new AbortController()
+    artworkRequest.current = controller
+    setArtworkLoading(true)
+    setArtworkError('')
+    try {
+      const response = await searchArtwork(accessToken, trimmedQuery, controller.signal)
+      setArtworkResults(response.results)
+      if (!response.results.length) setArtworkError('No artwork found. Try an album or tour name.')
+    } catch (searchError) {
+      if (searchError instanceof DOMException && searchError.name === 'AbortError') return
+      setArtworkResults([])
+      setArtworkError('Artwork search failed. You can retry or paste an image URL.')
+    } finally {
+      if (artworkRequest.current === controller) setArtworkLoading(false)
+    }
+  }, [accessToken])
 
   useEffect(() => {
     const dialog = dialogRef.current
     if (!dialog) return
     if (open && !dialog.open) dialog.showModal()
     if (!open && dialog.open) dialog.close()
-    if (open) setImageUrl(concert?.image ?? '')
-  }, [concert, open])
+    if (open) {
+      setImageUrl(concert?.image ?? '')
+      const initialQuery = concert
+        ? [cleanArtistName(concert.artist), concert.tour].filter(Boolean).join(' ')
+        : ''
+      setArtworkQuery(initialQuery)
+      setArtworkResults([])
+      setArtworkError('')
+      if (initialQuery) void loadArtwork(initialQuery)
+    }
+    return () => artworkRequest.current?.abort()
+  }, [concert, loadArtwork, open])
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -124,7 +174,13 @@ export function AddConcertDialog({
         <fieldset className="form-section" id="concert-form-event">
           <legend>Event</legend>
           <div className="form-grid">
-            <label className="field field-wide"><span>Artist</span><input name="artist" required defaultValue={concert?.artist} /></label>
+            <label className="field field-wide"><span>Artist</span><input name="artist" required defaultValue={concert?.artist} onBlur={(event) => {
+              if (concert || artworkQuery.trim()) return
+              const query = cleanArtistName(event.currentTarget.value)
+              if (!query) return
+              setArtworkQuery(query)
+              void loadArtwork(query)
+            }} /></label>
             <label className="field field-wide"><span>Tour name</span><input name="tour" defaultValue={concert?.tour ?? ''} /></label>
             <label className="field"><span>Date</span><input name="date" type="date" required defaultValue={concert?.date} /></label>
             <label className="field"><span>Status</span><select name="status" defaultValue={concert?.status ?? 'Want to Go'}><option>Want to Go</option><option>Attended</option><option>Cancelled</option></select></label>
@@ -165,6 +221,22 @@ export function AddConcertDialog({
         <fieldset className="form-section" id="concert-form-details">
           <legend>Details</legend>
           <div className="form-grid">
+            <div className="artwork-picker field-wide">
+              <div className="artwork-picker-head">
+                <div><strong>Choose artwork</strong><span>Options load automatically from Apple Music.</span></div>
+                {imageUrl ? <button className="text-action" type="button" onClick={() => setImageUrl('')}>Remove artwork</button> : null}
+              </div>
+              <div className="artwork-search-row">
+                <label className="field"><span>Search artwork</span><span className="input-with-icon"><Search size={16} /><input type="search" value={artworkQuery} placeholder="Artist, album, or tour" onChange={(event) => setArtworkQuery(event.target.value)} onKeyDown={(event) => {
+                  if (event.key !== 'Enter') return
+                  event.preventDefault()
+                  void loadArtwork(artworkQuery)
+                }} /></span></label>
+                <button className="button button-secondary" type="button" disabled={artworkLoading} onClick={() => void loadArtwork(artworkQuery)}>{artworkLoading ? <LoaderCircle className="artwork-spinner" size={16} /> : <Search size={16} />}{artworkLoading ? 'Searching...' : 'Search'}</button>
+              </div>
+              {artworkError ? <p className="artwork-search-status" role="status">{artworkError}</p> : null}
+              {artworkResults.length ? <div className="artwork-results" aria-label="Artwork options">{artworkResults.map((option) => <button key={option.url} type="button" className={imageUrl === option.url ? 'selected' : ''} aria-label={`Use ${option.title} artwork`} aria-pressed={imageUrl === option.url} title={`${option.title} by ${option.artist}`} onClick={() => setImageUrl(option.url)}><img src={option.url} alt="" loading="lazy" />{imageUrl === option.url ? <span><Check size={16} />Selected</span> : null}</button>)}</div> : null}
+            </div>
             <label className="field field-wide"><span>Artwork URL</span><input name="image" value={imageUrl} onChange={(event) => setImageUrl(event.target.value)} /></label>
             <div className="image-preview field-wide">
               <AnimatePresence mode="wait" initial={false}>{imageUrl ? <m.img key={imageUrl} src={imageUrl} alt="Artwork preview" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} /> : <m.span key="empty-preview" initial={{ opacity: 0 }} animate={{ opacity: 1 }}><Image size={18} />No artwork selected</m.span>}</AnimatePresence>

@@ -3,6 +3,7 @@ from typing import Literal
 from fastapi import Depends, FastAPI
 from pydantic import BaseModel
 
+from backend.artwork_routes import router as artwork_router
 from backend.calculation_routes import router as calculation_router
 from backend.library_routes import router as library_router
 from backend.members import AppMember, require_member
@@ -32,6 +33,7 @@ app = FastAPI(
 
 app.include_router(calculation_router)
 app.include_router(library_router)
+app.include_router(artwork_router)
 
 
 @app.get("/v1/health", response_model=HealthResponse, tags=["system"])

@@ -950,6 +950,107 @@
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.artwork-picker {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-soft);
+}
+
+.artwork-picker-head,
+.artwork-search-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.artwork-picker-head > div {
+  display: grid;
+  gap: 4px;
+}
+
+.artwork-picker-head strong {
+  font-size: 0.84rem;
+}
+
+.artwork-picker-head span,
+.artwork-search-status {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  line-height: 1.4;
+}
+
+.artwork-picker-head .text-action {
+  flex: 0 0 auto;
+}
+
+.artwork-search-row .field {
+  flex: 1;
+}
+
+.artwork-search-row .button {
+  min-height: 42px;
+}
+
+.artwork-spinner {
+  animation: artwork-spin 800ms linear infinite;
+}
+
+.artwork-results {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.artwork-results button {
+  position: relative;
+  aspect-ratio: 1;
+  padding: 0;
+  overflow: hidden;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  background: var(--surface-raised);
+  cursor: pointer;
+  transition: border-color 160ms ease-out, transform 160ms ease-out;
+}
+
+.artwork-results button:hover {
+  border-color: var(--border-strong);
+  transform: translateY(-1px);
+}
+
+.artwork-results button:focus-visible,
+.artwork-results button.selected {
+  border-color: #62fae3;
+  outline: none;
+}
+
+.artwork-results img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.artwork-results button > span {
+  position: absolute;
+  right: 5px;
+  bottom: 5px;
+  left: 5px;
+  display: inline-flex;
+  min-height: 25px;
+  border-radius: 6px;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: #003731;
+  background: rgba(98, 250, 227, 0.94);
+  font-size: 0.62rem;
+  font-weight: 800;
+}
+
 .image-preview {
   display: grid;
   min-height: 92px;
@@ -1240,6 +1341,10 @@
   to { opacity: 0.9; }
 }
 
+@keyframes artwork-spin {
+  to { transform: rotate(360deg); }
+}
+
 .toast {
   position: fixed;
   right: 20px;
@@ -1468,6 +1573,23 @@
 
   .list-meta {
     margin: 20px 0 12px;
+  }
+
+  .artwork-picker {
+    padding: 13px;
+  }
+
+  .artwork-search-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .artwork-search-row .button {
+    width: 100%;
+  }
+
+  .artwork-results {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .concert-grid {

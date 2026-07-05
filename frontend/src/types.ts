@@ -63,6 +63,17 @@ export interface RankingRow {
   rating: number
 }
 
+export interface ArtworkOption {
+  url: string
+  title: string
+  artist: string
+  store_url: string | null
+}
+
+export interface ArtworkSearchResponse {
+  results: ArtworkOption[]
+}
+
 export interface RatingSummary {
   scope: string
   rated_concerts: number
