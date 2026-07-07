@@ -1944,9 +1944,12 @@
 
 .concert-visual {
   position: relative;
-  min-height: 225px;
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1;
   overflow: hidden;
   background: #060e20;
+  cursor: pointer;
 }
 
 .concert-visual-empty {
@@ -1957,8 +1960,7 @@
 }
 
 .concert-art {
-  position: absolute;
-  inset: 0;
+  display: block;
   width: 100%;
   height: 100%;
   border-radius: 0;
@@ -1980,19 +1982,13 @@
 }
 
 .concert-image-scrim {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to bottom, rgba(6, 14, 32, 0.05) 18%, rgba(6, 14, 32, 0.48) 55%, rgba(6, 14, 32, 0.97) 100%);
+  display: none;
 }
 
 .concert-visual-top {
-  position: absolute;
-  top: 14px;
-  right: 14px;
-  left: 14px;
   display: flex;
   align-items: flex-start;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 7px;
 }
 
@@ -2010,13 +2006,9 @@
 }
 
 .concert-card-head {
-  position: absolute;
-  right: 16px;
-  bottom: 16px;
-  left: 16px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 58px;
-  align-items: end;
+  align-items: start;
   gap: 14px;
 }
 
@@ -2094,10 +2086,11 @@
 
 .concert-card-body {
   display: flex;
-  min-height: 168px;
+  min-height: 236px;
   padding: 13px 14px 14px;
   flex: 1;
   flex-direction: column;
+  gap: 11px;
 }
 
 .concert-meta {
