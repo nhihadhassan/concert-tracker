@@ -215,14 +215,13 @@
 
 .stats-strip {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  grid-template-areas: "total next spent";
+  grid-template-columns: minmax(260px, 0.72fr) minmax(360px, 1.28fr);
+  grid-template-areas: "total next";
   gap: 14px;
 }
 
 .stat-total { grid-area: total; }
 .stat-next { grid-area: next; }
-.stat-spent { grid-area: spent; }
 
 .stat-panel,
 .concert-card,
@@ -270,7 +269,8 @@
 }
 
 .next-concert-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
   min-width: 0;
@@ -295,6 +295,31 @@
   font-size: 1.05rem;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.next-concert-countdown {
+  display: grid;
+  min-width: 84px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--border-strong) 54%, #44e2cd);
+  border-radius: 12px;
+  place-items: center;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(68, 226, 205, 0.2), transparent 60%),
+    color-mix(in srgb, var(--surface-soft) 82%, transparent);
+}
+
+.next-concert-countdown strong {
+  color: #62fae3;
+  font-family: var(--font-data);
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.next-concert-countdown span {
+  margin-top: 5px;
+  color: var(--text-muted);
+  font-size: 0.68rem;
 }
 
 .filters {
@@ -1343,6 +1368,16 @@
 
 @keyframes artwork-spin {
   to { transform: rotate(360deg); }
+}
+
+@keyframes stats-shader-drift {
+  from { transform: translate3d(-2%, 0, -80px) rotateX(12deg) rotateZ(-1deg); }
+  to { transform: translate3d(3%, 12px, -80px) rotateX(16deg) rotateZ(2deg); }
+}
+
+@keyframes pulse-scan {
+  from { transform: translate3d(-18%, 0, 0) rotate(-4deg); }
+  to { transform: translate3d(18%, 14px, 0) rotate(4deg); }
 }
 
 .toast {
@@ -2474,15 +2509,125 @@
   border-radius: 16px;
 }
 
+.stats-page-animated {
+  position: relative;
+  perspective: 1200px;
+  transform-style: preserve-3d;
+}
+
+.stats-shader {
+  position: absolute;
+  z-index: -1;
+  inset: -44px -30px auto;
+  height: 360px;
+  opacity: 0.58;
+  background:
+    radial-gradient(circle at 14% 28%, rgba(68, 226, 205, 0.28), transparent 34%),
+    radial-gradient(circle at 76% 18%, rgba(227, 100, 167, 0.28), transparent 32%),
+    conic-gradient(from 110deg at 50% 48%, rgba(132, 43, 210, 0), rgba(68, 226, 205, 0.18), rgba(255, 175, 211, 0.18), rgba(132, 43, 210, 0));
+  filter: blur(22px) saturate(135%);
+  mask-image: linear-gradient(to bottom, black, transparent 88%);
+  transform: translateZ(-80px) rotateX(12deg);
+  animation: stats-shader-drift 9s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
 .stats-artists,
 .stats-activity,
 .stats-rankings {
   grid-column: span 6;
 }
 
+.stats-pulse {
+  position: relative;
+  overflow: hidden;
+  grid-column: 1 / -1;
+  transform-style: preserve-3d;
+}
+
+.stats-pulse::before {
+  position: absolute;
+  inset: -40% -8% auto;
+  height: 180px;
+  opacity: 0.38;
+  background: linear-gradient(90deg, transparent, rgba(68, 226, 205, 0.2), rgba(221, 183, 255, 0.18), transparent);
+  filter: blur(18px);
+  content: "";
+  transform: translate3d(-12%, 0, 0) rotate(-4deg);
+  animation: pulse-scan 6s cubic-bezier(0.22, 1, 0.36, 1) infinite alternate;
+  pointer-events: none;
+}
+
+.pulse-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.pulse-card {
+  position: relative;
+  display: grid;
+  min-height: 188px;
+  padding: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  align-content: start;
+  gap: 9px;
+  background:
+    linear-gradient(145deg, rgba(6, 14, 32, 0.72), rgba(34, 42, 61, 0.74)),
+    radial-gradient(circle at 50% 0%, rgba(68, 226, 205, 0.16), transparent 60%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 18px 42px rgba(3, 7, 18, 0.22);
+  transform: translateZ(0);
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1), border-color 180ms ease-out, box-shadow 220ms ease-out;
+}
+
+.pulse-card:hover {
+  border-color: rgba(68, 226, 205, 0.36);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 24px 60px rgba(3, 7, 18, 0.32), 0 0 34px rgba(68, 226, 205, 0.08);
+  transform: translateY(-4px) rotateX(3deg) rotateY(-3deg);
+}
+
+.pulse-card svg {
+  width: 34px;
+  height: 34px;
+  padding: 8px;
+  border-radius: 11px;
+  color: #2c0051;
+  background: linear-gradient(145deg, #62fae3, #ddb7ff);
+}
+
+.pulse-card span {
+  color: var(--text-muted);
+  font-family: var(--font-data);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.pulse-card strong {
+  color: #f0dbff;
+  font-family: var(--font-display);
+  font-size: 1.08rem;
+  line-height: 1.2;
+}
+
+.pulse-card p,
+.stats-panel-note {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
 .stats-genres,
 .stats-venues {
   grid-column: span 4;
+}
+
+.stats-fun-facts {
+  grid-column: span 6;
 }
 
 .stats-weekday {
@@ -2566,47 +2711,138 @@
 }
 
 .monthly-chart {
+  margin-top: 16px;
+}
+
+.monthly-heatmap {
+  display: grid;
+  gap: 9px;
+}
+
+.heatmap-month-labels,
+.heatmap-row {
+  display: grid;
+  gap: 9px;
+}
+
+.heatmap-month-labels {
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  margin-left: 63px;
+  align-items: center;
+  color: var(--text-subtle);
+  font-family: var(--font-data);
+  font-size: 0.58rem;
+}
+
+.heatmap-row {
+  grid-template-columns: 54px minmax(0, 1fr);
+}
+
+.heatmap-cells {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
-  height: 250px;
-  align-items: end;
-  gap: 7px;
+  gap: 6px;
 }
 
-.month-column {
+.heatmap-month-labels span {
+  display: block;
+  text-align: center;
+}
+
+.heatmap-row {
+  align-items: center;
+}
+
+.heatmap-row.active .heatmap-year {
+  color: #62fae3;
+}
+
+.heatmap-year {
+  color: var(--text-muted);
+  font-family: var(--font-data);
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.heatmap-cell {
+  position: relative;
   display: grid;
-  height: 100%;
-  grid-template-rows: 20px 1fr 20px;
-  align-items: end;
-  justify-items: center;
-  gap: 5px;
+  min-height: 34px;
+  border: 1px solid rgba(255, 255, 255, calc(0.07 + var(--heat, 0) * 0.18));
+  border-radius: 9px;
+  place-items: center;
+  color: #f0dbff;
+  background:
+    radial-gradient(circle at 50% 20%, rgba(255, 255, 255, calc(var(--heat, 0) * 0.18)), transparent 56%),
+    linear-gradient(145deg, rgba(68, 226, 205, calc(0.05 + var(--heat, 0) * 0.48)), rgba(132, 43, 210, calc(0.08 + var(--heat, 0) * 0.5))),
+    rgba(221, 183, 255, 0.04);
+  box-shadow: 0 0 calc(var(--heat, 0) * 22px) rgba(68, 226, 205, 0.22);
+  font-family: var(--font-data);
+  font-size: 0.68rem;
+  transform: translateZ(calc(var(--heat, 0) * 22px));
+  transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1), border-color 180ms ease-out, box-shadow 180ms ease-out;
 }
 
-.month-value,
-.month-column small {
+.heatmap-cell:hover {
+  border-color: rgba(98, 250, 227, 0.72);
+  transform: translateY(-2px) translateZ(28px) scale(1.04);
+}
+
+.heatmap-legend {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
   color: var(--text-subtle);
   font-family: var(--font-data);
   font-size: 0.62rem;
 }
 
-.month-bar-track {
-  position: relative;
-  width: min(24px, 100%);
-  height: 100%;
-  overflow: hidden;
-  border-radius: 7px 7px 3px 3px;
-  background: rgba(221, 183, 255, 0.08);
+.heatmap-legend i {
+  width: 74px;
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(221, 183, 255, 0.08), rgba(68, 226, 205, 0.7), rgba(255, 175, 211, 0.8));
 }
 
-.month-bar {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  border-radius: inherit;
-  background: linear-gradient(to top, #842bd2, #44e2cd);
-  box-shadow: 0 0 16px rgba(68, 226, 205, 0.18);
-  transition: height 240ms cubic-bezier(0.22, 1, 0.36, 1);
+.stats-fun-facts ul {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  gap: 10px;
+  list-style: none;
+}
+
+.stats-fun-facts li {
+  padding: 10px 12px;
+  border: 1px solid rgba(221, 183, 255, 0.12);
+  border-radius: 12px;
+  color: var(--text-muted);
+  background: rgba(6, 14, 32, 0.36);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.spotify-signal {
+  display: flex;
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 14px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: linear-gradient(135deg, rgba(68, 226, 205, 0.12), rgba(221, 183, 255, 0.1));
+}
+
+.spotify-signal strong {
+  color: #62fae3;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+}
+
+.spotify-signal span {
+  color: var(--text-muted);
+  font-size: 0.78rem;
 }
 
 .genre-cloud {
@@ -3164,6 +3400,7 @@ a.detail-setlist:hover {
 
   .stats-artists,
   .stats-activity,
+  .stats-fun-facts,
   .stats-rankings {
     grid-column: 1 / -1;
   }
@@ -3244,12 +3481,24 @@ a.detail-setlist:hover {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .stats-strip {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "total"
+      "next";
+  }
+
   .stats-total {
     grid-column: 1 / -1;
   }
 
+  .pulse-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .stats-genres,
   .stats-venues,
+  .stats-fun-facts,
   .stats-weekday {
     grid-column: 1 / -1;
   }
@@ -3259,8 +3508,27 @@ a.detail-setlist:hover {
   }
 
   .monthly-chart {
-    height: 220px;
     gap: 4px;
+  }
+
+  .heatmap-month-labels {
+    margin-left: 48px;
+    font-size: 0.52rem;
+  }
+
+  .heatmap-row {
+    grid-template-columns: 40px minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .heatmap-cells {
+    gap: 4px;
+  }
+
+  .heatmap-cell {
+    min-height: 30px;
+    border-radius: 7px;
+    font-size: 0.62rem;
   }
 
   .detail-hero {
@@ -3334,20 +3602,35 @@ a.detail-setlist:hover {
     font-size: 1.25rem;
   }
 
-  .monthly-chart {
-    height: 190px;
+  .next-concert-row {
+    grid-template-columns: auto minmax(0, 1fr);
   }
 
-  .month-bar-track {
-    width: min(18px, 100%);
+  .next-concert-countdown {
+    grid-column: 1 / -1;
+    grid-template-columns: auto 1fr;
+    justify-items: start;
+    min-width: 0;
   }
 
-  .month-value {
+  .next-concert-countdown span {
+    margin: 0 0 0 8px;
+  }
+
+  .pulse-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .heatmap-month-labels {
     display: none;
   }
 
-  .month-column {
-    grid-template-rows: 0 1fr 20px;
+  .heatmap-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .heatmap-year {
+    font-size: 0.72rem;
   }
 
   .detail-hero {
@@ -3366,7 +3649,13 @@ a.detail-setlist:hover {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .month-bar,
+  .stats-shader,
+  .stats-pulse::before {
+    animation: none;
+  }
+
+  .heatmap-cell,
+  .pulse-card,
   .detail-round-button,
   .detail-setlist {
     transition: none;

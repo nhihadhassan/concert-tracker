@@ -64,6 +64,27 @@ const library: LibraryResponse = {
     reviews: [{ id: '44444444-4444-4444-8444-444444444444', reviewer_user_id: '11111111-1111-4111-8111-111111111111', reviewer_name: 'Nhihad', enjoyment_score: 9, stage_score: 8, setlist_score: 8.5, seat_score: 7.5, override_rating: null, override_reason: null, notes: 'Personal memory', calculated_rating: 8.5, final_rating: 8.5, is_overridden: false, row_version: 1 }],
     personal_rating: 8.5,
     combined_rating: 8.5,
+  }, {
+    id: '55555555-5555-4555-8555-555555555555',
+    artist: 'J. Cole',
+    tour: 'Dreamville Forever',
+    date: '2099-12-14',
+    venue: 'Scotiabank Arena',
+    price: 90,
+    genre: 'Hip-Hop',
+    projected: 9,
+    seat: null,
+    status: 'Want to Go',
+    type: 'Concert',
+    spotify_url: null,
+    image: 'https://example.com/j-cole.jpg',
+    notes: null,
+    companions: null,
+    row_version: 1,
+    attendees: [{ user_id: '11111111-1111-4111-8111-111111111111', display_name: 'Nhihad', attendance_status: 'Planned', row_version: 1 }],
+    reviews: [],
+    personal_rating: null,
+    combined_rating: null,
   }],
   analytics,
   personal_analytics: analytics,
@@ -101,7 +122,7 @@ describe('Concert Tracker cloud shell', () => {
     expect(screen.getByRole('heading', { name: "Nhihad's Concerts" })).toBeInTheDocument()
     expect(screen.getByText('Total concerts')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Kali Uchis' })).toBeInTheDocument()
-    expect(screen.getByText('Scotiabank Arena')).toBeInTheDocument()
+    expect(screen.getAllByText('Scotiabank Arena').length).toBeGreaterThan(0)
     expect(screen.queryByText(/40 Bay St/)).not.toBeInTheDocument()
     expect(screen.getByText('Proj 8')).toBeInTheDocument()
     expect(screen.queryByText(/combined 8\.5/i)).not.toBeInTheDocument()
@@ -120,6 +141,14 @@ describe('Concert Tracker cloud shell', () => {
     fireEvent.change(screen.getByPlaceholderText('e.g. Kendrick, Scotiabank...'), { target: { value: 'No match' } })
     expect(screen.queryByRole('heading', { name: 'Kali Uchis' })).not.toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'No concerts match' })).toBeInTheDocument()
+  })
+
+  it('shows next concert timing without total spend on the main page', () => {
+    render(<Dashboard accessToken="token" member={member} onSignOut={() => undefined} />)
+    expect(screen.getByText('Next concert')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'J. Cole' })).toBeInTheDocument()
+    expect(screen.getByText('Monday')).toBeInTheDocument()
+    expect(screen.queryByText('Total spent')).not.toBeInTheDocument()
   })
 
   it('opens the functional add form', () => {
