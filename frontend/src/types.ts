@@ -214,3 +214,22 @@ export interface ConflictState {
 }
 
 export type SyncState = 'loading' | 'synced' | 'syncing' | 'offline' | 'pending' | 'error' | 'conflict'
+
+export interface SpotifyStatus {
+  connected: boolean
+}
+
+export interface SpotifyRelease {
+  artist: string
+  title: string
+  release_type: string
+  release_date: string
+  url: string | null
+  image: string | null
+}
+
+export interface SpotifyPulse {
+  connected: boolean
+  releases: SpotifyRelease[]
+  checked_artists: number
+}

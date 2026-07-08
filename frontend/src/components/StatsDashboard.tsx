@@ -1,14 +1,110 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { BarChart3, CalendarDays, Flame, Headphones, MapPin, Music2, Radio, Sparkles, Ticket, Trophy, Users, WalletCards, Waves } from 'lucide-react'
 import { m, useReducedMotion } from 'motion/react'
-import type { Analytics, GroupSummary, RankingRow } from '../types'
+import type { Analytics, GroupSummary, RankingRow, SpotifyRelease } from '../types'
+import { connectSpotify, disconnectSpotify, fetchSpotifyPulse, fetchSpotifyStatus, startSpotifyLogin } from '../lib/api'
 
 interface StatsDashboardProps {
+  accessToken: string
   analytics: Analytics
   memberName: string
   rankings: RankingRow[]
   scope: 'personal' | 'shared'
   onScopeChange: (scope: 'personal' | 'shared') => void
+}
+
+type SpotifyState =
+  | { kind: 'loading' }
+  | { kind: 'disconnected' }
+  | { kind: 'connecting' }
+  | { kind: 'connected'; releases: SpotifyRelease[]; checkedArtists: number }
+  | { kind: 'error'; message: string }
+
+const SPOTIFY_ERROR_MESSAGES: Record<string, string> = {
+  access_denied: 'Spotify access was declined. Reconnect to see your latest drops.',
+  exchange_failed: "Spotify couldn't complete the connection. Try again.",
+  no_refresh_token: 'Spotify did not return a refresh token. Try reconnecting.',
+  missing_code: 'Spotify returned no authorization code. Try again.',
+}
+
+function useSpotifyPulse(accessToken: string) {
+  const [state, setState] = useState<SpotifyState>({ kind: 'loading' })
+
+  const loadPulse = useCallback(async (signal?: AbortSignal) => {
+    const pulse = await fetchSpotifyPulse(accessToken, signal)
+    if (signal?.aborted) return
+    if (!pulse.connected) {
+      setState({ kind: 'disconnected' })
+      return
+    }
+    setState({ kind: 'connected', releases: pulse.releases, checkedArtists: pulse.checked_artists })
+  }, [accessToken])
+
+  // Finalize an OAuth redirect (refresh token / error arrives in the URL fragment),
+  // then load status + pulse.
+  useEffect(() => {
+    const controller = new AbortController()
+    let active = true
+
+    const run = async () => {
+      const hash = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : ''
+      const params = new URLSearchParams(hash)
+      const refreshToken = params.get('spotify_refresh')
+      const errorCode = params.get('spotify_error')
+
+      if (refreshToken || errorCode) {
+        // Strip the fragment immediately so the token never lingers in history.
+        window.history.replaceState(null, '', window.location.pathname + window.location.search)
+      }
+
+      if (errorCode) {
+        if (active) setState({ kind: 'error', message: SPOTIFY_ERROR_MESSAGES[errorCode] ?? 'Spotify connection failed. Try again.' })
+        return
+      }
+
+      try {
+        if (refreshToken) {
+          await connectSpotify(accessToken, refreshToken)
+          if (!active) return
+        } else {
+          const status = await fetchSpotifyStatus(accessToken)
+          if (!active) return
+          if (!status.connected) {
+            setState({ kind: 'disconnected' })
+            return
+          }
+        }
+        setState({ kind: 'loading' })
+        await loadPulse(controller.signal)
+      } catch (error) {
+        if (active) setState({ kind: 'error', message: error instanceof Error ? error.message : 'Spotify request failed.' })
+      }
+    }
+
+    void run()
+    return () => { active = false; controller.abort() }
+  }, [accessToken, loadPulse])
+
+  const connect = useCallback(async () => {
+    setState({ kind: 'connecting' })
+    try {
+      const { authorize_url } = await startSpotifyLogin(accessToken)
+      window.location.href = authorize_url
+    } catch (error) {
+      setState({ kind: 'error', message: error instanceof Error ? error.message : 'Could not start Spotify sign-in.' })
+    }
+  }, [accessToken])
+
+  const disconnect = useCallback(async () => {
+    try {
+      await disconnectSpotify(accessToken)
+      setState({ kind: 'disconnected' })
+    } catch (error) {
+      setState({ kind: 'error', message: error instanceof Error ? error.message : 'Could not disconnect Spotify.' })
+    }
+  }, [accessToken])
+
+  return { state, connect, disconnect }
 }
 
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -21,8 +117,9 @@ const sortGroups = (rows: GroupSummary[]) => [...rows].sort((left, right) =>
   right.attended - left.attended || right.concerts - left.concerts || left.key.localeCompare(right.key),
 )
 
-export function StatsDashboard({ analytics, memberName, rankings, scope, onScopeChange }: StatsDashboardProps) {
+export function StatsDashboard({ accessToken, analytics, memberName, rankings, scope, onScopeChange }: StatsDashboardProps) {
   const reduceMotion = useReducedMotion()
+  const spotify = useSpotifyPulse(accessToken)
   const years = useMemo(() => [...new Set(analytics.monthly_trends.map((row) => row.year))].sort((a, b) => b - a), [analytics.monthly_trends])
   const [year, setYear] = useState(() => years[0] ?? new Date().getFullYear())
 
@@ -84,8 +181,13 @@ export function StatsDashboard({ analytics, memberName, rankings, scope, onScope
     {
       icon: Radio,
       title: 'Live news hookup',
-      value: 'Ready for Spotify + news APIs',
-      detail: 'No fake feed here. Connect Spotify listening history and an artist-news source to make this current.',
+      value: spotify.state.kind === 'connected'
+        ? (spotify.state.releases.length ? `${spotify.state.releases.length} fresh ${spotify.state.releases.length === 1 ? 'drop' : 'drops'}` : 'No new drops right now')
+        : spotify.state.kind === 'loading' || spotify.state.kind === 'connecting' ? 'Checking Spotify…'
+        : 'Connect Spotify below',
+      detail: spotify.state.kind === 'connected'
+        ? `Latest releases from the ${spotify.state.checkedArtists} artists you follow and play most.`
+        : 'Live releases from your Spotify artists appear in the panel below once connected.',
     },
   ]
   const funFacts = [
@@ -156,6 +258,24 @@ export function StatsDashboard({ analytics, memberName, rankings, scope, onScope
             <div className="stats-panel-head"><h3 id="fun-facts-title"><Sparkles aria-hidden="true" />Fun facts</h3><span>{formatPercent(attendedShare)} attended</span></div>
             <ul>{funFacts.map((fact) => <li key={fact}>{fact}</li>)}</ul>
             <div className="spotify-signal"><strong>{formatPercent(discoveryShare)}</strong><span>artist discovery ratio</span></div>
+          </section>
+
+          <section className="stats-panel stats-spotify" aria-labelledby="spotify-title">
+            <div className="stats-panel-head">
+              <h3 id="spotify-title"><Radio aria-hidden="true" />New from your artists</h3>
+              {spotify.state.kind === 'connected'
+                ? <button type="button" className="stats-spotify-link" onClick={() => void spotify.disconnect()}>Disconnect</button>
+                : <span>Spotify</span>}
+            </div>
+            {spotify.state.kind === 'loading' ? <p className="stats-panel-note">Checking Spotify for recent releases…</p>
+              : spotify.state.kind === 'connecting' ? <p className="stats-panel-note">Opening Spotify sign-in…</p>
+              : spotify.state.kind === 'error' ? <div className="stats-spotify-connect"><p className="stats-panel-note">{spotify.state.message}</p><button type="button" className="button button-primary" onClick={() => void spotify.connect()}>Retry Spotify</button></div>
+              : spotify.state.kind === 'disconnected' ? <div className="stats-spotify-connect"><p className="stats-panel-note">Connect Spotify to surface new singles and albums from the artists you follow and play most.</p><button type="button" className="button button-primary" onClick={() => void spotify.connect()}>Connect Spotify</button></div>
+              : spotify.state.releases.length === 0 ? <p className="stats-panel-note">No releases in the last two months from your top artists. Check back soon.</p>
+              : <ul className="spotify-release-list">{spotify.state.releases.map((release) => {
+                  const card = <><span className="spotify-release-meta"><strong>{release.artist}</strong><small>{release.title}</small></span><span className="spotify-release-tag">{release.release_type} · {release.release_date}</span></>
+                  return <li key={`${release.artist}-${release.title}-${release.release_date}`} className="spotify-release">{release.url ? <a href={release.url} target="_blank" rel="noopener">{card}</a> : card}</li>
+                })}</ul>}
           </section>
 
           <section className="stats-panel stats-genres" aria-labelledby="genres-title">
