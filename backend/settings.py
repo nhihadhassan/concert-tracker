@@ -12,6 +12,9 @@ class Settings:
     supabase_url: str
     supabase_publishable_key: str
     allowed_emails: frozenset[str]
+    spotify_client_id: str = ""
+    spotify_client_secret: str = ""
+    spotify_redirect_uri: str = ""
 
     @property
     def issuer(self) -> str:
@@ -20,6 +23,14 @@ class Settings:
     @property
     def jwks_url(self) -> str:
         return f"{self.issuer}/.well-known/jwks.json"
+
+    @property
+    def spotify_configured(self) -> bool:
+        return bool(
+            self.spotify_client_id
+            and self.spotify_client_secret
+            and self.spotify_redirect_uri
+        )
 
     @classmethod
     def from_environment(cls) -> "Settings":
@@ -39,6 +50,9 @@ class Settings:
             supabase_url=supabase_url,
             supabase_publishable_key=publishable_key,
             allowed_emails=allowed_emails,
+            spotify_client_id=os.getenv("SPOTIFY_CLIENT_ID", "").strip(),
+            spotify_client_secret=os.getenv("SPOTIFY_CLIENT_SECRET", "").strip(),
+            spotify_redirect_uri=os.getenv("SPOTIFY_REDIRECT_URI", "").strip(),
         )
 
 
