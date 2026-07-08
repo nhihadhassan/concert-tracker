@@ -121,6 +121,7 @@ def analytics_response(result: AnalyticsResult) -> AnalyticsResponse:
             upcoming_committed=float(result.spending.upcoming_committed),
             priced_concerts=result.spending.priced_concerts,
             average_attended_ticket=optional_float(result.spending.average_attended_ticket),
+            median_attended_ticket=optional_float(result.spending.median_attended_ticket),
         ),
         rating_summaries=[
             RatingSummaryResponse(

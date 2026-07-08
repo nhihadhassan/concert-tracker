@@ -33,6 +33,7 @@ class SpendingSummary:
     upcoming_committed: Decimal
     priced_concerts: int
     average_attended_ticket: Decimal | None
+    median_attended_ticket: Decimal | None
 
 
 @dataclass(frozen=True)
@@ -113,6 +114,17 @@ class AnalyticsResult:
 
 def _money(value: Decimal) -> Decimal:
     return round_decimal(value, 2)
+
+
+def _median(values: list[Decimal]) -> Decimal | None:
+    ordered = sorted(values)
+    count = len(ordered)
+    if count == 0:
+        return None
+    middle = count // 2
+    if count % 2 == 1:
+        return ordered[middle]
+    return (ordered[middle - 1] + ordered[middle]) / Decimal(2)
 
 
 def _metric_mean(values: Iterable[Decimal]) -> Decimal | None:
@@ -229,6 +241,7 @@ def calculate_analytics(concerts: Iterable[AnalyticsConcert]) -> AnalyticsResult
         )
         if attended_prices
         else None,
+        median_attended_ticket=_money(_median(attended_prices)) if attended_prices else None,
     )
 
     rating_summaries = [

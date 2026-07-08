@@ -2532,10 +2532,16 @@
   pointer-events: none;
 }
 
-.stats-artists,
+.stats-spotify,
 .stats-activity,
-.stats-spotify {
-  grid-column: span 6;
+.stats-fun-facts {
+  grid-column: span 8;
+}
+
+.stats-artists,
+.stats-genres,
+.stats-venues {
+  grid-column: span 4;
 }
 
 .stats-rankings {
@@ -2625,18 +2631,6 @@
   line-height: 1.45;
 }
 
-.stats-genres,
-.stats-venues {
-  grid-column: span 4;
-}
-
-.stats-fun-facts {
-  grid-column: span 6;
-}
-
-.stats-weekday {
-  grid-column: span 4;
-}
 
 .stats-panel-head {
   display: flex;
@@ -3477,10 +3471,12 @@ a.detail-setlist:hover {
   .stats-fun-facts,
   .stats-spotify,
   .stats-genres,
-  .stats-venues,
-  .stats-weekday,
-  .stats-rankings {
+  .stats-venues {
     grid-column: span 6;
+  }
+
+  .stats-rankings {
+    grid-column: 1 / -1;
   }
 
   .detail-rating,

@@ -127,6 +127,7 @@ export interface Analytics {
     upcoming_committed: number
     priced_concerts: number
     average_attended_ticket: number | null
+    median_attended_ticket: number | null
   }
   rating_summaries: RatingSummary[]
   projection: ProjectionSummary

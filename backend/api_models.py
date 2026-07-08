@@ -82,6 +82,7 @@ class SpendingResponse(BaseModel):
     upcoming_committed: float
     priced_concerts: int
     average_attended_ticket: Optional[float]
+    median_attended_ticket: Optional[float]
 
 
 class RatingSummaryResponse(BaseModel):
