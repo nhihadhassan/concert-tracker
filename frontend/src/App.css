@@ -2534,8 +2534,12 @@
 
 .stats-artists,
 .stats-activity,
-.stats-rankings {
+.stats-spotify {
   grid-column: span 6;
+}
+
+.stats-rankings {
+  grid-column: 1 / -1;
 }
 
 .stats-pulse {
@@ -3471,13 +3475,11 @@ a.detail-setlist:hover {
   .stats-artists,
   .stats-activity,
   .stats-fun-facts,
-  .stats-rankings {
-    grid-column: 1 / -1;
-  }
-
+  .stats-spotify,
   .stats-genres,
   .stats-venues,
-  .stats-weekday {
+  .stats-weekday,
+  .stats-rankings {
     grid-column: span 6;
   }
 
@@ -3566,10 +3568,14 @@ a.detail-setlist:hover {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .stats-artists,
+  .stats-activity,
+  .stats-fun-facts,
+  .stats-spotify,
   .stats-genres,
   .stats-venues,
-  .stats-fun-facts,
-  .stats-weekday {
+  .stats-weekday,
+  .stats-rankings {
     grid-column: 1 / -1;
   }
 
