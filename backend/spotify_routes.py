@@ -142,6 +142,11 @@ def _app_origin(settings: Settings) -> str:
     return uri[:index] if index != -1 else uri
 
 
+def _stats_url(settings: Settings, fragment: str) -> str:
+    # The SPA renders the stats view from a query param, not a /stats path.
+    return f"{_app_origin(settings)}/?view=stats&scope=personal#{fragment}"
+
+
 def _basic_auth_header(settings: Settings) -> str:
     raw = f"{settings.spotify_client_id}:{settings.spotify_client_secret}".encode("utf-8")
     return "Basic " + base64.b64encode(raw).decode("ascii")
@@ -184,10 +189,9 @@ def spotify_callback(
     error: Optional[str] = Query(default=None),
 ) -> RedirectResponse:
     settings = _settings_or_503()
-    origin = _app_origin(settings)
     if error or not code or not state:
         reason = error or "missing_code"
-        return RedirectResponse(url=f"{origin}/stats#spotify_error={reason}", status_code=302)
+        return RedirectResponse(url=_stats_url(settings, f"spotify_error={reason}"), status_code=302)
 
     _verify_state(state, settings.spotify_client_secret)
 
@@ -205,14 +209,14 @@ def spotify_callback(
         response.raise_for_status()
         tokens = response.json()
     except (httpx.HTTPError, ValueError):
-        return RedirectResponse(url=f"{origin}/stats#spotify_error=exchange_failed", status_code=302)
+        return RedirectResponse(url=_stats_url(settings, "spotify_error=exchange_failed"), status_code=302)
 
     refresh_token = tokens.get("refresh_token")
     if not refresh_token:
-        return RedirectResponse(url=f"{origin}/stats#spotify_error=no_refresh_token", status_code=302)
+        return RedirectResponse(url=_stats_url(settings, "spotify_error=no_refresh_token"), status_code=302)
 
     fragment = urlencode({"spotify_refresh": refresh_token, "spotify_scope": tokens.get("scope", "")})
-    return RedirectResponse(url=f"{origin}/stats#{fragment}", status_code=302)
+    return RedirectResponse(url=_stats_url(settings, fragment), status_code=302)
 
 
 @router.post("/connect", response_model=StatusResponse)
