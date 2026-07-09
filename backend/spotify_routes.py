@@ -26,6 +26,7 @@ import hmac
 import re
 import secrets
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Optional
 from urllib.parse import urlencode
@@ -47,9 +48,9 @@ SPOTIFY_API_BASE = "https://api.spotify.com/v1"
 SPOTIFY_SCOPES = "user-follow-read user-top-read user-read-recently-played"
 
 STATE_TTL_SECONDS = 600
-RELEASE_WINDOW_DAYS = 60
-MAX_ARTISTS_SCANNED = 15
-MAX_RELEASES_RETURNED = 12
+RELEASE_WINDOW_DAYS = 90
+MAX_ARTISTS_SCANNED = 50
+MAX_RELEASES_RETURNED = 15
 
 VALID_TIME_RANGES = {"short_term", "medium_term", "long_term"}
 _YEAR_SUFFIX = re.compile(r"\b(19|20)\d{2}\b")
@@ -306,7 +307,7 @@ def _spotify_get(client: httpx.Client, access_token: str, path: str, params: dic
 def _collect_artists(client: httpx.Client, access_token: str) -> list[dict[str, Any]]:
     artists: dict[str, dict[str, Any]] = {}
     try:
-        top = _spotify_get(client, access_token, "/me/top/artists", {"limit": 20, "time_range": "medium_term"})
+        top = _spotify_get(client, access_token, "/me/top/artists", {"limit": 50, "time_range": "medium_term"})
         for item in top.get("items", []):
             if item.get("id"):
                 artists[item["id"]] = item
@@ -381,11 +382,11 @@ def spotify_pulse(
     access_token = _refresh_access_token(rows[0]["refresh_token"], settings)
     with httpx.Client() as client:
         artists = _collect_artists(client, access_token)
-        releases: list[ReleaseItem] = []
-        for artist in artists:
-            release = _latest_release(client, access_token, artist)
-            if release is not None:
-                releases.append(release)
+        # httpx.Client is safe to share across threads; fan out the per-artist album
+        # lookups so scanning 50 artists stays fast enough for a serverless request.
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            found = pool.map(lambda artist: _latest_release(client, access_token, artist), artists)
+        releases = [release for release in found if release is not None]
     releases.sort(key=lambda item: item.release_date, reverse=True)
     return PulseResponse(
         connected=True,

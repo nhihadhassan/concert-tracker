@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
-import { BarChart3, Check, Flame, Headphones, ListMusic, MapPin, Music2, Radio, Sparkles, Ticket, Trophy, Users, WalletCards, Waves } from 'lucide-react'
+import { BarChart3, Check, ListMusic, MapPin, Music2, Radio, Sparkles, Ticket, Trophy, Users, WalletCards } from 'lucide-react'
 import { m, useReducedMotion } from 'motion/react'
 import type { Analytics, GroupSummary, RankingRow, SpotifyInsights, SpotifyRange, SpotifyRelease } from '../types'
 import { connectSpotify, disconnectSpotify, fetchSpotifyInsights, fetchSpotifyPulse, fetchSpotifyStatus, startSpotifyLogin } from '../lib/api'
@@ -166,11 +166,7 @@ export function StatsDashboard({ accessToken, analytics, memberName, rankings, s
   const spotify = useSpotifyPulse(accessToken)
   const insights = useSpotifyInsights(accessToken, spotify.state.kind === 'connected')
   const years = useMemo(() => [...new Set(analytics.monthly_trends.map((row) => row.year))].sort((a, b) => b - a), [analytics.monthly_trends])
-  const [year, setYear] = useState(() => years[0] ?? new Date().getFullYear())
-
-  useEffect(() => {
-    if (years.length && !years.includes(year)) setYear(years[0])
-  }, [year, years])
+  const latestYear = years[0]
 
   const activityRows = [...years].reverse().map((activityYear) => ({
     year: activityYear,
@@ -196,56 +192,11 @@ export function StatsDashboard({ accessToken, analytics, memberName, rankings, s
   const monthlySummary = busiestMonth
     ? `${months[busiestMonth.month - 1]} ${busiestMonth.year} is the loudest month with ${busiestMonth.concerts} ${busiestMonth.concerts === 1 ? 'record' : 'records'}.`
     : 'Add concerts across a few months to light up the activity grid.'
-  // Rotate through the whole artist pool, reshuffled weekly, so the pulse never
-  // stalls on a single artist.
-  const artistPool = sortGroups(analytics.artist_summaries)
-  const weekSeed = Math.floor(Date.now() / 604_800_000)
-  const rotateArtist = (offset: number) => (artistPool.length ? artistPool[(weekSeed + offset) % artistPool.length] : undefined)
-  const spotlightArtist = rotateArtist(0)
-  const rotationTwo = rotateArtist(1)
-  const rotationThree = rotateArtist(2)
   const yearlyTotals = analytics.monthly_trends.reduce<Record<number, number>>((totals, row) => {
     totals[row.year] = (totals[row.year] ?? 0) + row.concerts
     return totals
   }, {})
   const busiestYear = Object.entries(yearlyTotals).sort((left, right) => right[1] - left[1])[0]
-  const mixSeeds = [
-    spotlightArtist?.key,
-    rotationTwo?.key && rotationTwo.key !== spotlightArtist?.key ? rotationTwo.key : null,
-    topGenre?.key ? `${topGenre.key} setlist energy` : null,
-    rotationThree?.key && rotationThree.key !== spotlightArtist?.key && rotationThree.key !== rotationTwo?.key ? rotationThree.key : null,
-  ].filter(Boolean).slice(0, 4)
-  const pulseCards = [
-    {
-      icon: Flame,
-      title: 'Artist in rotation',
-      value: spotlightArtist?.key ?? 'No artist yet',
-      detail: spotlightArtist ? `${spotlightArtist.attended} attended ${spotlightArtist.attended === 1 ? 'show' : 'shows'} in your library. A new artist steps up each week.` : 'Add attended shows to spotlight a library artist.',
-    },
-    {
-      icon: Headphones,
-      title: 'Suggested mix',
-      value: mixSeeds.length ? mixSeeds.join(' + ') : 'Build from your first concert',
-      detail: mixSeeds.length ? 'A fresh seed mix, reshuffled every week.' : 'Mixes get smarter as the library grows.',
-    },
-    {
-      icon: Sparkles,
-      title: 'Deep cut to revisit',
-      value: rotationTwo?.key ?? spotlightArtist?.key ?? 'Waiting on shows',
-      detail: rotationTwo ? `Relive your ${rotationTwo.key} nights before their next release.` : 'Add shows to resurface artists worth another listen.',
-    },
-    {
-      icon: Radio,
-      title: 'Live news hookup',
-      value: spotify.state.kind === 'connected'
-        ? (spotify.state.releases.length ? `${spotify.state.releases.length} fresh ${spotify.state.releases.length === 1 ? 'drop' : 'drops'}` : 'No new drops right now')
-        : spotify.state.kind === 'loading' || spotify.state.kind === 'connecting' ? 'Checking Spotify…'
-        : 'Connect Spotify below',
-      detail: spotify.state.kind === 'connected'
-        ? `Latest releases from the ${spotify.state.checkedArtists} artists you follow and play most.`
-        : 'Live releases from your Spotify artists appear in the panel below once connected.',
-    },
-  ]
   const funFacts = [
     topRanking ? `Your highest-rated night: ${topRanking.artist} at ${topRanking.rating}/10 back in ${topRanking.concert_date.slice(0, 4)}.` : 'Rate a concert to crown your best night.',
     busiestYear ? `${busiestYear[0]} was your biggest year with ${busiestYear[1]} ${busiestYear[1] === 1 ? 'show' : 'shows'}.` : 'Your busiest year shows up once concerts span the calendar.',
@@ -279,14 +230,6 @@ export function StatsDashboard({ accessToken, analytics, memberName, rankings, s
         </section>
 
         <div className="stats-grid">
-          <section className="stats-panel stats-pulse" aria-labelledby="pulse-title">
-            <div className="stats-panel-head"><h3 id="pulse-title"><Waves aria-hidden="true" />Artist pulse</h3><span>Refreshes weekly</span></div>
-            <div className="pulse-grid">{pulseCards.map((card, index) => {
-              const Icon = card.icon
-              return <m.article key={card.title} className="pulse-card" initial={reduceMotion ? false : { opacity: 0, y: 18, rotateY: -8 }} animate={{ opacity: 1, y: 0, rotateY: 0 }} transition={{ delay: reduceMotion ? 0 : index * 0.045, duration: 0.32, ease: [0.22, 1, 0.36, 1] }}><Icon aria-hidden="true" /><span>{card.title}</span><strong>{card.value}</strong><p>{card.detail}</p></m.article>
-            })}</div>
-          </section>
-
           {spotify.state.kind === 'connected' || insights.state.kind === 'ready' ? (
             <section className="stats-panel stats-your-spotify" aria-labelledby="your-spotify-title">
               <div className="stats-panel-head">
@@ -334,7 +277,7 @@ export function StatsDashboard({ accessToken, analytics, memberName, rankings, s
               : spotify.state.kind === 'connecting' ? <p className="stats-panel-note">Opening Spotify sign-in…</p>
               : spotify.state.kind === 'error' ? <div className="stats-spotify-connect"><p className="stats-panel-note">{spotify.state.message}</p><button type="button" className="button button-primary" onClick={() => void spotify.connect()}>Retry Spotify</button></div>
               : spotify.state.kind === 'disconnected' ? <div className="stats-spotify-connect"><p className="stats-panel-note">Connect Spotify to surface new singles and albums from the artists you follow and play most.</p><button type="button" className="button button-primary" onClick={() => void spotify.connect()}>Connect Spotify</button></div>
-              : spotify.state.releases.length === 0 ? <p className="stats-panel-note">No releases in the last two months from your top artists. Check back soon.</p>
+              : spotify.state.releases.length === 0 ? <p className="stats-panel-note">No new releases in the last few months across your top 50 artists. Check back soon.</p>
               : <ul className="spotify-release-list">{spotify.state.releases.map((release) => {
                   const card = <><span className="spotify-release-meta"><strong>{release.artist}</strong><small>{release.title}</small></span><span className="spotify-release-tag">{release.release_type} · {release.release_date}</span></>
                   return <li key={`${release.artist}-${release.title}-${release.release_date}`} className="spotify-release">{release.url ? <a href={release.url} target="_blank" rel="noopener">{card}</a> : card}</li>
@@ -347,11 +290,11 @@ export function StatsDashboard({ accessToken, analytics, memberName, rankings, s
           </section>
 
           <section className="stats-panel stats-activity" aria-labelledby="activity-title">
-            <div className="stats-panel-head"><h3 id="activity-title"><BarChart3 aria-hidden="true" />Monthly heatmap</h3>{years.length ? <label className="stats-year"><span className="sr-only">Highlight year</span><select value={year} onChange={(event) => setYear(Number(event.target.value))}>{years.map((value) => <option key={value}>{value}</option>)}</select></label> : null}</div>
+            <div className="stats-panel-head"><h3 id="activity-title"><BarChart3 aria-hidden="true" />Monthly heatmap</h3></div>
             <p className="stats-panel-note">{monthlySummary}</p>
             <div className="monthly-chart monthly-heatmap" role="img" aria-label="Monthly concert activity heatmap across years">
               <div className="heatmap-month-labels" aria-hidden="true">{months.map((label) => <span key={label}>{label}</span>)}</div>
-              {activityRows.map((activityRow) => <div className={`heatmap-row${activityRow.year === year ? ' active' : ''}`} key={activityRow.year}>
+              {activityRows.map((activityRow) => <div className={`heatmap-row${activityRow.year === latestYear ? ' active' : ''}`} key={activityRow.year}>
                 <span className="heatmap-year">{activityRow.year}</span>
                 <div className="heatmap-cells">{activityRow.months.map((row) => {
                   const intensity = row.concerts ? Math.max(0.18, row.concerts / monthlyMax) : 0
