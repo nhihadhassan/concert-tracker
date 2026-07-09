@@ -145,24 +145,44 @@ type LyricState =
   | { kind: 'ready'; data: LyricBreakdown }
   | { kind: 'error'; message: string }
 
-function useLyricBreakdown(accessToken: string, artist: string | undefined) {
+interface LyricSubject {
+  label: string
+  artist: string
+  track?: string
+}
+
+function useLyricBreakdown(accessToken: string, subject: LyricSubject | undefined) {
   const [state, setState] = useState<LyricState>({ kind: 'idle' })
 
   useEffect(() => {
-    if (!artist) {
+    if (!subject?.artist) {
       setState({ kind: 'idle' })
       return
     }
     const controller = new AbortController()
     setState({ kind: 'loading' })
-    fetchLyricBreakdown(accessToken, artist, controller.signal)
+    fetchLyricBreakdown(accessToken, subject.artist, subject.track, controller.signal)
       .then((data) => { if (!controller.signal.aborted) setState({ kind: 'ready', data }) })
       .catch((error) => { if (!controller.signal.aborted) setState({ kind: 'error', message: error instanceof Error ? error.message : 'Lyric lookup failed.' }) })
     return () => controller.abort()
-  }, [accessToken, artist])
+  }, [accessToken, subject?.artist, subject?.track])
 
   return state
 }
+
+const CURRENT_LYRIC_PICKS: LyricSubject[] = [
+  { label: 'Recent rotation', artist: 'Olivia Rodrigo', track: 'vampire' },
+  { label: 'Recent rotation', artist: 'Drake', track: 'First Person Shooter' },
+  { label: 'Recent rotation', artist: 'SZA', track: 'Saturn' },
+  { label: 'Recent rotation', artist: 'Sabrina Carpenter', track: 'Espresso' },
+  { label: 'Recent rotation', artist: 'Taylor Swift', track: 'Fortnight' },
+  { label: 'Recent rotation', artist: 'Kendrick Lamar', track: 'Not Like Us' },
+  { label: 'Recent rotation', artist: 'Chappell Roan', track: 'Good Luck, Babe!' },
+]
+
+const daySeed = () => Math.floor(Date.now() / 86_400_000)
+const dailyPick = <T,>(items: T[], offset = 0): T | undefined =>
+  items.length ? items[(daySeed() + offset) % items.length] : undefined
 
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
@@ -186,14 +206,56 @@ const readinessText = (next: SpotifyInsights['next_show']): string => {
   return 'Not in your current Spotify rotation. Cram time before the show.'
 }
 
+function LyricCard({ state, subject }: { state: LyricState; subject: LyricSubject | undefined }) {
+  const title = subject?.track ? `${subject.track} · ${subject.artist}` : subject?.artist
+  return (
+    <article className="lyric-card">
+      <span className="lyric-card-kicker">{subject?.label ?? 'Daily pick'}</span>
+      {state.kind === 'loading' || state.kind === 'idle' ? <p className="stats-panel-note">Finding a lyric worth unpacking...</p>
+        : state.kind === 'error' ? <p className="stats-panel-note">{state.message}</p>
+        : !state.data.found ? <p className="stats-panel-note">No annotated breakdown for {state.data.artist ?? title ?? 'this artist'} yet. Check back tomorrow.</p>
+        : <div className="lyric-body">
+            <div className="lyric-song">
+              {state.data.image ? <img src={state.data.image} alt="" loading="lazy" /> : <span className="chip-fallback lyric-art-fallback" aria-hidden="true" />}
+              <div className="lyric-song-meta"><strong>{state.data.song}</strong><span>{state.data.artist}</span></div>
+              {state.data.url ? <a href={state.data.url} target="_blank" rel="noopener">Open on Genius</a> : null}
+            </div>
+            <div className="lyric-text">
+              {state.data.fragment ? <p className="lyric-fragment">"{state.data.fragment}"</p> : null}
+              <p className="lyric-annotation">{state.data.annotation}</p>
+            </div>
+          </div>}
+    </article>
+  )
+}
+
 export function StatsDashboard({ accessToken, analytics, memberName, rankings, scope, onScopeChange }: StatsDashboardProps) {
   const reduceMotion = useReducedMotion()
   const spotify = useSpotifyPulse(accessToken)
   const insights = useSpotifyInsights(accessToken, spotify.state.kind === 'connected')
-  const lyricSubject = insights.state.kind === 'ready'
-    ? (insights.state.data.next_show?.artist ?? insights.state.data.top_artists[0]?.name)
-    : undefined
-  const lyric = useLyricBreakdown(accessToken, lyricSubject)
+  const lyricSubjects = useMemo(() => {
+    if (insights.state.kind !== 'ready') return {
+      recent: dailyPick(CURRENT_LYRIC_PICKS),
+      concert: dailyPick(CURRENT_LYRIC_PICKS.map((pick) => ({ ...pick, label: 'Wildcard daily pick' })), 3),
+    }
+    const topTrackSubjects = insights.state.data.top_tracks.map((track) => ({
+      label: 'Recent rotation',
+      artist: track.artist,
+      track: track.name,
+    }))
+    const topArtistSubjects = insights.state.data.top_artists.map((artist) => ({
+      label: 'Daily artist pick',
+      artist: artist.name,
+    }))
+    return {
+      recent: dailyPick(topTrackSubjects.length ? topTrackSubjects : CURRENT_LYRIC_PICKS),
+      concert: insights.state.data.next_show
+        ? { label: `Upcoming concert · ${formatShowDate(insights.state.data.next_show.date)}`, artist: insights.state.data.next_show.artist }
+        : dailyPick(topArtistSubjects.length ? topArtistSubjects : CURRENT_LYRIC_PICKS.map((pick) => ({ ...pick, label: 'Wildcard daily pick' })), 3),
+    }
+  }, [insights.state])
+  const recentLyric = useLyricBreakdown(accessToken, lyricSubjects.recent)
+  const concertLyric = useLyricBreakdown(accessToken, lyricSubjects.concert)
   const years = useMemo(() => [...new Set(analytics.monthly_trends.map((row) => row.year))].sort((a, b) => b - a), [analytics.monthly_trends])
   const latestYear = years[0]
 
@@ -295,22 +357,13 @@ export function StatsDashboard({ accessToken, analytics, memberName, rankings, s
             </section>
           ) : null}
 
-          {lyric.kind === 'loading' || (lyric.kind === 'ready' && lyric.data.configured) ? (
+          {recentLyric.kind === 'loading' || concertLyric.kind === 'loading' || (recentLyric.kind === 'ready' && recentLyric.data.configured) || (concertLyric.kind === 'ready' && concertLyric.data.configured) ? (
             <section className="stats-panel stats-lyrics" aria-labelledby="lyrics-title">
-              <div className="stats-panel-head"><h3 id="lyrics-title"><Quote aria-hidden="true" />Lyric breakdown</h3><span>via Genius</span></div>
-              {lyric.kind === 'loading' ? <p className="stats-panel-note">Finding a lyric worth unpacking…</p>
-                : !lyric.data.found ? <p className="stats-panel-note">No annotated breakdown for {lyric.data.artist ?? lyricSubject} yet. Check back another day.</p>
-                : <div className="lyric-body">
-                    <div className="lyric-song">
-                      {lyric.data.image ? <img src={lyric.data.image} alt="" loading="lazy" /> : <span className="chip-fallback lyric-art-fallback" aria-hidden="true" />}
-                      <div className="lyric-song-meta"><strong>{lyric.data.song}</strong><span>{lyric.data.artist}</span></div>
-                      {lyric.data.url ? <a href={lyric.data.url} target="_blank" rel="noopener">Open on Genius</a> : null}
-                    </div>
-                    <div className="lyric-text">
-                      {lyric.data.fragment ? <p className="lyric-fragment">“{lyric.data.fragment}”</p> : null}
-                      <p className="lyric-annotation">{lyric.data.annotation}</p>
-                    </div>
-                  </div>}
+              <div className="stats-panel-head"><h3 id="lyrics-title"><Quote aria-hidden="true" />Today's lyric breakdowns</h3><span>via Genius</span></div>
+              <div className="lyric-card-grid">
+                <LyricCard state={recentLyric} subject={lyricSubjects.recent} />
+                {lyricSubjects.concert ? <LyricCard state={concertLyric} subject={lyricSubjects.concert} /> : null}
+              </div>
             </section>
           ) : null}
 

@@ -49,7 +49,7 @@ SPOTIFY_SCOPES = "user-follow-read user-top-read user-read-recently-played"
 
 STATE_TTL_SECONDS = 600
 RELEASE_WINDOW_DAYS = 90
-MAX_ARTISTS_SCANNED = 50
+MAX_ARTISTS_SCANNED = 75
 MAX_RELEASES_RETURNED = 15
 
 VALID_TIME_RANGES = {"short_term", "medium_term", "long_term"}
@@ -306,15 +306,41 @@ def _spotify_get(client: httpx.Client, access_token: str, path: str, params: dic
 
 def _collect_artists(client: httpx.Client, access_token: str) -> list[dict[str, Any]]:
     artists: dict[str, dict[str, Any]] = {}
+
+    def remember(item: dict[str, Any]) -> None:
+        if item.get("id") and item["id"] not in artists:
+            artists[item["id"]] = item
+
     try:
-        top = _spotify_get(client, access_token, "/me/top/artists", {"limit": 50, "time_range": "medium_term"})
+        top = _spotify_get(
+            client,
+            access_token,
+            "/me/top/artists",
+            {"limit": 50, "time_range": "medium_term"},
+        )
         for item in top.get("items", []):
-            if item.get("id"):
-                artists[item["id"]] = item
-        following = _spotify_get(client, access_token, "/me/following", {"type": "artist", "limit": 50})
+            remember(item)
+        top_tracks = _spotify_get(
+            client,
+            access_token,
+            "/me/top/tracks",
+            {"limit": 50, "time_range": "medium_term"},
+        )
+        for track in top_tracks.get("items", []):
+            for item in track.get("artists", []):
+                remember(item)
+        recent = _spotify_get(client, access_token, "/me/player/recently-played", {"limit": 50})
+        for play in recent.get("items", []):
+            for item in (play.get("track") or {}).get("artists", []):
+                remember(item)
+        following = _spotify_get(
+            client,
+            access_token,
+            "/me/following",
+            {"type": "artist", "limit": 50},
+        )
         for item in following.get("artists", {}).get("items", []):
-            if item.get("id") and item["id"] not in artists:
-                artists[item["id"]] = item
+            remember(item)
     except httpx.HTTPError as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY, detail="Spotify artist lookup failed"
@@ -337,7 +363,7 @@ def _latest_release(client: httpx.Client, access_token: str, artist: dict[str, A
             client,
             access_token,
             f"/artists/{artist['id']}/albums",
-            {"include_groups": "single,album", "market": "CA", "limit": 5},
+            {"include_groups": "single,album", "market": "CA", "limit": 10},
         )
     except httpx.HTTPError:
         return None

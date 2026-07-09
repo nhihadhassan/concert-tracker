@@ -69,8 +69,11 @@ export const fetchSpotifyPulse = (accessToken: string, signal?: AbortSignal) =>
 export const fetchSpotifyInsights = (accessToken: string, range: SpotifyRange, signal?: AbortSignal) =>
   apiRequest<SpotifyInsights>(accessToken, `/v1/spotify/insights?range=${range}`, { signal })
 
-export const fetchLyricBreakdown = (accessToken: string, artist: string, signal?: AbortSignal) =>
-  apiRequest<LyricBreakdown>(accessToken, `/v1/lyrics/breakdown?artist=${encodeURIComponent(artist)}`, { signal })
+export const fetchLyricBreakdown = (accessToken: string, artist: string, track?: string, signal?: AbortSignal) => {
+  const params = new URLSearchParams({ artist })
+  if (track) params.set('track', track)
+  return apiRequest<LyricBreakdown>(accessToken, `/v1/lyrics/breakdown?${params.toString()}`, { signal })
+}
 
 export const sendQueuedMutation = (accessToken: string, mutation: QueuedMutation) => {
   const query = mutation.method === 'DELETE' && mutation.body && typeof mutation.body === 'object'

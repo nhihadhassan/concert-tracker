@@ -5,6 +5,7 @@ import type { Concert } from '../types'
 interface ConcertCardProps {
   concert: Concert
   index: number
+  onArtwork: (concert: Concert) => void
   onDelete: (concert: Concert) => void
   onEdit: (concert: Concert) => void
   onOpen: (concert: Concert) => void
@@ -24,7 +25,7 @@ const ratingTone = (rating: number | null) => {
   return 'rating-low'
 }
 
-export function ConcertCard({ concert, index, onDelete, onEdit, onOpen }: ConcertCardProps) {
+export function ConcertCard({ concert, index, onArtwork, onDelete, onEdit, onOpen }: ConcertCardProps) {
   const activeAttendees = concert.attendees.filter((attendee) => attendee.attendance_status !== 'Did Not Attend')
   const reduceMotion = useReducedMotion()
   return (
@@ -61,6 +62,7 @@ export function ConcertCard({ concert, index, onDelete, onEdit, onOpen }: Concer
         <div className="card-actions">
           {concert.spotify_url ? <a className="text-action setlist-action" href={concert.spotify_url} target="_blank" rel="noreferrer"><Music2 size={16} />Setlist</a> : <span />}
           <span className="card-action-spacer" />
+          <button className="button button-secondary compact-action" type="button" onClick={() => onArtwork(concert)} aria-label={`Choose artwork for ${concert.artist}`}><Image size={16} /><span>Artwork</span></button>
           <button className="button button-secondary compact-action" type="button" onClick={() => onEdit(concert)} aria-label={`Edit ${concert.artist}`}><Pencil size={16} /><span>Edit</span></button>
           <button className="icon-button danger-action" type="button" onClick={() => onDelete(concert)} title={`Delete ${concert.artist}`} aria-label={`Delete ${concert.artist}`}><Trash2 size={17} /></button>
         </div>

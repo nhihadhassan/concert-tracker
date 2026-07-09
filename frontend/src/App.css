@@ -1100,6 +1100,31 @@
   gap: 7px;
 }
 
+.artwork-dialog-shell {
+  max-width: 760px;
+}
+
+.artwork-picker-fast {
+  margin-top: 12px;
+}
+
+.artwork-artist-only {
+  justify-self: start;
+}
+
+.artwork-results-large {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.artwork-preview-large {
+  min-height: 190px;
+  margin-top: 12px;
+}
+
+.artwork-preview-large img {
+  height: 210px;
+}
+
 .override-note,
 .form-error {
   margin: 12px 0;
@@ -1625,6 +1650,10 @@
 
   .artwork-results {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .artwork-results-large {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .concert-grid {
@@ -2550,10 +2579,34 @@
   grid-column: 1 / -1;
 }
 
+.lyric-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.lyric-card {
+  min-width: 0;
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.lyric-card-kicker {
+  color: #62fae3;
+  font-family: var(--font-data);
+  font-size: 0.76rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .lyric-body {
   display: grid;
-  grid-template-columns: 200px minmax(0, 1fr);
-  gap: 26px;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 20px;
   align-items: start;
 }
 
@@ -2603,7 +2656,7 @@
   margin: 0 0 16px;
   color: #f0dbff;
   font-family: var(--font-display);
-  font-size: 1.3rem;
+  font-size: 1.12rem;
   font-style: italic;
   line-height: 1.45;
   text-wrap: balance;
@@ -3877,6 +3930,10 @@ a.detail-setlist:hover {
 
   .spotify-insight-summary,
   .spotify-insight-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .lyric-card-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 
