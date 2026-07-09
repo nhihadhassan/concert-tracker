@@ -23,6 +23,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
+import re
 import secrets
 import time
 from datetime import date, datetime, timedelta, timezone
@@ -49,6 +50,10 @@ STATE_TTL_SECONDS = 600
 RELEASE_WINDOW_DAYS = 60
 MAX_ARTISTS_SCANNED = 15
 MAX_RELEASES_RETURNED = 12
+
+VALID_TIME_RANGES = {"short_term", "medium_term", "long_term"}
+_YEAR_SUFFIX = re.compile(r"\b(19|20)\d{2}\b")
+_NON_ALNUM = re.compile(r"[^a-z0-9]+")
 
 
 class LoginResponse(BaseModel):
@@ -386,4 +391,192 @@ def spotify_pulse(
         connected=True,
         releases=releases[:MAX_RELEASES_RETURNED],
         checked_artists=len(artists),
+    )
+
+
+class TopArtist(BaseModel):
+    name: str
+    rank: int
+    url: Optional[str] = None
+    image: Optional[str] = None
+    seen_live: bool = False
+
+
+class TopTrack(BaseModel):
+    name: str
+    artist: str
+    rank: int
+    url: Optional[str] = None
+    image: Optional[str] = None
+
+
+class RecentTrack(BaseModel):
+    name: str
+    artist: str
+    played_at: str
+    url: Optional[str] = None
+
+
+class OverlapSummary(BaseModel):
+    seen_count: int
+    top_count: int
+    seen_names: list[str]
+
+
+class NextShowInsight(BaseModel):
+    artist: str
+    date: str
+    listens_rank: Optional[int] = None
+    recently_played: bool = False
+
+
+class InsightsResponse(BaseModel):
+    connected: bool
+    range: str
+    top_artists: list[TopArtist]
+    top_tracks: list[TopTrack]
+    recently_played: list[RecentTrack]
+    overlap: OverlapSummary
+    next_show: Optional[NextShowInsight] = None
+
+
+def _normalize_artist(name: str) -> str:
+    lowered = _YEAR_SUFFIX.sub(" ", name.lower())
+    return _NON_ALNUM.sub(" ", lowered).strip()
+
+
+def _artist_matches(spotify_name: str, concert_names: set[str]) -> bool:
+    normalized = _normalize_artist(spotify_name)
+    if not normalized:
+        return False
+    for concert in concert_names:
+        if concert and (normalized == concert or normalized in concert or concert in normalized):
+            return True
+    return False
+
+
+@router.get("/insights", response_model=InsightsResponse)
+def spotify_insights(
+    time_range: str = Query(default="medium_term", alias="range"),
+    member: AppMember = Depends(require_member),
+    rest: SupabaseRestClient = Depends(get_rest_client),
+) -> InsightsResponse:
+    settings = _settings_or_503()
+    if time_range not in VALID_TIME_RANGES:
+        time_range = "medium_term"
+    try:
+        rows = rest.select("spotify_accounts", params={"select": "refresh_token", "limit": "1"})
+    except SupabaseRestError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+    empty_overlap = OverlapSummary(seen_count=0, top_count=0, seen_names=[])
+    if not rows:
+        return InsightsResponse(
+            connected=False, range=time_range, top_artists=[], top_tracks=[],
+            recently_played=[], overlap=empty_overlap,
+        )
+
+    try:
+        concerts = rest.select(
+            "concerts", params={"select": "artist,concert_date,status", "deleted_at": "is.null"}
+        )
+    except SupabaseRestError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+    attended_names = {
+        _normalize_artist(str(row.get("artist", "")))
+        for row in concerts
+        if row.get("status") == "Attended"
+    }
+
+    access_token = _refresh_access_token(rows[0]["refresh_token"], settings)
+    with httpx.Client() as client:
+        try:
+            top_artists_raw = _spotify_get(client, access_token, "/me/top/artists", {"limit": 20, "time_range": time_range})
+            top_tracks_raw = _spotify_get(client, access_token, "/me/top/tracks", {"limit": 10, "time_range": time_range})
+            recent_raw = _spotify_get(client, access_token, "/me/player/recently-played", {"limit": 20})
+        except httpx.HTTPError as exc:
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Spotify insights lookup failed") from exc
+
+    top_artists: list[TopArtist] = []
+    seen_names: list[str] = []
+    for index, item in enumerate(top_artists_raw.get("items", []), start=1):
+        name = str(item.get("name", "Unknown artist"))
+        images = item.get("images") or []
+        seen = _artist_matches(name, attended_names)
+        if seen:
+            seen_names.append(name)
+        top_artists.append(TopArtist(
+            name=name,
+            rank=index,
+            url=(item.get("external_urls") or {}).get("spotify"),
+            image=images[-1]["url"] if images else None,
+            seen_live=seen,
+        ))
+
+    top_tracks: list[TopTrack] = []
+    for index, item in enumerate(top_tracks_raw.get("items", []), start=1):
+        artists = item.get("artists") or []
+        album_images = (item.get("album") or {}).get("images") or []
+        top_tracks.append(TopTrack(
+            name=str(item.get("name", "Unknown track")),
+            artist=", ".join(a.get("name", "") for a in artists) or "Unknown artist",
+            rank=index,
+            url=(item.get("external_urls") or {}).get("spotify"),
+            image=album_images[-1]["url"] if album_images else None,
+        ))
+
+    recent: list[RecentTrack] = []
+    recent_artist_norm: set[str] = set()
+    seen_track_keys: set[str] = set()
+    for item in recent_raw.get("items", []):
+        track = item.get("track") or {}
+        artists = track.get("artists") or []
+        artist_name = ", ".join(a.get("name", "") for a in artists) or "Unknown artist"
+        key = f"{track.get('name')}|{artist_name}"
+        if key in seen_track_keys:
+            continue
+        seen_track_keys.add(key)
+        recent_artist_norm.update(_normalize_artist(a.get("name", "")) for a in artists)
+        recent.append(RecentTrack(
+            name=str(track.get("name", "Unknown track")),
+            artist=artist_name,
+            played_at=str(item.get("played_at", "")),
+            url=(track.get("external_urls") or {}).get("spotify"),
+        ))
+        if len(recent) >= 8:
+            break
+
+    today = date.today()
+    upcoming = sorted(
+        (
+            row for row in concerts
+            if row.get("status") == "Want to Go"
+            and (parsed := _parse_release_date(str(row.get("concert_date", "")))) is not None
+            and parsed >= today
+        ),
+        key=lambda row: str(row.get("concert_date", "")),
+    )
+    next_show: Optional[NextShowInsight] = None
+    if upcoming:
+        nxt = upcoming[0]
+        nxt_norm = _normalize_artist(str(nxt.get("artist", "")))
+        rank = next(
+            (a.rank for a in top_artists if nxt_norm and (_normalize_artist(a.name) == nxt_norm or nxt_norm in _normalize_artist(a.name) or _normalize_artist(a.name) in nxt_norm)),
+            None,
+        )
+        recently = any(nxt_norm and rn and (nxt_norm in rn or rn in nxt_norm) for rn in recent_artist_norm)
+        next_show = NextShowInsight(
+            artist=str(nxt.get("artist", "")),
+            date=str(nxt.get("concert_date", "")),
+            listens_rank=rank,
+            recently_played=recently,
+        )
+
+    return InsightsResponse(
+        connected=True,
+        range=time_range,
+        top_artists=top_artists,
+        top_tracks=top_tracks,
+        recently_played=recent,
+        overlap=OverlapSummary(seen_count=len(seen_names), top_count=len(top_artists), seen_names=seen_names),
+        next_show=next_show,
     )

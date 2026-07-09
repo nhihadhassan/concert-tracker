@@ -234,3 +234,51 @@ export interface SpotifyPulse {
   releases: SpotifyRelease[]
   checked_artists: number
 }
+
+export type SpotifyRange = 'short_term' | 'medium_term' | 'long_term'
+
+export interface SpotifyTopArtist {
+  name: string
+  rank: number
+  url: string | null
+  image: string | null
+  seen_live: boolean
+}
+
+export interface SpotifyTopTrack {
+  name: string
+  artist: string
+  rank: number
+  url: string | null
+  image: string | null
+}
+
+export interface SpotifyRecentTrack {
+  name: string
+  artist: string
+  played_at: string
+  url: string | null
+}
+
+export interface SpotifyOverlap {
+  seen_count: number
+  top_count: number
+  seen_names: string[]
+}
+
+export interface SpotifyNextShow {
+  artist: string
+  date: string
+  listens_rank: number | null
+  recently_played: boolean
+}
+
+export interface SpotifyInsights {
+  connected: boolean
+  range: SpotifyRange
+  top_artists: SpotifyTopArtist[]
+  top_tracks: SpotifyTopTrack[]
+  recently_played: SpotifyRecentTrack[]
+  overlap: SpotifyOverlap
+  next_show: SpotifyNextShow | null
+}

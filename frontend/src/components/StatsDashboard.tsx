@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
-import { BarChart3, Flame, Headphones, MapPin, Music2, Radio, Sparkles, Ticket, Trophy, Users, WalletCards, Waves } from 'lucide-react'
+import { BarChart3, Check, Flame, Headphones, ListMusic, MapPin, Music2, Radio, Sparkles, Ticket, Trophy, Users, WalletCards, Waves } from 'lucide-react'
 import { m, useReducedMotion } from 'motion/react'
-import type { Analytics, GroupSummary, RankingRow, SpotifyRelease } from '../types'
-import { connectSpotify, disconnectSpotify, fetchSpotifyPulse, fetchSpotifyStatus, startSpotifyLogin } from '../lib/api'
+import type { Analytics, GroupSummary, RankingRow, SpotifyInsights, SpotifyRange, SpotifyRelease } from '../types'
+import { connectSpotify, disconnectSpotify, fetchSpotifyInsights, fetchSpotifyPulse, fetchSpotifyStatus, startSpotifyLogin } from '../lib/api'
 
 interface StatsDashboardProps {
   accessToken: string
@@ -107,6 +107,38 @@ function useSpotifyPulse(accessToken: string) {
   return { state, connect, disconnect }
 }
 
+type InsightsState =
+  | { kind: 'idle' }
+  | { kind: 'loading' }
+  | { kind: 'ready'; data: SpotifyInsights }
+  | { kind: 'error'; message: string }
+
+const RANGE_OPTIONS: { value: SpotifyRange; label: string }[] = [
+  { value: 'short_term', label: '4 weeks' },
+  { value: 'medium_term', label: '6 months' },
+  { value: 'long_term', label: 'All time' },
+]
+
+function useSpotifyInsights(accessToken: string, enabled: boolean) {
+  const [range, setRange] = useState<SpotifyRange>('medium_term')
+  const [state, setState] = useState<InsightsState>({ kind: 'idle' })
+
+  useEffect(() => {
+    if (!enabled) {
+      setState({ kind: 'idle' })
+      return
+    }
+    const controller = new AbortController()
+    setState({ kind: 'loading' })
+    fetchSpotifyInsights(accessToken, range, controller.signal)
+      .then((data) => { if (!controller.signal.aborted) setState({ kind: 'ready', data }) })
+      .catch((error) => { if (!controller.signal.aborted) setState({ kind: 'error', message: error instanceof Error ? error.message : 'Spotify insights failed.' }) })
+    return () => controller.abort()
+  }, [accessToken, enabled, range])
+
+  return { state, range, setRange }
+}
+
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 const formatMoney = (value: number) =>
@@ -117,9 +149,22 @@ const sortGroups = (rows: GroupSummary[]) => [...rows].sort((left, right) =>
   right.attended - left.attended || right.concerts - left.concerts || left.key.localeCompare(right.key),
 )
 
+const formatShowDate = (iso: string) => {
+  const parsed = new Date(`${iso}T00:00:00`)
+  return Number.isNaN(parsed.valueOf()) ? iso : parsed.toLocaleDateString('en-CA', { month: 'short', day: 'numeric' })
+}
+
+const readinessText = (next: SpotifyInsights['next_show']): string => {
+  if (!next) return ''
+  if (next.listens_rank !== null) return `They're your #${next.listens_rank} most-played artist right now. You're ready.`
+  if (next.recently_played) return "They're in your recent rotation, but not a current top artist yet."
+  return 'Not in your current Spotify rotation. Cram time before the show.'
+}
+
 export function StatsDashboard({ accessToken, analytics, memberName, rankings, scope, onScopeChange }: StatsDashboardProps) {
   const reduceMotion = useReducedMotion()
   const spotify = useSpotifyPulse(accessToken)
+  const insights = useSpotifyInsights(accessToken, spotify.state.kind === 'connected')
   const years = useMemo(() => [...new Set(analytics.monthly_trends.map((row) => row.year))].sort((a, b) => b - a), [analytics.monthly_trends])
   const [year, setYear] = useState(() => years[0] ?? new Date().getFullYear())
 
@@ -241,6 +286,42 @@ export function StatsDashboard({ accessToken, analytics, memberName, rankings, s
               return <m.article key={card.title} className="pulse-card" initial={reduceMotion ? false : { opacity: 0, y: 18, rotateY: -8 }} animate={{ opacity: 1, y: 0, rotateY: 0 }} transition={{ delay: reduceMotion ? 0 : index * 0.045, duration: 0.32, ease: [0.22, 1, 0.36, 1] }}><Icon aria-hidden="true" /><span>{card.title}</span><strong>{card.value}</strong><p>{card.detail}</p></m.article>
             })}</div>
           </section>
+
+          {spotify.state.kind === 'connected' || insights.state.kind === 'ready' ? (
+            <section className="stats-panel stats-your-spotify" aria-labelledby="your-spotify-title">
+              <div className="stats-panel-head">
+                <h3 id="your-spotify-title"><ListMusic aria-hidden="true" />Your Spotify</h3>
+                <div className="stats-range" role="group" aria-label="Listening range">
+                  {RANGE_OPTIONS.map((opt) => <button key={opt.value} type="button" className={insights.range === opt.value ? 'active' : ''} aria-pressed={insights.range === opt.value} onClick={() => insights.setRange(opt.value)}>{opt.label}</button>)}
+                </div>
+              </div>
+              {insights.state.kind === 'error' ? <p className="stats-panel-note">{insights.state.message}</p>
+                : insights.state.kind !== 'ready' ? <p className="stats-panel-note">Pulling your Spotify listening…</p>
+                : <>
+                  <div className="spotify-insight-summary">
+                    <div className="spotify-insight-stat"><strong>{insights.state.data.overlap.seen_count}<span>/{insights.state.data.overlap.top_count}</span></strong><span>of your top artists seen live</span></div>
+                    {insights.state.data.next_show ? <div className="spotify-insight-next"><span>Next show · {formatShowDate(insights.state.data.next_show.date)}</span><strong>{insights.state.data.next_show.artist}</strong><p>{readinessText(insights.state.data.next_show)}</p></div> : null}
+                  </div>
+                  <div className="spotify-insight-body">
+                    <div className="spotify-insight-col">
+                      <h4>Top artists</h4>
+                      <ol className="spotify-artist-chips">{insights.state.data.top_artists.slice(0, 8).map((artist) => {
+                        const inner = <><span className="chip-rank">{artist.rank}</span>{artist.image ? <img src={artist.image} alt="" loading="lazy" /> : <span className="chip-fallback" aria-hidden="true" />}<span className="chip-name">{artist.name}</span>{artist.seen_live ? <Check className="chip-seen" aria-label="Seen live" /> : null}</>
+                        return <li key={artist.name}>{artist.url ? <a href={artist.url} target="_blank" rel="noopener">{inner}</a> : <span>{inner}</span>}</li>
+                      })}</ol>
+                    </div>
+                    <div className="spotify-insight-col">
+                      <h4>Top tracks</h4>
+                      <ol className="spotify-track-list">{insights.state.data.top_tracks.slice(0, 8).map((track) => {
+                        const inner = <>{track.image ? <img src={track.image} alt="" loading="lazy" /> : <span className="chip-fallback" aria-hidden="true" />}<span className="track-meta"><strong>{track.name}</strong><small>{track.artist}</small></span></>
+                        return <li key={`${track.name}-${track.artist}`}>{track.url ? <a href={track.url} target="_blank" rel="noopener">{inner}</a> : <span>{inner}</span>}</li>
+                      })}</ol>
+                    </div>
+                  </div>
+                  {insights.state.data.recently_played.length ? <div className="spotify-recent"><span>Recently played</span><ul>{insights.state.data.recently_played.slice(0, 6).map((track) => <li key={`${track.name}-${track.played_at}`}>{track.url ? <a href={track.url} target="_blank" rel="noopener">{track.name} · {track.artist}</a> : `${track.name} · ${track.artist}`}</li>)}</ul></div> : null}
+                </>}
+            </section>
+          ) : null}
 
           <section className="stats-panel stats-spotify" aria-labelledby="spotify-title">
             <div className="stats-panel-head">
