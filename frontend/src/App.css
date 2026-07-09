@@ -2545,8 +2545,76 @@
 }
 
 .stats-your-spotify,
+.stats-lyrics,
 .stats-rankings {
   grid-column: 1 / -1;
+}
+
+.lyric-body {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: 26px;
+  align-items: start;
+}
+
+.lyric-song {
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+}
+
+.lyric-song img,
+.lyric-art-fallback {
+  width: 100%;
+  aspect-ratio: 1;
+  height: auto;
+  border-radius: 14px;
+  object-fit: cover;
+}
+
+.lyric-song-meta strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  line-height: 1.25;
+}
+
+.lyric-song-meta span {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.lyric-song > a {
+  color: #62fae3;
+  font-family: var(--font-data);
+  font-size: 0.76rem;
+  text-decoration: none;
+}
+
+.lyric-song > a:hover {
+  text-decoration: underline;
+}
+
+.lyric-text {
+  max-width: 66ch;
+}
+
+.lyric-fragment {
+  margin: 0 0 16px;
+  color: #f0dbff;
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-style: italic;
+  line-height: 1.45;
+  text-wrap: balance;
+}
+
+.lyric-annotation {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.92rem;
+  line-height: 1.65;
+  text-wrap: pretty;
 }
 
 .stats-pulse {
@@ -3810,6 +3878,15 @@ a.detail-setlist:hover {
   .spotify-insight-summary,
   .spotify-insight-body {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .lyric-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .lyric-song img,
+  .lyric-art-fallback {
+    max-width: 160px;
   }
 
   .stats-panel {

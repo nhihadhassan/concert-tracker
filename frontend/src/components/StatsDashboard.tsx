@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
-import { BarChart3, Check, ListMusic, MapPin, Music2, Radio, Sparkles, Ticket, Trophy, Users, WalletCards } from 'lucide-react'
+import { BarChart3, Check, ListMusic, MapPin, Music2, Quote, Radio, Sparkles, Ticket, Trophy, Users, WalletCards } from 'lucide-react'
 import { m, useReducedMotion } from 'motion/react'
-import type { Analytics, GroupSummary, RankingRow, SpotifyInsights, SpotifyRange, SpotifyRelease } from '../types'
-import { connectSpotify, disconnectSpotify, fetchSpotifyInsights, fetchSpotifyPulse, fetchSpotifyStatus, startSpotifyLogin } from '../lib/api'
+import type { Analytics, GroupSummary, LyricBreakdown, RankingRow, SpotifyInsights, SpotifyRange, SpotifyRelease } from '../types'
+import { connectSpotify, disconnectSpotify, fetchLyricBreakdown, fetchSpotifyInsights, fetchSpotifyPulse, fetchSpotifyStatus, startSpotifyLogin } from '../lib/api'
 
 interface StatsDashboardProps {
   accessToken: string
@@ -139,6 +139,31 @@ function useSpotifyInsights(accessToken: string, enabled: boolean) {
   return { state, range, setRange }
 }
 
+type LyricState =
+  | { kind: 'idle' }
+  | { kind: 'loading' }
+  | { kind: 'ready'; data: LyricBreakdown }
+  | { kind: 'error'; message: string }
+
+function useLyricBreakdown(accessToken: string, artist: string | undefined) {
+  const [state, setState] = useState<LyricState>({ kind: 'idle' })
+
+  useEffect(() => {
+    if (!artist) {
+      setState({ kind: 'idle' })
+      return
+    }
+    const controller = new AbortController()
+    setState({ kind: 'loading' })
+    fetchLyricBreakdown(accessToken, artist, controller.signal)
+      .then((data) => { if (!controller.signal.aborted) setState({ kind: 'ready', data }) })
+      .catch((error) => { if (!controller.signal.aborted) setState({ kind: 'error', message: error instanceof Error ? error.message : 'Lyric lookup failed.' }) })
+    return () => controller.abort()
+  }, [accessToken, artist])
+
+  return state
+}
+
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 const formatMoney = (value: number) =>
@@ -165,6 +190,10 @@ export function StatsDashboard({ accessToken, analytics, memberName, rankings, s
   const reduceMotion = useReducedMotion()
   const spotify = useSpotifyPulse(accessToken)
   const insights = useSpotifyInsights(accessToken, spotify.state.kind === 'connected')
+  const lyricSubject = insights.state.kind === 'ready'
+    ? (insights.state.data.next_show?.artist ?? insights.state.data.top_artists[0]?.name)
+    : undefined
+  const lyric = useLyricBreakdown(accessToken, lyricSubject)
   const years = useMemo(() => [...new Set(analytics.monthly_trends.map((row) => row.year))].sort((a, b) => b - a), [analytics.monthly_trends])
   const latestYear = years[0]
 
@@ -263,6 +292,25 @@ export function StatsDashboard({ accessToken, analytics, memberName, rankings, s
                   </div>
                   {insights.state.data.recently_played.length ? <div className="spotify-recent"><span>Recently played</span><ul>{insights.state.data.recently_played.slice(0, 6).map((track) => <li key={`${track.name}-${track.played_at}`}>{track.url ? <a href={track.url} target="_blank" rel="noopener">{track.name} · {track.artist}</a> : `${track.name} · ${track.artist}`}</li>)}</ul></div> : null}
                 </>}
+            </section>
+          ) : null}
+
+          {lyric.kind === 'loading' || (lyric.kind === 'ready' && lyric.data.configured) ? (
+            <section className="stats-panel stats-lyrics" aria-labelledby="lyrics-title">
+              <div className="stats-panel-head"><h3 id="lyrics-title"><Quote aria-hidden="true" />Lyric breakdown</h3><span>via Genius</span></div>
+              {lyric.kind === 'loading' ? <p className="stats-panel-note">Finding a lyric worth unpacking…</p>
+                : !lyric.data.found ? <p className="stats-panel-note">No annotated breakdown for {lyric.data.artist ?? lyricSubject} yet. Check back another day.</p>
+                : <div className="lyric-body">
+                    <div className="lyric-song">
+                      {lyric.data.image ? <img src={lyric.data.image} alt="" loading="lazy" /> : <span className="chip-fallback lyric-art-fallback" aria-hidden="true" />}
+                      <div className="lyric-song-meta"><strong>{lyric.data.song}</strong><span>{lyric.data.artist}</span></div>
+                      {lyric.data.url ? <a href={lyric.data.url} target="_blank" rel="noopener">Open on Genius</a> : null}
+                    </div>
+                    <div className="lyric-text">
+                      {lyric.data.fragment ? <p className="lyric-fragment">“{lyric.data.fragment}”</p> : null}
+                      <p className="lyric-annotation">{lyric.data.annotation}</p>
+                    </div>
+                  </div>}
             </section>
           ) : null}
 

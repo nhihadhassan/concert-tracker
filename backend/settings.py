@@ -15,6 +15,7 @@ class Settings:
     spotify_client_id: str = ""
     spotify_client_secret: str = ""
     spotify_redirect_uri: str = ""
+    genius_access_token: str = ""
 
     @property
     def issuer(self) -> str:
@@ -53,6 +54,7 @@ class Settings:
             spotify_client_id=os.getenv("SPOTIFY_CLIENT_ID", "").strip(),
             spotify_client_secret=os.getenv("SPOTIFY_CLIENT_SECRET", "").strip(),
             spotify_redirect_uri=os.getenv("SPOTIFY_REDIRECT_URI", "").strip(),
+            genius_access_token=os.getenv("GENIUS_ACCESS_TOKEN", "").strip(),
         )
 
 

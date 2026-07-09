@@ -1,4 +1,4 @@
-import type { ArtworkSearchResponse, LibraryResponse, QueuedMutation, SpotifyInsights, SpotifyPulse, SpotifyRange, SpotifyStatus } from '../types'
+import type { ArtworkSearchResponse, LibraryResponse, LyricBreakdown, QueuedMutation, SpotifyInsights, SpotifyPulse, SpotifyRange, SpotifyStatus } from '../types'
 
 export class ApiError extends Error {
   status: number
@@ -68,6 +68,9 @@ export const fetchSpotifyPulse = (accessToken: string, signal?: AbortSignal) =>
 
 export const fetchSpotifyInsights = (accessToken: string, range: SpotifyRange, signal?: AbortSignal) =>
   apiRequest<SpotifyInsights>(accessToken, `/v1/spotify/insights?range=${range}`, { signal })
+
+export const fetchLyricBreakdown = (accessToken: string, artist: string, signal?: AbortSignal) =>
+  apiRequest<LyricBreakdown>(accessToken, `/v1/lyrics/breakdown?artist=${encodeURIComponent(artist)}`, { signal })
 
 export const sendQueuedMutation = (accessToken: string, mutation: QueuedMutation) => {
   const query = mutation.method === 'DELETE' && mutation.body && typeof mutation.body === 'object'

@@ -273,6 +273,18 @@ export interface SpotifyNextShow {
   recently_played: boolean
 }
 
+export interface LyricBreakdown {
+  configured: boolean
+  found: boolean
+  song: string | null
+  artist: string | null
+  image: string | null
+  url: string | null
+  fragment: string | null
+  annotation: string | null
+  annotation_url: string | null
+}
+
 export interface SpotifyInsights {
   connected: boolean
   range: SpotifyRange
