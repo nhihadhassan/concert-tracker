@@ -15,6 +15,7 @@ import { FiltersBar } from './components/FiltersBar'
 import { RankedSummary } from './components/RankedSummary'
 import { StatsStrip } from './components/StatsStrip'
 import { StatsDashboard } from './components/StatsDashboard'
+import { LiveWrapped } from './components/LiveWrapped'
 import { useConcertLibrary } from './hooks/useConcertLibrary'
 import { downloadCsv } from './lib/api'
 import type {
@@ -39,6 +40,7 @@ const sortConcerts = (rows: Concert[], sort: string) => [...rows].sort((left, ri
 type DashboardRoute =
   | { kind: 'concerts' }
   | { kind: 'stats'; scope: 'personal' | 'shared' }
+  | { kind: 'wrapped' }
   | { kind: 'detail'; concertId: string }
 
 const readDashboardRoute = (): DashboardRoute => {
@@ -48,6 +50,7 @@ const readDashboardRoute = (): DashboardRoute => {
   if (params.get('view') === 'stats') {
     return { kind: 'stats', scope: params.get('scope') === 'shared' ? 'shared' : 'personal' }
   }
+  if (params.get('view') === 'wrapped') return { kind: 'wrapped' }
   return { kind: 'concerts' }
 }
 
@@ -58,6 +61,7 @@ const routeUrl = (route: DashboardRoute) => {
     params.set('view', 'stats')
     params.set('scope', route.scope)
   }
+  if (route.kind === 'wrapped') params.set('view', 'wrapped')
   const query = params.toString()
   return `${window.location.pathname}${query ? `?${query}` : ''}`
 }
@@ -310,7 +314,7 @@ export function Dashboard({ accessToken, member, onSignOut }: DashboardProps) {
   const combinedRankings = library.analytics.rankings.combined ?? []
   const personalScopedRankings = library.personal_analytics.rankings[member.user_id] ?? []
   const selectedConcert = route.kind === 'detail' ? library.concerts.find((concert) => concert.id === route.concertId) : null
-  const activeView = route.kind === 'stats' ? 'stats' : 'concerts'
+  const activeView = route.kind === 'stats' ? 'stats' : route.kind === 'wrapped' ? 'wrapped' : 'concerts'
   const backToConcerts = () => {
     navigate({ kind: 'concerts' }, true)
   }
@@ -320,7 +324,7 @@ export function Dashboard({ accessToken, member, onSignOut }: DashboardProps) {
   }
   return (
     <div className={darkMode ? 'app theme-dark' : 'app theme-light'}>
-      <AppHeader activeView={activeView} darkMode={darkMode} memberName={member.display_name} pendingCount={cloud.pendingCount} syncState={cloud.syncState} onAdd={openNew} onExport={() => void exportCsv()} onSignOut={onSignOut} onThemeToggle={toggleTheme} onViewChange={(view) => navigate(view === 'stats' ? { kind: 'stats', scope: 'personal' } : { kind: 'concerts' })} />
+      <AppHeader activeView={activeView} darkMode={darkMode} memberName={member.display_name} pendingCount={cloud.pendingCount} syncState={cloud.syncState} onAdd={openNew} onExport={() => void exportCsv()} onSignOut={onSignOut} onThemeToggle={toggleTheme} onViewChange={(view) => navigate(view === 'stats' ? { kind: 'stats', scope: 'personal' } : view === 'wrapped' ? { kind: 'wrapped' } : { kind: 'concerts' })} />
       {route.kind === 'concerts' ? <main className="page-shell page-shell-feed" data-view-heading tabIndex={-1}>
         <div className="dashboard-column">
           <StatsStrip concerts={library.concerts} />
@@ -330,7 +334,7 @@ export function Dashboard({ accessToken, member, onSignOut }: DashboardProps) {
           {filteredConcerts.length ? <section className="concert-grid" aria-label="Concerts">{filteredConcerts.map((concert, index) => <ConcertCard key={concert.id} concert={concert} index={index} onArtwork={openArtwork} onDelete={(row) => void deleteConcert(row)} onEdit={(row) => { setEditing(row); setFormError(''); setDialogOpen(true) }} onOpen={openConcert} />)}</section> : <section className="empty-state"><h2>{library.concerts.length ? 'No concerts match' : 'Add the first staging concert'}</h2><p>{library.concerts.length ? 'Clear a filter or try another artist or venue.' : 'The shared normalized library is empty and ready for testing.'}</p>{!library.concerts.length ? <button className="button button-primary" type="button" onClick={openNew}>Add concert</button> : null}</section>}
         </div>
         <div className="ranking-column"><RankedSummary personal={personalScopedRankings} /></div>
-      </main> : route.kind === 'stats' ? <main className="feature-shell"><StatsDashboard accessToken={accessToken} analytics={route.scope === 'personal' ? library.personal_analytics : library.analytics} memberName={member.display_name} rankings={route.scope === 'personal' ? personalScopedRankings : combinedRankings} scope={route.scope} onScopeChange={(scope) => navigate({ kind: 'stats', scope }, true)} /></main> : <main className="feature-shell">{selectedConcert ? <ConcertDetail concert={selectedConcert} member={member} onArtwork={openArtwork} onBack={backToConcerts} onEdit={(row) => { setEditing(row); setFormError(''); setDialogOpen(true) }} onDelete={(row) => { void deleteConcert(row).then((deleted) => { if (deleted) navigate({ kind: 'concerts' }, true) }) }} /> : <section className="detail-not-found"><ArrowLeft size={22} aria-hidden="true" /><h1 data-view-heading tabIndex={-1}>Concert not found</h1><p>This concert may have been deleted or is not available in your library.</p><button className="button button-primary" type="button" onClick={() => navigate({ kind: 'concerts' }, true)}>Back to concerts</button></section>}</main>}
+      </main> : route.kind === 'stats' ? <main className="feature-shell"><StatsDashboard accessToken={accessToken} analytics={route.scope === 'personal' ? library.personal_analytics : library.analytics} memberName={member.display_name} rankings={route.scope === 'personal' ? personalScopedRankings : combinedRankings} scope={route.scope} onScopeChange={(scope) => navigate({ kind: 'stats', scope }, true)} /></main> : route.kind === 'wrapped' ? <main className="feature-shell"><LiveWrapped concerts={library.concerts} analytics={library.personal_analytics} memberName={member.display_name} /></main> : <main className="feature-shell">{selectedConcert ? <ConcertDetail concert={selectedConcert} member={member} onArtwork={openArtwork} onBack={backToConcerts} onEdit={(row) => { setEditing(row); setFormError(''); setDialogOpen(true) }} onDelete={(row) => { void deleteConcert(row).then((deleted) => { if (deleted) navigate({ kind: 'concerts' }, true) }) }} /> : <section className="detail-not-found"><ArrowLeft size={22} aria-hidden="true" /><h1 data-view-heading tabIndex={-1}>Concert not found</h1><p>This concert may have been deleted or is not available in your library.</p><button className="button button-primary" type="button" onClick={() => navigate({ kind: 'concerts' }, true)}>Back to concerts</button></section>}</main>}
       <AddConcertDialog accessToken={accessToken} concert={editing} currentUserId={member.user_id} error={formError} members={library.members} open={dialogOpen} saving={saving} onClose={() => { setDialogOpen(false); setEditing(null) }} onSave={saveConcert} />
       <ArtworkDialog accessToken={accessToken} concert={artworkEditing} error={artworkError} open={artworkDialogOpen} saving={artworkSaving} onClose={() => { setArtworkDialogOpen(false); setArtworkEditing(null) }} onSave={saveArtwork} />
       <ConflictDialog conflict={cloud.conflict} onDiscard={() => void cloud.discardConflict()} onRetry={() => void cloud.retryConflict()} />

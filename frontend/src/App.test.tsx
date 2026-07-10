@@ -184,6 +184,15 @@ describe('Concert Tracker cloud shell', () => {
     expect(screen.getByRole('heading', { name: 'Rankings' })).toBeInTheDocument()
   })
 
+  it('opens the live-show rewind visualizer', () => {
+    window.history.replaceState({}, '', '/?view=wrapped')
+    render(<Dashboard accessToken="token" member={member} onSignOut={() => undefined} />)
+    expect(screen.getByRole('button', { name: 'Wrapped' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('heading', { name: 'Nhihad, your year in the crowd.' })).toBeInTheDocument()
+    expect(screen.getByText('Your main character moment')).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Show me' })).toHaveValue('all')
+  })
+
   it('opens a concert detail and restores focus when returning to concerts', async () => {
     render(<Dashboard accessToken="token" member={member} onSignOut={() => undefined} />)
     fireEvent.click(screen.getByRole('button', { name: 'View Kali Uchis details' }))
