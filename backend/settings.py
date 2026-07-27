@@ -28,9 +28,7 @@ class Settings:
     @property
     def spotify_configured(self) -> bool:
         return bool(
-            self.spotify_client_id
-            and self.spotify_client_secret
-            and self.spotify_redirect_uri
+            self.spotify_client_id and self.spotify_client_secret and self.spotify_redirect_uri
         )
 
     @classmethod

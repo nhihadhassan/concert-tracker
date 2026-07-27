@@ -5,6 +5,7 @@ import type { Concert } from '../types'
 interface ConcertDetailProps {
   concert: Concert
   member: AuthMember
+  onArtwork: (concert: Concert) => void
   onBack: () => void
   onDelete: (concert: Concert) => void
   onEdit: (concert: Concert) => void
@@ -13,7 +14,7 @@ interface ConcertDetailProps {
 const formatDate = (value: string) => new Intl.DateTimeFormat('en-CA', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }).format(new Date(`${value}T12:00:00`))
 const formatMoney = (value: number | null) => value === null ? 'Price not set' : new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(value)
 
-export function ConcertDetail({ concert, member, onBack, onDelete, onEdit }: ConcertDetailProps) {
+export function ConcertDetail({ concert, member, onArtwork, onBack, onDelete, onEdit }: ConcertDetailProps) {
   const personalReview = concert.reviews.find((review) => review.reviewer_user_id === member.user_id)
   const attendees = concert.attendees.filter((attendee) => attendee.attendance_status !== 'Did Not Attend')
   const scores = [
@@ -30,7 +31,7 @@ export function ConcertDetail({ concert, member, onBack, onDelete, onEdit }: Con
         <span className="detail-hero-scrim" aria-hidden="true" />
         <div className="detail-top-actions">
           <button className="detail-round-button" type="button" onClick={onBack} aria-label="Back to concerts"><ArrowLeft size={20} /></button>
-          <div><button className="detail-round-button" type="button" onClick={() => onEdit(concert)} aria-label={`Edit ${concert.artist}`}><Pencil size={18} /></button><button className="detail-round-button detail-delete" type="button" onClick={() => onDelete(concert)} aria-label={`Delete ${concert.artist}`}><Trash2 size={18} /></button></div>
+          <div><button className="detail-round-button" type="button" onClick={() => onArtwork(concert)} aria-label={`Choose artwork for ${concert.artist}`}><Image size={18} /></button><button className="detail-round-button" type="button" onClick={() => onEdit(concert)} aria-label={`Edit ${concert.artist}`}><Pencil size={18} /></button><button className="detail-round-button detail-delete" type="button" onClick={() => onDelete(concert)} aria-label={`Delete ${concert.artist}`}><Trash2 size={18} /></button></div>
         </div>
         <header className="detail-hero-copy">
           <div className="detail-tags">{concert.genre ? <span className="genre-chip">#{concert.genre.replaceAll(' ', '')}</span> : null}<span className={`status-chip status-${concert.status.toLowerCase().replaceAll(' ', '-')}`}>{concert.status}</span>{concert.pending ? <span className="chip pending-chip">Pending sync</span> : null}</div>

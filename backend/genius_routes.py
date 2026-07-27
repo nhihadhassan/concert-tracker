@@ -42,7 +42,9 @@ def _normalize(value: str) -> str:
     return _NON_ALNUM.sub(" ", value.lower()).strip()
 
 
-def _genius_get(client: httpx.Client, token: str, path: str, params: dict[str, Any]) -> dict[str, Any]:
+def _genius_get(
+    client: httpx.Client, token: str, path: str, params: dict[str, Any]
+) -> dict[str, Any]:
     response = client.get(
         f"{GENIUS_API_BASE}{path}",
         params=params,
@@ -88,7 +90,9 @@ def lyric_breakdown(
     try:
         settings = get_settings()
     except SettingsError as exc:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
+        ) from exc
     if not settings.genius_access_token:
         return BreakdownResponse(configured=False, found=False)
 
@@ -117,8 +121,12 @@ def lyric_breakdown(
     image = hit.get("song_art_image_url") or hit.get("header_image_thumbnail_url")
     if annotation is None:
         return BreakdownResponse(
-            configured=True, found=False, song=song, artist=primary_artist,
-            image=image, url=hit.get("url"),
+            configured=True,
+            found=False,
+            song=song,
+            artist=primary_artist,
+            image=image,
+            url=hit.get("url"),
         )
     fragment, body, annotation_url = annotation
     return BreakdownResponse(
