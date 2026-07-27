@@ -38,7 +38,9 @@ select = ["E", "F", "I", "UP"]
 [tool.ruff.lint.per-file-ignores]
 "backend/auth.py" = ["UP045"]
 "backend/api_models.py" = ["UP006", "UP035", "UP045"]
+"backend/genius_routes.py" = ["UP045"]
 "backend/library_models.py" = ["UP006", "UP035", "UP045"]
+"backend/spotify_routes.py" = ["UP045"]
 
 [tool.ruff.format]
 quote-style = "double"

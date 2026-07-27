@@ -114,9 +114,7 @@ def _b64url_decode(value: str) -> bytes:
 
 def _sign_state(user_id: str, secret: str) -> str:
     payload = f"{user_id}:{int(time.time())}:{secrets.token_hex(8)}"
-    signature = hmac.new(
-        secret.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256
-    ).digest()
+    signature = hmac.new(secret.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256).digest()
     return f"{_b64url(payload.encode('utf-8'))}.{_b64url(signature)}"
 
 
@@ -154,7 +152,7 @@ def _stats_url(settings: Settings, fragment: str) -> str:
 
 
 def _basic_auth_header(settings: Settings) -> str:
-    raw = f"{settings.spotify_client_id}:{settings.spotify_client_secret}".encode("utf-8")
+    raw = f"{settings.spotify_client_id}:{settings.spotify_client_secret}".encode()
     return "Basic " + base64.b64encode(raw).decode("ascii")
 
 
@@ -197,7 +195,9 @@ def spotify_callback(
     settings = _settings_or_503()
     if error or not code or not state:
         reason = error or "missing_code"
-        return RedirectResponse(url=_stats_url(settings, f"spotify_error={reason}"), status_code=302)
+        return RedirectResponse(
+            url=_stats_url(settings, f"spotify_error={reason}"), status_code=302
+        )
 
     _verify_state(state, settings.spotify_client_secret)
 
@@ -215,13 +215,19 @@ def spotify_callback(
         response.raise_for_status()
         tokens = response.json()
     except (httpx.HTTPError, ValueError):
-        return RedirectResponse(url=_stats_url(settings, "spotify_error=exchange_failed"), status_code=302)
+        return RedirectResponse(
+            url=_stats_url(settings, "spotify_error=exchange_failed"), status_code=302
+        )
 
     refresh_token = tokens.get("refresh_token")
     if not refresh_token:
-        return RedirectResponse(url=_stats_url(settings, "spotify_error=no_refresh_token"), status_code=302)
+        return RedirectResponse(
+            url=_stats_url(settings, "spotify_error=no_refresh_token"), status_code=302
+        )
 
-    fragment = urlencode({"spotify_refresh": refresh_token, "spotify_scope": tokens.get("scope", "")})
+    fragment = urlencode(
+        {"spotify_refresh": refresh_token, "spotify_scope": tokens.get("scope", "")}
+    )
     return RedirectResponse(url=_stats_url(settings, fragment), status_code=302)
 
 
@@ -293,7 +299,9 @@ def _refresh_access_token(refresh_token: str, settings: Settings) -> str:
     return access_token
 
 
-def _spotify_get(client: httpx.Client, access_token: str, path: str, params: dict[str, Any]) -> dict[str, Any]:
+def _spotify_get(
+    client: httpx.Client, access_token: str, path: str, params: dict[str, Any]
+) -> dict[str, Any]:
     response = client.get(
         f"{SPOTIFY_API_BASE}{path}",
         params=params,
@@ -357,7 +365,9 @@ def _parse_release_date(raw: str) -> Optional[date]:
     return None
 
 
-def _latest_release(client: httpx.Client, access_token: str, artist: dict[str, Any]) -> Optional[ReleaseItem]:
+def _latest_release(
+    client: httpx.Client, access_token: str, artist: dict[str, Any]
+) -> Optional[ReleaseItem]:
     try:
         albums = _spotify_get(
             client,
@@ -397,9 +407,7 @@ def spotify_pulse(
 ) -> PulseResponse:
     settings = _settings_or_503()
     try:
-        rows = rest.select(
-            "spotify_accounts", params={"select": "refresh_token", "limit": "1"}
-        )
+        rows = rest.select("spotify_accounts", params={"select": "refresh_token", "limit": "1"})
     except SupabaseRestError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
     if not rows:
@@ -498,8 +506,12 @@ def spotify_insights(
     empty_overlap = OverlapSummary(seen_count=0, top_count=0, seen_names=[])
     if not rows:
         return InsightsResponse(
-            connected=False, range=time_range, top_artists=[], top_tracks=[],
-            recently_played=[], overlap=empty_overlap,
+            connected=False,
+            range=time_range,
+            top_artists=[],
+            top_tracks=[],
+            recently_played=[],
+            overlap=empty_overlap,
         )
 
     try:
@@ -517,11 +529,19 @@ def spotify_insights(
     access_token = _refresh_access_token(rows[0]["refresh_token"], settings)
     with httpx.Client() as client:
         try:
-            top_artists_raw = _spotify_get(client, access_token, "/me/top/artists", {"limit": 20, "time_range": time_range})
-            top_tracks_raw = _spotify_get(client, access_token, "/me/top/tracks", {"limit": 10, "time_range": time_range})
-            recent_raw = _spotify_get(client, access_token, "/me/player/recently-played", {"limit": 20})
+            top_artists_raw = _spotify_get(
+                client, access_token, "/me/top/artists", {"limit": 20, "time_range": time_range}
+            )
+            top_tracks_raw = _spotify_get(
+                client, access_token, "/me/top/tracks", {"limit": 10, "time_range": time_range}
+            )
+            recent_raw = _spotify_get(
+                client, access_token, "/me/player/recently-played", {"limit": 20}
+            )
         except httpx.HTTPError as exc:
-            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Spotify insights lookup failed") from exc
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY, detail="Spotify insights lookup failed"
+            ) from exc
 
     top_artists: list[TopArtist] = []
     seen_names: list[str] = []
@@ -531,25 +551,29 @@ def spotify_insights(
         seen = _artist_matches(name, attended_names)
         if seen:
             seen_names.append(name)
-        top_artists.append(TopArtist(
-            name=name,
-            rank=index,
-            url=(item.get("external_urls") or {}).get("spotify"),
-            image=images[-1]["url"] if images else None,
-            seen_live=seen,
-        ))
+        top_artists.append(
+            TopArtist(
+                name=name,
+                rank=index,
+                url=(item.get("external_urls") or {}).get("spotify"),
+                image=images[-1]["url"] if images else None,
+                seen_live=seen,
+            )
+        )
 
     top_tracks: list[TopTrack] = []
     for index, item in enumerate(top_tracks_raw.get("items", []), start=1):
         artists = item.get("artists") or []
         album_images = (item.get("album") or {}).get("images") or []
-        top_tracks.append(TopTrack(
-            name=str(item.get("name", "Unknown track")),
-            artist=", ".join(a.get("name", "") for a in artists) or "Unknown artist",
-            rank=index,
-            url=(item.get("external_urls") or {}).get("spotify"),
-            image=album_images[-1]["url"] if album_images else None,
-        ))
+        top_tracks.append(
+            TopTrack(
+                name=str(item.get("name", "Unknown track")),
+                artist=", ".join(a.get("name", "") for a in artists) or "Unknown artist",
+                rank=index,
+                url=(item.get("external_urls") or {}).get("spotify"),
+                image=album_images[-1]["url"] if album_images else None,
+            )
+        )
 
     recent: list[RecentTrack] = []
     recent_artist_norm: set[str] = set()
@@ -563,19 +587,22 @@ def spotify_insights(
             continue
         seen_track_keys.add(key)
         recent_artist_norm.update(_normalize_artist(a.get("name", "")) for a in artists)
-        recent.append(RecentTrack(
-            name=str(track.get("name", "Unknown track")),
-            artist=artist_name,
-            played_at=str(item.get("played_at", "")),
-            url=(track.get("external_urls") or {}).get("spotify"),
-        ))
+        recent.append(
+            RecentTrack(
+                name=str(track.get("name", "Unknown track")),
+                artist=artist_name,
+                played_at=str(item.get("played_at", "")),
+                url=(track.get("external_urls") or {}).get("spotify"),
+            )
+        )
         if len(recent) >= 8:
             break
 
     today = date.today()
     upcoming = sorted(
         (
-            row for row in concerts
+            row
+            for row in concerts
             if row.get("status") == "Want to Go"
             and (parsed := _parse_release_date(str(row.get("concert_date", "")))) is not None
             and parsed >= today
@@ -587,10 +614,21 @@ def spotify_insights(
         nxt = upcoming[0]
         nxt_norm = _normalize_artist(str(nxt.get("artist", "")))
         rank = next(
-            (a.rank for a in top_artists if nxt_norm and (_normalize_artist(a.name) == nxt_norm or nxt_norm in _normalize_artist(a.name) or _normalize_artist(a.name) in nxt_norm)),
+            (
+                a.rank
+                for a in top_artists
+                if nxt_norm
+                and (
+                    _normalize_artist(a.name) == nxt_norm
+                    or nxt_norm in _normalize_artist(a.name)
+                    or _normalize_artist(a.name) in nxt_norm
+                )
+            ),
             None,
         )
-        recently = any(nxt_norm and rn and (nxt_norm in rn or rn in nxt_norm) for rn in recent_artist_norm)
+        recently = any(
+            nxt_norm and rn and (nxt_norm in rn or rn in nxt_norm) for rn in recent_artist_norm
+        )
         next_show = NextShowInsight(
             artist=str(nxt.get("artist", "")),
             date=str(nxt.get("concert_date", "")),
@@ -604,6 +642,8 @@ def spotify_insights(
         top_artists=top_artists,
         top_tracks=top_tracks,
         recently_played=recent,
-        overlap=OverlapSummary(seen_count=len(seen_names), top_count=len(top_artists), seen_names=seen_names),
+        overlap=OverlapSummary(
+            seen_count=len(seen_names), top_count=len(top_artists), seen_names=seen_names
+        ),
         next_show=next_show,
     )

@@ -5,11 +5,11 @@ from pydantic import BaseModel
 
 from backend.artwork_routes import router as artwork_router
 from backend.calculation_routes import router as calculation_router
-from backend.library_routes import router as library_router
-from backend.spotify_routes import router as spotify_router
 from backend.genius_routes import router as genius_router
+from backend.library_routes import router as library_router
 from backend.members import AppMember, require_member
 from backend.settings import SettingsError, get_settings
+from backend.spotify_routes import router as spotify_router
 
 
 class HealthResponse(BaseModel):
