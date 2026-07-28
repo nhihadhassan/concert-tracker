@@ -6,6 +6,7 @@ from typing import Any, Protocol
 
 import httpx
 
+from backend.album_routes import build_album_library
 from backend.library_routes import build_library
 from backend.supabase_rest import SupabaseRestClient
 from sync.config import BackupConfig
@@ -103,4 +104,6 @@ def fetch_library(config: BackupConfig, session: AuthSession) -> dict[str, Any]:
     members = {member.email.lower() for member in library.members}
     if config.owner_email.lower() not in members:
         raise RuntimeError("The authenticated backup owner is not an active app member")
-    return library.model_dump(mode="json")
+    payload = library.model_dump(mode="json")
+    payload["albums"] = build_album_library(rest).model_dump(mode="json")["albums"]
+    return payload

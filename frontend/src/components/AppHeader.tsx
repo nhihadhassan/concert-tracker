@@ -1,9 +1,10 @@
-import { BarChart3, Cloud, Download, ListMusic, LogOut, Mic2, Moon, Plus, RefreshCw, Sparkles, Sun, TriangleAlert, WifiOff } from 'lucide-react'
+import { BarChart3, Cloud, Disc3, Download, ListMusic, LogOut, Mic2, Moon, Plus, RefreshCw, Sparkles, Sun, TriangleAlert, WifiOff } from 'lucide-react'
 import { AnimatePresence, m } from 'motion/react'
 import type { SyncState } from '../types'
 
 interface AppHeaderProps {
-  activeView: 'concerts' | 'stats' | 'wrapped'
+  activeView: 'concerts' | 'albums' | 'stats' | 'wrapped'
+  addLabel: string
   darkMode: boolean
   memberName: string
   pendingCount: number
@@ -12,7 +13,7 @@ interface AppHeaderProps {
   onExport: () => void
   onSignOut: () => void
   onThemeToggle: () => void
-  onViewChange: (view: 'concerts' | 'stats' | 'wrapped') => void
+  onViewChange: (view: 'concerts' | 'albums' | 'stats' | 'wrapped') => void
 }
 
 const syncDisplay = (state: SyncState, pendingCount: number) => {
@@ -40,6 +41,7 @@ export function AppHeader(props: AppHeaderProps) {
         </div>
         <nav className="primary-nav" aria-label="Primary navigation">
           <button type="button" className={props.activeView === 'concerts' ? 'active' : ''} aria-current={props.activeView === 'concerts' ? 'page' : undefined} onClick={() => props.onViewChange('concerts')}><ListMusic size={17} />Concerts</button>
+          <button type="button" className={props.activeView === 'albums' ? 'active' : ''} aria-current={props.activeView === 'albums' ? 'page' : undefined} onClick={() => props.onViewChange('albums')}><Disc3 size={17} />Albums</button>
           <button type="button" className={props.activeView === 'stats' ? 'active' : ''} aria-current={props.activeView === 'stats' ? 'page' : undefined} onClick={() => props.onViewChange('stats')}><BarChart3 size={17} />Stats</button>
           <button type="button" className={props.activeView === 'wrapped' ? 'active' : ''} aria-current={props.activeView === 'wrapped' ? 'page' : undefined} onClick={() => props.onViewChange('wrapped')}><Sparkles size={17} />Wrapped</button>
         </nav>
@@ -48,7 +50,7 @@ export function AppHeader(props: AppHeaderProps) {
             {props.darkMode ? <Sun size={18} /> : <Moon size={18} />}<span className="button-label">{props.darkMode ? 'Light' : 'Dark'}</span>
           </button>
           <button className="button button-secondary" type="button" onClick={props.onExport}><Download size={18} /><span>Export CSV</span></button>
-          <button className="button button-primary" type="button" onClick={props.onAdd}><Plus size={18} /><span>Add concert</span></button>
+          <button className="button button-primary" type="button" onClick={props.onAdd}><Plus size={18} /><span>{props.addLabel}</span></button>
           <button className="button button-secondary sign-out" type="button" onClick={props.onSignOut} aria-label="Sign out"><LogOut size={18} /><span>Sign out</span></button>
         </div>
       </div>

@@ -3,6 +3,7 @@ from pathlib import Path
 MIGRATION = Path("supabase/migrations/20260630180000_stage2_shared_schema.sql")
 STAGE_FOUR_MIGRATION = Path("supabase/migrations/20260630190000_stage4_companion_preservation.sql")
 STAGE_FIVE_MIGRATION = Path("supabase/migrations/20260701010000_stage5_functional_cloud.sql")
+ALBUM_JOURNAL_MIGRATION = Path("supabase/migrations/20260727113000_album_journal.sql")
 TABLES = (
     "app_members",
     "concerts",
@@ -10,6 +11,7 @@ TABLES = (
     "concert_reviews",
     "rating_rule_versions",
 )
+ALBUM_TABLES = ("albums", "album_tracks", "album_reviews", "album_track_reviews")
 
 
 def test_every_stage_two_table_enables_rls() -> None:
@@ -67,3 +69,26 @@ def test_stage_five_adds_idempotency_and_realtime_without_legacy_changes() -> No
     assert "alter publication supabase_realtime add table" in sql
     assert "concert_tracker_concerts" not in sql
     assert "exp_" not in sql
+
+
+def test_album_journal_tables_are_private_realtime_resources() -> None:
+    sql = ALBUM_JOURNAL_MIGRATION.read_text()
+
+    for table in ALBUM_TABLES:
+        assert f"alter table public.{table} enable row level security;" in sql
+        assert f"revoke all on public.{table} from anon, authenticated;" in sql
+        assert f"alter publication supabase_realtime add table public.{table};" in sql
+    assert "grant delete" not in sql.lower()
+    assert "for delete" not in sql.lower()
+
+
+def test_album_reviews_are_owner_written_and_identity_protected() -> None:
+    sql = ALBUM_JOURNAL_MIGRATION.read_text()
+
+    assert sql.count("reviewer_user_id = (select auth.uid())") >= 6
+    assert "status = 'published' or reviewer_user_id = (select auth.uid())" in sql
+    assert "public.album_reviews.status = 'published'" in sql
+    assert "protect_album_review_identity" in sql
+    assert "protect_album_track_review_identity" in sql
+    assert "public.album_reviews.reviewer_user_id = (select auth.uid())" in sql
+    assert "public.album_tracks.album_id = public.album_reviews.album_id" in sql

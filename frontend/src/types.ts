@@ -294,3 +294,95 @@ export interface SpotifyInsights {
   overlap: SpotifyOverlap
   next_show: SpotifyNextShow | null
 }
+
+export interface SpotifyAlbumOption {
+  spotify_album_id: string
+  title: string
+  artist: string
+  release_date: string | null
+  album_type: string
+  total_tracks: number
+  image_url: string | null
+  spotify_url: string | null
+}
+
+export interface AlbumTrack {
+  id: string
+  spotify_track_id: string
+  title: string
+  disc_number: number
+  track_number: number
+  duration_ms: number
+  explicit: boolean
+  spotify_url: string | null
+}
+
+export interface AlbumTrackReview {
+  id: string
+  album_track_id: string
+  personal_rank: number | null
+  score: number | null
+  notes: string | null
+  row_version: number
+}
+
+export interface AlbumReview {
+  id: string
+  reviewer_user_id: string
+  reviewer_name: string
+  overall_score: number | null
+  review_markdown: string | null
+  status: 'draft' | 'published'
+  published_at: string | null
+  updated_at: string
+  row_version: number
+  track_reviews: AlbumTrackReview[]
+}
+
+export interface Album {
+  id: string
+  spotify_album_id: string
+  title: string
+  artist: string
+  album_type: string
+  release_date: string | null
+  release_date_precision: 'year' | 'month' | 'day' | null
+  image_url: string | null
+  spotify_url: string | null
+  label: string | null
+  genres: string[]
+  total_tracks: number
+  duration_ms: number
+  row_version: number
+  tracks: AlbumTrack[]
+  reviews: AlbumReview[]
+}
+
+export interface AlbumLibraryResponse {
+  albums: Album[]
+}
+
+export interface AlbumTrackReviewWrite {
+  id: string
+  album_track_id: string
+  personal_rank: number | null
+  score: number | null
+  notes: string | null
+}
+
+export interface AlbumReviewWrite {
+  id: string
+  expected_row_version?: number | null
+  overall_score: number | null
+  review_markdown: string | null
+  status: 'draft' | 'published'
+  track_reviews: AlbumTrackReviewWrite[]
+}
+
+export interface AlbumMutationResponse {
+  album_id: string
+  review_id: string | null
+  resource_row_version: number
+  replayed: boolean
+  message: string
+}

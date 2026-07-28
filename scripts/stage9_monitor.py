@@ -19,7 +19,7 @@ import httpx
 from sync.backup import read_state
 from sync.cloud import authenticate, fetch_library
 from sync.config import atomic_write_text, load_config
-from sync.storage import build_dataset
+from sync.storage import TABLE_COLUMNS, build_dataset
 
 PRODUCTION_URL = "https://concert-tracker-sepia.vercel.app"
 OBSERVATION_STARTED = datetime(2026, 7, 3, 17, 45, tzinfo=timezone.utc)
@@ -81,7 +81,7 @@ def sqlite_health(path: Path, expected_counts: dict[str, int]) -> tuple[bool, st
         integrity = connection.execute("pragma integrity_check").fetchone()[0]
         counts = {
             table: connection.execute(f"select count(*) from {table}").fetchone()[0]
-            for table in ("members", "concerts", "attendees", "reviews", "rankings", "analytics")
+            for table in TABLE_COLUMNS
         }
     finally:
         connection.close()

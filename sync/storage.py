@@ -14,7 +14,7 @@ from typing import Any
 
 from sync.config import BackupConfig, atomic_write_text, backup_home
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 ARCHIVE_RETENTION = 30
 
 TABLE_COLUMNS = {
@@ -67,6 +67,60 @@ TABLE_COLUMNS = {
     ],
     "rankings": ["scope", "rank", "concert_id", "artist", "concert_date", "rating"],
     "analytics": ["section", "key", "metric", "value_json"],
+    "albums": [
+        "id",
+        "spotify_album_id",
+        "title",
+        "artist",
+        "album_type",
+        "release_date",
+        "release_date_precision",
+        "image_url",
+        "spotify_url",
+        "label",
+        "genres_json",
+        "total_tracks",
+        "duration_ms",
+        "row_version",
+    ],
+    "album_tracks": [
+        "id",
+        "album_id",
+        "album_title",
+        "spotify_track_id",
+        "title",
+        "disc_number",
+        "track_number",
+        "duration_ms",
+        "explicit",
+        "spotify_url",
+    ],
+    "album_reviews": [
+        "id",
+        "album_id",
+        "album_title",
+        "reviewer_user_id",
+        "reviewer_name",
+        "overall_score",
+        "review_markdown",
+        "status",
+        "published_at",
+        "updated_at",
+        "row_version",
+    ],
+    "album_track_reviews": [
+        "id",
+        "album_review_id",
+        "album_track_id",
+        "album_title",
+        "track_title",
+        "reviewer_user_id",
+        "reviewer_name",
+        "personal_rank",
+        "score",
+        "notes",
+        "row_version",
+    ],
 }
 
 
@@ -175,6 +229,83 @@ def build_dataset(
         rankings.extend({"scope": scope, **entry} for entry in entries)
     rankings.sort(key=lambda row: (row["scope"], row["rank"], row["concert_id"]))
 
+    albums: list[dict[str, Any]] = []
+    album_tracks: list[dict[str, Any]] = []
+    album_reviews: list[dict[str, Any]] = []
+    album_track_reviews: list[dict[str, Any]] = []
+    for album in sorted(
+        library.get("albums", []),
+        key=lambda row: (row["artist"], row["title"], row["id"]),
+    ):
+        albums.append(
+            {
+                **{column: album.get(column) for column in TABLE_COLUMNS["albums"]},
+                "genres_json": json.dumps(album.get("genres", []), separators=(",", ":")),
+            }
+        )
+        tracks_by_id = {str(track["id"]): track for track in album.get("tracks", [])}
+        for track in sorted(
+            album.get("tracks", []),
+            key=lambda row: (row["disc_number"], row["track_number"], row["id"]),
+        ):
+            album_tracks.append(
+                {
+                    "id": track["id"],
+                    "album_id": album["id"],
+                    "album_title": album["title"],
+                    "spotify_track_id": track["spotify_track_id"],
+                    "title": track["title"],
+                    "disc_number": track["disc_number"],
+                    "track_number": track["track_number"],
+                    "duration_ms": track["duration_ms"],
+                    "explicit": int(bool(track["explicit"])),
+                    "spotify_url": track.get("spotify_url"),
+                }
+            )
+        for review in sorted(
+            album.get("reviews", []),
+            key=lambda row: (row["reviewer_user_id"], row["id"]),
+        ):
+            album_reviews.append(
+                {
+                    "id": review["id"],
+                    "album_id": album["id"],
+                    "album_title": album["title"],
+                    "reviewer_user_id": review["reviewer_user_id"],
+                    "reviewer_name": review["reviewer_name"],
+                    "overall_score": review.get("overall_score"),
+                    "review_markdown": review.get("review_markdown"),
+                    "status": review["status"],
+                    "published_at": review.get("published_at"),
+                    "updated_at": review["updated_at"],
+                    "row_version": review["row_version"],
+                }
+            )
+            for track_review in review.get("track_reviews", []):
+                track = tracks_by_id.get(str(track_review["album_track_id"]), {})
+                album_track_reviews.append(
+                    {
+                        "id": track_review["id"],
+                        "album_review_id": review["id"],
+                        "album_track_id": track_review["album_track_id"],
+                        "album_title": album["title"],
+                        "track_title": track.get("title", "Unknown track"),
+                        "reviewer_user_id": review["reviewer_user_id"],
+                        "reviewer_name": review["reviewer_name"],
+                        "personal_rank": track_review.get("personal_rank"),
+                        "score": track_review.get("score"),
+                        "notes": track_review.get("notes"),
+                        "row_version": track_review["row_version"],
+                    }
+                )
+    album_track_reviews.sort(
+        key=lambda row: (
+            row["album_id"] if "album_id" in row else row["album_title"],
+            row["reviewer_user_id"],
+            row["album_track_id"],
+        )
+    )
+
     rows = {
         "members": [
             {column: row.get(column) for column in TABLE_COLUMNS["members"]} for row in members
@@ -190,6 +321,10 @@ def build_dataset(
             {column: row.get(column) for column in TABLE_COLUMNS["rankings"]} for row in rankings
         ],
         "analytics": _analytics_rows(library["analytics"]),
+        "albums": albums,
+        "album_tracks": album_tracks,
+        "album_reviews": album_reviews,
+        "album_track_reviews": album_track_reviews,
     }
     counts = {name: len(values) for name, values in rows.items()}
     checksums = {name: canonical_checksum(values) for name, values in rows.items()}
@@ -238,6 +373,31 @@ def _create_schema(connection: sqlite3.Connection) -> None:
         create table analytics (
           section text not null, key text not null, metric text not null, value_json text,
           primary key (section, key, metric)
+        );
+        create table albums (
+          id text primary key, spotify_album_id text not null, title text not null,
+          artist text not null, album_type text not null, release_date text,
+          release_date_precision text, image_url text, spotify_url text, label text,
+          genres_json text not null, total_tracks integer not null, duration_ms integer not null,
+          row_version integer not null
+        );
+        create table album_tracks (
+          id text primary key, album_id text not null, album_title text not null,
+          spotify_track_id text not null, title text not null, disc_number integer not null,
+          track_number integer not null, duration_ms integer not null, explicit integer not null,
+          spotify_url text
+        );
+        create table album_reviews (
+          id text primary key, album_id text not null, album_title text not null,
+          reviewer_user_id text not null, reviewer_name text not null, overall_score real,
+          review_markdown text, status text not null, published_at text, updated_at text not null,
+          row_version integer not null
+        );
+        create table album_track_reviews (
+          id text primary key, album_review_id text not null, album_track_id text not null,
+          album_title text not null, track_title text not null, reviewer_user_id text not null,
+          reviewer_name text not null, personal_rank integer, score real, notes text,
+          row_version integer not null
         );
         create table sync_metadata (key text primary key, value_json text not null);
         """
@@ -332,6 +492,10 @@ def _workbook_payload(dataset: BackupDataset) -> dict[str, Any]:
         "reviews": "Reviews",
         "rankings": "Rankings",
         "analytics": "Analytics",
+        "albums": "Albums",
+        "album_tracks": "Album Tracks",
+        "album_reviews": "Album Reviews",
+        "album_track_reviews": "Track Reviews",
     }
     sheets = []
     for table, sheet_name in sheet_names.items():

@@ -41,6 +41,10 @@ class InMemoryRest:
             "concerts": [],
             "concert_attendees": [],
             "concert_reviews": [],
+            "albums": [],
+            "album_tracks": [],
+            "album_reviews": [],
+            "album_track_reviews": [],
             "api_idempotency_keys": [],
         }
 

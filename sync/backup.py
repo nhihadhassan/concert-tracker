@@ -92,10 +92,11 @@ def run_backup(*, scheduled: bool, render_dir: Path | None = None) -> int:
         }
         atomic_write_text(state_path(), json.dumps(state, indent=2, sort_keys=True) + "\n")
         LOGGER.info(
-            "Backup complete: %s concerts, %s attendees, %s reviews",
+            "Backup complete: %s concerts, %s attendees, %s reviews, %s albums",
             artifacts.counts["concerts"],
             artifacts.counts["attendees"],
             artifacts.counts["reviews"],
+            artifacts.counts["albums"],
         )
     return 0
 
