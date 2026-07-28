@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { Analytics, LibraryResponse } from './types'
+import type { Album, Analytics, LibraryResponse } from './types'
 
 vi.mock('./lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./lib/api')>()
@@ -105,6 +105,70 @@ vi.mock('./hooks/useConcertLibrary', () => ({
   }),
 }))
 
+const albums: Album[] = [{
+  id: 'aaaaaaaa-1111-4111-8111-111111111111',
+  spotify_album_id: 'spotify-in-rainbows',
+  title: 'In Rainbows',
+  artist: 'Radiohead',
+  album_type: 'album',
+  release_date: '2007-10-10',
+  release_date_precision: 'day',
+  image_url: 'https://example.com/in-rainbows.jpg',
+  spotify_url: 'https://open.spotify.com/album/example',
+  label: 'XL Recordings',
+  genres: ['alternative rock'],
+  total_tracks: 2,
+  duration_ms: 479000,
+  row_version: 1,
+  tracks: [{
+    id: 'bbbbbbbb-1111-4111-8111-111111111111',
+    spotify_track_id: 'track-1',
+    title: '15 Step',
+    disc_number: 1,
+    track_number: 1,
+    duration_ms: 237000,
+    explicit: false,
+    spotify_url: null,
+  }, {
+    id: 'cccccccc-1111-4111-8111-111111111111',
+    spotify_track_id: 'track-2',
+    title: 'Bodysnatchers',
+    disc_number: 1,
+    track_number: 2,
+    duration_ms: 242000,
+    explicit: false,
+    spotify_url: null,
+  }],
+  reviews: [{
+    id: 'dddddddd-1111-4111-8111-111111111111',
+    reviewer_user_id: '11111111-1111-4111-8111-111111111111',
+    reviewer_name: 'Nhihad',
+    overall_score: 9.2,
+    review_markdown: '## A patient, vivid record\n\nStill revealing details.',
+    status: 'published',
+    published_at: '2026-07-27T12:00:00Z',
+    updated_at: '2026-07-27T12:00:00Z',
+    row_version: 1,
+    track_reviews: [{
+      id: 'eeeeeeee-1111-4111-8111-111111111111',
+      album_track_id: 'bbbbbbbb-1111-4111-8111-111111111111',
+      personal_rank: 2,
+      score: 9,
+      notes: 'Perfect opener.',
+      row_version: 1,
+    }],
+  }],
+}]
+
+vi.mock('./hooks/useAlbumLibrary', () => ({
+  useAlbumLibrary: () => ({
+    albums,
+    error: '',
+    loading: false,
+    refetch: vi.fn(),
+  }),
+}))
+
 import App, { Dashboard } from './App'
 
 const member = {
@@ -191,6 +255,31 @@ describe('Concert Tracker cloud shell', () => {
     expect(screen.getByRole('heading', { name: 'Nhihad, your year in the crowd.' })).toBeInTheDocument()
     expect(screen.getByText('Your main character moment')).toBeInTheDocument()
     expect(screen.getByRole('combobox', { name: 'Show me' })).toHaveValue('all')
+  })
+
+  it('opens the album journal and keeps track order separate from personal rank', async () => {
+    render(<Dashboard accessToken="token" member={member} onSignOut={() => undefined} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Albums' }))
+    expect(window.location.search).toBe('?view=albums')
+    expect(screen.getByRole('heading', { name: 'Album journal' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Open In Rainbows by Radiohead' }))
+    expect(window.location.search).toBe('?album=aaaaaaaa-1111-4111-8111-111111111111')
+    expect(await screen.findByRole('heading', { name: 'In Rainbows', level: 1 })).toBeInTheDocument()
+    expect(screen.getByText('A patient, vivid record')).toBeInTheDocument()
+    expect(screen.getByRole('table', { name: 'In Rainbows tracklist' })).toHaveTextContent('15 Step')
+    expect(screen.getByRole('table', { name: 'In Rainbows tracklist' })).toHaveTextContent('Bodysnatchers')
+    expect(screen.getByText('Perfect opener.')).toBeInTheDocument()
+  })
+
+  it('opens a formatted album review studio with optional track controls', async () => {
+    window.history.replaceState({}, '', '/?album=aaaaaaaa-1111-4111-8111-111111111111')
+    render(<Dashboard accessToken="token" member={member} onSignOut={() => undefined} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit review' }))
+    expect(window.location.search).toContain('mode=edit')
+    expect(await screen.findByRole('toolbar', { name: 'Review formatting' })).toBeInTheDocument()
+    expect(screen.getByLabelText('15 Step score')).toHaveValue(9)
+    expect(screen.getByLabelText('15 Step personal rank')).toHaveValue(2)
+    expect(screen.getByRole('button', { name: 'Publish review' })).toBeInTheDocument()
   })
 
   it('opens a concert detail and restores focus when returning to concerts', async () => {

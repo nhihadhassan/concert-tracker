@@ -148,6 +148,59 @@ def library_fixture() -> dict:
                 "combined": [],
             },
         },
+        "albums": [
+            {
+                "id": "aaaaaaaa-1111-4111-8111-111111111111",
+                "spotify_album_id": "spotify-in-rainbows",
+                "title": "In Rainbows",
+                "artist": "Radiohead",
+                "album_type": "album",
+                "release_date": "2007-10-10",
+                "release_date_precision": "day",
+                "image_url": "https://example.com/in-rainbows.jpg",
+                "spotify_url": "https://open.spotify.com/album/example",
+                "label": "XL Recordings",
+                "genres": ["alternative rock"],
+                "total_tracks": 1,
+                "duration_ms": 237000,
+                "row_version": 1,
+                "tracks": [
+                    {
+                        "id": "bbbbbbbb-1111-4111-8111-111111111111",
+                        "spotify_track_id": "track-1",
+                        "title": "15 Step",
+                        "disc_number": 1,
+                        "track_number": 1,
+                        "duration_ms": 237000,
+                        "explicit": False,
+                        "spotify_url": None,
+                    }
+                ],
+                "reviews": [
+                    {
+                        "id": "cccccccc-1111-4111-8111-111111111111",
+                        "reviewer_user_id": USER_ID,
+                        "reviewer_name": "Nhihad",
+                        "overall_score": 9.2,
+                        "review_markdown": "## Patient and vivid",
+                        "status": "published",
+                        "published_at": "2026-07-27T12:00:00Z",
+                        "updated_at": "2026-07-27T12:00:00Z",
+                        "row_version": 1,
+                        "track_reviews": [
+                            {
+                                "id": "dddddddd-1111-4111-8111-111111111111",
+                                "album_track_id": "bbbbbbbb-1111-4111-8111-111111111111",
+                                "personal_rank": 1,
+                                "score": 9.0,
+                                "notes": "Perfect opener.",
+                                "row_version": 1,
+                            }
+                        ],
+                    }
+                ],
+            }
+        ],
     }
 
 
@@ -220,6 +273,12 @@ def test_sqlite_backup_matches_snapshot_counts_and_checksums(tmp_path: Path) -> 
     with sqlite3.connect(target) as connection:
         assert connection.execute("select count(*) from concerts").fetchone()[0] == 1
         assert connection.execute("select artist from concerts").fetchone()[0] == "Kali Uchis"
+        assert connection.execute("select count(*) from albums").fetchone()[0] == 1
+        assert connection.execute("select title from album_tracks").fetchone()[0] == "15 Step"
+        assert (
+            connection.execute("select review_markdown from album_reviews").fetchone()[0]
+            == "## Patient and vivid"
+        )
         assert connection.execute("pragma integrity_check").fetchone()[0] == "ok"
 
 

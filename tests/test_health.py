@@ -29,10 +29,12 @@ def test_stage_five_exposes_only_reviewed_write_routes() -> None:
         ("DELETE", "/v1/concerts/{concert_id}"),
         ("POST", "/v1/analytics/calculate"),
         ("POST", "/v1/concerts"),
+        ("POST", "/v1/albums/import"),
         ("POST", "/v1/ratings/calculate"),
         ("PATCH", "/v1/concerts/{concert_id}"),
         ("PUT", "/v1/concerts/{concert_id}/attendees"),
         ("PUT", "/v1/concerts/{concert_id}/review"),
+        ("PUT", "/v1/albums/{album_id}/review"),
         ("POST", "/v1/spotify/connect"),
         ("POST", "/v1/spotify/disconnect"),
     }

@@ -1,4 +1,17 @@
-import type { ArtworkSearchResponse, LibraryResponse, LyricBreakdown, QueuedMutation, SpotifyInsights, SpotifyPulse, SpotifyRange, SpotifyStatus } from '../types'
+import type {
+  AlbumLibraryResponse,
+  AlbumMutationResponse,
+  AlbumReviewWrite,
+  ArtworkSearchResponse,
+  LibraryResponse,
+  LyricBreakdown,
+  QueuedMutation,
+  SpotifyAlbumOption,
+  SpotifyInsights,
+  SpotifyPulse,
+  SpotifyRange,
+  SpotifyStatus,
+} from '../types'
 
 export class ApiError extends Error {
   status: number
@@ -40,6 +53,51 @@ export async function apiRequest<T>(
 
 export const fetchLibrary = (accessToken: string) =>
   apiRequest<LibraryResponse>(accessToken, '/v1/library')
+
+export const fetchAlbums = (accessToken: string) =>
+  apiRequest<AlbumLibraryResponse>(accessToken, '/v1/albums')
+
+export const searchSpotifyAlbums = (
+  accessToken: string,
+  query: string,
+  signal?: AbortSignal,
+) =>
+  apiRequest<{ results: SpotifyAlbumOption[] }>(
+    accessToken,
+    `/v1/albums/search?q=${encodeURIComponent(query)}`,
+    { signal },
+  )
+
+export const importSpotifyAlbum = (
+  accessToken: string,
+  spotifyAlbumId: string,
+  idempotencyKey = crypto.randomUUID(),
+) =>
+  apiRequest<AlbumMutationResponse>(
+    accessToken,
+    '/v1/albums/import',
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        id: crypto.randomUUID(),
+        spotify_album_id: spotifyAlbumId,
+      }),
+    },
+    idempotencyKey,
+  )
+
+export const saveAlbumReview = (
+  accessToken: string,
+  albumId: string,
+  review: AlbumReviewWrite,
+  idempotencyKey = crypto.randomUUID(),
+) =>
+  apiRequest<AlbumMutationResponse>(
+    accessToken,
+    `/v1/albums/${albumId}/review`,
+    { method: 'PUT', body: JSON.stringify(review) },
+    idempotencyKey,
+  )
 
 export const searchArtwork = (accessToken: string, query: string, signal?: AbortSignal) =>
   apiRequest<ArtworkSearchResponse>(

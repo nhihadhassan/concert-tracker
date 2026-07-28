@@ -3,6 +3,7 @@ from typing import Literal
 from fastapi import Depends, FastAPI
 from pydantic import BaseModel
 
+from backend.album_routes import router as album_router
 from backend.artwork_routes import router as artwork_router
 from backend.calculation_routes import router as calculation_router
 from backend.genius_routes import router as genius_router
@@ -35,6 +36,7 @@ app = FastAPI(
 
 app.include_router(calculation_router)
 app.include_router(library_router)
+app.include_router(album_router)
 app.include_router(artwork_router)
 app.include_router(spotify_router)
 app.include_router(genius_router)

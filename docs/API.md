@@ -93,3 +93,31 @@ Returns an authenticated CSV export of the shared normalized library.
 Every mutation requires an `Idempotency-Key` UUID. Successful responses are retained per member
 and key. In addition to the existing error statuses, library writes may return `404` for missing
 rows and `409` for stale row versions.
+
+## Album Journal Routes
+
+Album routes require the same active-member Bearer token. Albums and original tracklists are
+shared; drafts are visible only to their author, and published reviews are visible to both
+members.
+
+### `GET /api/v1/albums`
+
+Returns the shared album shelf with chronological Spotify tracklists, visible member reviews,
+and optional per-track personal ranks, scores, and notes.
+
+### `GET /api/v1/albums/search?q={query}`
+
+Searches Spotify albums by title or artist and returns importable release metadata. Spotify
+client credentials remain server-side.
+
+### `POST /api/v1/albums/import`
+
+Imports one Spotify album and its complete tracklist. Requires an `Idempotency-Key` UUID header;
+an album already present in the shared shelf is returned without duplication.
+
+### `PUT /api/v1/albums/{album_id}/review`
+
+Creates or updates only the signed-in member's review. The body supports formatted Markdown,
+an optional overall score out of 10, draft or published status, and optional personal rank,
+score, and short note for each song. Existing reviews require `expected_row_version`; stale
+writes return HTTP `409`.

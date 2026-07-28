@@ -32,6 +32,7 @@ dashboard and table remain available during the 30-day stabilization period.
 - FastAPI on Vercel Functions
 - Supabase Auth, Postgres, RLS, and Realtime
 - TanStack Query with IndexedDB snapshot/outbox support
+- Shared Spotify album shelf with private drafts and personal song rankings
 - Local atomic SQLite and Excel backups through macOS launchd
 
 ## Production
