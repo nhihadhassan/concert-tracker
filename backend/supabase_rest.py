@@ -3,9 +3,8 @@ from __future__ import annotations
 from typing import Any
 
 import httpx
-from fastapi import Depends, HTTPException, status
+from fastapi import HTTPException, status
 
-from backend.auth import AuthenticatedUser, require_user
 from backend.settings import SettingsError, get_settings
 
 
@@ -17,11 +16,11 @@ class SupabaseRestError(RuntimeError):
 
 
 class SupabaseRestClient:
-    def __init__(self, url: str, publishable_key: str, access_token: str) -> None:
+    def __init__(self, url: str, api_key: str) -> None:
         self.base_url = f"{url.rstrip('/')}/rest/v1"
         self.headers = {
-            "apikey": publishable_key,
-            "Authorization": f"Bearer {access_token}",
+            "apikey": api_key,
+            "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
         }
 
@@ -124,7 +123,7 @@ class SupabaseRestClient:
             return 0
 
 
-def get_rest_client(user: AuthenticatedUser = Depends(require_user)) -> SupabaseRestClient:
+def get_rest_client() -> SupabaseRestClient:
     try:
         settings = get_settings()
     except SettingsError as exc:
@@ -132,8 +131,4 @@ def get_rest_client(user: AuthenticatedUser = Depends(require_user)) -> Supabase
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=str(exc),
         ) from exc
-    return SupabaseRestClient(
-        settings.supabase_url,
-        settings.supabase_publishable_key,
-        user.access_token,
-    )
+    return SupabaseRestClient(settings.supabase_url, settings.rest_key)

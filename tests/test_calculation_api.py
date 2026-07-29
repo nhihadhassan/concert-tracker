@@ -1,15 +1,16 @@
+from uuid import UUID
+
 from fastapi.testclient import TestClient
 
-from backend.members import AppMember, require_member
+from backend.identity import PublicUser, current_user
 from backend.server import app
 
 
 def authenticated_client() -> TestClient:
-    app.dependency_overrides[require_member] = lambda: AppMember(
-        user_id="11111111-1111-4111-8111-111111111111",
+    app.dependency_overrides[current_user] = lambda: PublicUser(
+        user_id=UUID("11111111-1111-4111-8111-111111111111"),
         email="owner@example.com",
         display_name="Nhihad",
-        is_active=True,
     )
     return TestClient(app)
 

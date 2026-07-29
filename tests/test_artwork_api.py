@@ -3,23 +3,15 @@ from uuid import UUID
 import httpx
 from fastapi.testclient import TestClient
 
-from backend.auth import AuthenticatedUser, require_user
-from backend.members import AppMember, require_member
+from backend.identity import PublicUser, current_user
 from backend.server import app
 
 
 def client() -> TestClient:
-    app.dependency_overrides[require_member] = lambda: AppMember(
-        user_id="11111111-1111-4111-8111-111111111111",
-        email="owner@example.com",
-        display_name="Nhihad",
-        is_active=True,
-    )
-    app.dependency_overrides[require_user] = lambda: AuthenticatedUser(
+    app.dependency_overrides[current_user] = lambda: PublicUser(
         user_id=UUID("11111111-1111-4111-8111-111111111111"),
         email="owner@example.com",
-        role="authenticated",
-        access_token="test-token",
+        display_name="Nhihad",
     )
     return TestClient(app)
 

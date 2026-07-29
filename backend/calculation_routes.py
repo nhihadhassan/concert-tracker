@@ -1,7 +1,7 @@
 from decimal import Decimal
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, HTTPException, status
 
 from backend.api_models import (
     AnalyticsCalculationRequest,
@@ -37,7 +37,6 @@ from backend.domain.ratings import (
     calculate_rating,
     combine_final_ratings,
 )
-from backend.members import AppMember, require_member
 
 router = APIRouter(prefix="/v1", tags=["calculations"])
 
@@ -190,14 +189,13 @@ def domain_error(exc: RatingValidationError) -> HTTPException:
 
 
 @router.get("/rating-rules/current", response_model=RatingRuleResponse)
-def current_rating_rule(_member: AppMember = Depends(require_member)) -> RatingRuleResponse:
+def current_rating_rule() -> RatingRuleResponse:
     return rule_response(DEFAULT_RATING_RULE)
 
 
 @router.post("/ratings/calculate", response_model=RatingCalculationResponse)
 def calculate_ratings(
     payload: RatingCalculationRequest,
-    _member: AppMember = Depends(require_member),
 ) -> RatingCalculationResponse:
     try:
         rule = DEFAULT_RATING_RULE
@@ -214,7 +212,6 @@ def calculate_ratings(
 @router.post("/analytics/calculate", response_model=AnalyticsCalculationResponse)
 def calculate_analytics_endpoint(
     payload: AnalyticsCalculationRequest,
-    _member: AppMember = Depends(require_member),
 ) -> AnalyticsCalculationResponse:
     try:
         rule = DEFAULT_RATING_RULE

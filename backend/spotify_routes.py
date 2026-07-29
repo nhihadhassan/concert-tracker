@@ -36,7 +36,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 
-from backend.members import AppMember, require_member
+from backend.identity import PublicUser, current_user
 from backend.settings import Settings, SettingsError, get_settings
 from backend.supabase_rest import SupabaseRestClient, SupabaseRestError, get_rest_client
 
@@ -158,7 +158,6 @@ def _basic_auth_header(settings: Settings) -> str:
 
 @router.get("/status", response_model=StatusResponse)
 def spotify_status(
-    _member: AppMember = Depends(require_member),
     rest: SupabaseRestClient = Depends(get_rest_client),
 ) -> StatusResponse:
     _settings_or_503()
@@ -170,9 +169,9 @@ def spotify_status(
 
 
 @router.get("/login", response_model=LoginResponse)
-def spotify_login(member: AppMember = Depends(require_member)) -> LoginResponse:
+def spotify_login(user: PublicUser = Depends(current_user)) -> LoginResponse:
     settings = _settings_or_503()
-    state = _sign_state(str(member.user_id), settings.spotify_client_secret)
+    state = _sign_state(str(user.user_id), settings.spotify_client_secret)
     query = urlencode(
         {
             "client_id": settings.spotify_client_id,
@@ -234,7 +233,7 @@ def spotify_callback(
 @router.post("/connect", response_model=StatusResponse)
 def spotify_connect(
     body: ConnectRequest,
-    member: AppMember = Depends(require_member),
+    user: PublicUser = Depends(current_user),
     rest: SupabaseRestClient = Depends(get_rest_client),
 ) -> StatusResponse:
     _settings_or_503()
@@ -242,7 +241,7 @@ def spotify_connect(
     if not refresh_token:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing refresh token")
     payload = {
-        "user_id": str(member.user_id),
+        "user_id": str(user.user_id),
         "refresh_token": refresh_token,
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
@@ -261,7 +260,7 @@ def spotify_connect(
 
 @router.post("/disconnect", response_model=StatusResponse)
 def spotify_disconnect(
-    member: AppMember = Depends(require_member),
+    user: PublicUser = Depends(current_user),
     rest: SupabaseRestClient = Depends(get_rest_client),
 ) -> StatusResponse:
     _settings_or_503()
@@ -269,7 +268,7 @@ def spotify_disconnect(
         rest.request(
             "DELETE",
             "spotify_accounts",
-            params={"user_id": f"eq.{member.user_id}"},
+            params={"user_id": f"eq.{user.user_id}"},
             prefer="return=minimal",
         )
     except SupabaseRestError as exc:
@@ -402,7 +401,7 @@ def _latest_release(
 
 @router.get("/pulse", response_model=PulseResponse)
 def spotify_pulse(
-    member: AppMember = Depends(require_member),
+    user: PublicUser = Depends(current_user),
     rest: SupabaseRestClient = Depends(get_rest_client),
 ) -> PulseResponse:
     settings = _settings_or_503()
@@ -493,7 +492,7 @@ def _artist_matches(spotify_name: str, concert_names: set[str]) -> bool:
 @router.get("/insights", response_model=InsightsResponse)
 def spotify_insights(
     time_range: str = Query(default="medium_term", alias="range"),
-    member: AppMember = Depends(require_member),
+    user: PublicUser = Depends(current_user),
     rest: SupabaseRestClient = Depends(get_rest_client),
 ) -> InsightsResponse:
     settings = _settings_or_503()

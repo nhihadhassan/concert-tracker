@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { supabase } from '../lib/supabase'
 import { ApiError, fetchLibrary, sendQueuedMutation } from '../lib/api'
 import {
   listOutbox,
@@ -13,6 +12,8 @@ import {
 import type { ConflictState, LibraryResponse, QueuedMutation, SyncState } from '../types'
 
 const LIBRARY_KEY = ['concert-library'] as const
+// Realtime needed a signed-in Supabase client; without one the library polls instead.
+const REFRESH_INTERVAL_MS = 60_000
 
 const conflictFromError = (mutation: QueuedMutation, error: ApiError): ConflictState => {
   const detail = error.detail && typeof error.detail === 'object'
@@ -25,7 +26,7 @@ const conflictFromError = (mutation: QueuedMutation, error: ApiError): ConflictS
   }
 }
 
-export function useConcertLibrary(accessToken: string) {
+export function useConcertLibrary() {
   const queryClient = useQueryClient()
   const [pendingCount, setPendingCount] = useState(0)
   const [online, setOnline] = useState(() => navigator.onLine)
@@ -38,7 +39,7 @@ export function useConcertLibrary(accessToken: string) {
     queryKey: LIBRARY_KEY,
     queryFn: async () => {
       try {
-        const library = await fetchLibrary(accessToken)
+        const library = await fetchLibrary()
         await writeSnapshot(library)
         return library
       } catch (error) {
@@ -48,6 +49,8 @@ export function useConcertLibrary(accessToken: string) {
         throw error
       }
     },
+    refetchInterval: REFRESH_INTERVAL_MS,
+    refetchOnWindowFocus: true,
   })
 
   const refreshPending = useCallback(async () => {
@@ -62,7 +65,7 @@ export function useConcertLibrary(accessToken: string) {
       const queued = await listOutbox()
       for (const mutation of queued) {
         try {
-          await sendQueuedMutation(accessToken, mutation)
+          await sendQueuedMutation(mutation)
           await removeMutation(mutation.id)
           await refreshPending()
         } catch (error) {
@@ -79,7 +82,7 @@ export function useConcertLibrary(accessToken: string) {
     } finally {
       setFlushing(false)
     }
-  }, [accessToken, conflict, flushing, queryClient, refreshPending])
+  }, [conflict, flushing, queryClient, refreshPending])
 
   flushRef.current = flushOutbox
 
@@ -99,26 +102,6 @@ export function useConcertLibrary(accessToken: string) {
       window.removeEventListener('offline', handleOffline)
     }
   }, [refreshPending])
-
-  useEffect(() => {
-    const client = supabase
-    if (!client) return
-    const channel = client
-      .channel('concert-library')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'concerts' }, () => {
-        void queryClient.invalidateQueries({ queryKey: LIBRARY_KEY })
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'concert_attendees' }, () => {
-        void queryClient.invalidateQueries({ queryKey: LIBRARY_KEY })
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'concert_reviews' }, () => {
-        void queryClient.invalidateQueries({ queryKey: LIBRARY_KEY })
-      })
-      .subscribe()
-    return () => {
-      void client.removeChannel(channel)
-    }
-  }, [queryClient])
 
   const executeMutation = useCallback(async (
     mutation: QueuedMutation,

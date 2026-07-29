@@ -21,9 +21,9 @@ The Stage 0 authorized export found 46 cloud concerts versus 45 in the fresh bro
 React + TypeScript
   -> FastAPI /api/v1
       -> Python rating and analytics domain
-      -> Supabase Postgres with RLS
+      -> Supabase Postgres via the secret key (RLS bypassed)
   -> IndexedDB snapshot and mutation outbox
-  -> Supabase Realtime query invalidation
+  -> Interval and focus-based query refresh
 
 Mac launchd -> Python backup agent -> SQLite + XLSX
 ```
@@ -32,9 +32,11 @@ Mac launchd -> Python backup agent -> SQLite + XLSX
 
 Vercel Services currently mounts the Vite frontend at `/` and the FastAPI service at `/api`. The only API route is the read-only `/api/v1/health` contract. React uses in-memory fixtures and has no Supabase client or write path.
 
-## Stage 2 Authentication Boundary
+## Stage 2 Authentication Boundary (removed)
 
-Stage 2 adds password authentication against the existing `rachel-tracker` Supabase project. The user approved this shared-project exception after both Free-plan project slots were found to be occupied. The browser stores only the Supabase user session and sends its access token to `/api/v1/session`. FastAPI verifies the ES256 signature, issuer, audience, expiry, role, and two-person email allowlist, then confirms active membership through an RLS-protected `app_members` lookup.
+Sign-in described in this section was removed at the owner's request; the section is retained as
+the history of how the schema and membership tables came to exist. Stage 2 added password
+authentication against the existing `rachel-tracker` Supabase project. The user approved this shared-project exception after both Free-plan project slots were found to be occupied. The browser stores only the Supabase user session and sends its access token to `/api/v1/session`. FastAPI verifies the ES256 signature, issuer, audience, expiry, role, and two-person email allowlist, then confirms active membership through an RLS-protected `app_members` lookup.
 
 The normalized staging schema contains `app_members`, `concerts`, `concert_attendees`, `concert_reviews`, and `rating_rule_versions`. Every table has RLS enabled, audit metadata, soft deletion, and an integer row version. Both members can read the shared library; each member can create and update their own review only. No browser role receives physical delete permission.
 
@@ -82,10 +84,11 @@ not migrated or modified.
 
 ## Stage 5 Cloud Application Boundary
 
-Stage 5 connects React to authenticated, database-backed FastAPI routes. The browser sends the
-member's Supabase access token to `/api/v1`; FastAPI validates the session, then uses that same
-token for PostgREST calls so every database operation remains subject to RLS. Service-role
-credentials are not used by the deployed application.
+Stage 5 connects React to database-backed FastAPI routes. Sign-in was later removed at the
+owner's request: the browser sends no credentials, and FastAPI calls PostgREST with the Supabase
+secret key. That key bypasses RLS, so row scoping is now application logic against the single
+configured public user rather than a database guarantee, and any caller who can reach a
+deployment has full read and write access to the library.
 
 TanStack Query owns the cloud snapshot. IndexedDB stores the latest successful snapshot and a
 temporary mutation outbox. Queued writes carry UUID idempotency keys, while updates and deletes
@@ -95,8 +98,8 @@ the current version; silent last-write-wins behavior is not allowed.
 
 `api_idempotency_keys` records successful responses per member and request key. The concerts,
 attendees, and reviews tables also retain the last mutation ID so interrupted create flows can
-recover safely. Supabase Realtime is used only to invalidate affected TanStack Query data; it is
-not a second write path.
+recover safely. Realtime invalidation needed a signed-in Supabase client, so TanStack Query now
+refreshes the library on an interval and on window focus instead.
 
 CSV exports and all personal and combined ratings remain FastAPI responses. React renders the
 returned results and contains no rating formula.
@@ -149,9 +152,9 @@ cutover loader uses the local service-role credential only, refuses conflicting 
 IDs or unexpected active rows, inserts only missing rows in dependency order, and verifies the
 complete destination after every run. Repeating the loader performs zero writes.
 
-The production browser receives only the Supabase publishable key. FastAPI validates each
-member access token and forwards it to PostgREST, so production reads and writes remain governed
-by RLS. The Vercel function has no service-role credential.
+The production browser holds no Supabase credential at all. The Vercel function carries the
+secret key and performs every read and write with it, so the RLS policies remain defined in the
+schema but no longer constrain production traffic.
 
 The original 46-row JSON table, legacy static deployment, pre/post-cutover JSON exports, and
 local SQLite/Excel files remain rollback assets during Stage 9. Soft-deleted verification rows

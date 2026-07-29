@@ -1,10 +1,10 @@
 import { Armchair, ArrowLeft, CalendarDays, Image, MapPin, Music2, Pencil, Star, Ticket, Trash2, Users, WalletCards } from 'lucide-react'
-import type { AuthMember } from '../auth/AuthContext'
+import type { SessionMember } from '../session/useSession'
 import type { Concert } from '../types'
 
 interface ConcertDetailProps {
   concert: Concert
-  member: AuthMember
+  member: SessionMember
   onArtwork: (concert: Concert) => void
   onBack: () => void
   onDelete: (concert: Concert) => void
