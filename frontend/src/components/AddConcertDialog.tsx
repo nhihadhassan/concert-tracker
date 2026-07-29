@@ -12,7 +12,6 @@ import type {
 } from '../types'
 
 interface ConcertDialogProps {
-  accessToken: string
   concert: Concert | null
   currentUserId: string
   error: string
@@ -35,7 +34,6 @@ const cleanArtistName = (value: string) => value
   .trim()
 
 export function AddConcertDialog({
-  accessToken,
   concert,
   currentUserId,
   error,
@@ -70,7 +68,7 @@ export function AddConcertDialog({
     setArtworkLoading(true)
     setArtworkError('')
     try {
-      const response = await searchArtwork(accessToken, trimmedQuery, controller.signal)
+      const response = await searchArtwork(trimmedQuery, controller.signal)
       setArtworkResults(response.results)
       if (!response.results.length) setArtworkError('No artwork found. Try an album or tour name.')
     } catch (searchError) {
@@ -80,7 +78,7 @@ export function AddConcertDialog({
     } finally {
       if (artworkRequest.current === controller) setArtworkLoading(false)
     }
-  }, [accessToken])
+  }, [])
 
   useEffect(() => {
     const dialog = dialogRef.current

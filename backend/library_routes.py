@@ -13,7 +13,6 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Header, HTTPException, Response, status
 
 from backend.api_models import AnalyticsResponse
-from backend.auth import AuthenticatedUser, require_user
 from backend.calculation_routes import analytics_response
 from backend.domain.analytics import AnalyticsConcert, calculate_analytics
 from backend.domain.ratings import (
@@ -22,6 +21,7 @@ from backend.domain.ratings import (
     calculate_rating,
     combine_final_ratings,
 )
+from backend.identity import PublicUser, current_user
 from backend.library_models import (
     AttendanceWrite,
     AttendeeResponse,
@@ -34,7 +34,6 @@ from backend.library_models import (
     ReviewResponse,
     ReviewWrite,
 )
-from backend.members import AppMember, require_member
 from backend.supabase_rest import (
     SupabaseRestClient,
     SupabaseRestError,
@@ -438,8 +437,7 @@ def _write_review(
 
 @router.get("/library", response_model=LibraryResponse)
 def get_library(
-    _member: AppMember = Depends(require_member),
-    user: AuthenticatedUser = Depends(require_user),
+    user: PublicUser = Depends(current_user),
     rest: SupabaseRestClient = Depends(get_rest_client),
 ) -> LibraryResponse:
     try:
@@ -450,8 +448,7 @@ def get_library(
 
 @router.get("/concerts/export.csv")
 def export_concerts_csv(
-    _member: AppMember = Depends(require_member),
-    user: AuthenticatedUser = Depends(require_user),
+    user: PublicUser = Depends(current_user),
     rest: SupabaseRestClient = Depends(get_rest_client),
 ) -> Response:
     try:
@@ -504,8 +501,7 @@ def export_concerts_csv(
 def create_concert(
     payload: ConcertCreate,
     idempotency_key: UUID = Header(alias="Idempotency-Key"),
-    _member: AppMember = Depends(require_member),
-    user: AuthenticatedUser = Depends(require_user),
+    user: PublicUser = Depends(current_user),
     rest: SupabaseRestClient = Depends(get_rest_client),
 ) -> MutationResponse:
     user_id = str(user.user_id)
@@ -580,8 +576,7 @@ def update_concert(
     concert_id: UUID,
     payload: ConcertUpdate,
     idempotency_key: UUID = Header(alias="Idempotency-Key"),
-    _member: AppMember = Depends(require_member),
-    user: AuthenticatedUser = Depends(require_user),
+    user: PublicUser = Depends(current_user),
     rest: SupabaseRestClient = Depends(get_rest_client),
 ) -> MutationResponse:
     user_id = str(user.user_id)
@@ -633,8 +628,7 @@ def delete_concert(
     concert_id: UUID,
     expected_row_version: int,
     idempotency_key: UUID = Header(alias="Idempotency-Key"),
-    _member: AppMember = Depends(require_member),
-    user: AuthenticatedUser = Depends(require_user),
+    user: PublicUser = Depends(current_user),
     rest: SupabaseRestClient = Depends(get_rest_client),
 ) -> MutationResponse:
     user_id = str(user.user_id)
@@ -679,8 +673,7 @@ def update_attendees(
     concert_id: UUID,
     payload: AttendanceWrite,
     idempotency_key: UUID = Header(alias="Idempotency-Key"),
-    _member: AppMember = Depends(require_member),
-    user: AuthenticatedUser = Depends(require_user),
+    user: PublicUser = Depends(current_user),
     rest: SupabaseRestClient = Depends(get_rest_client),
 ) -> MutationResponse:
     user_id = str(user.user_id)
@@ -760,8 +753,7 @@ def update_review(
     concert_id: UUID,
     payload: ReviewWrite,
     idempotency_key: UUID = Header(alias="Idempotency-Key"),
-    _member: AppMember = Depends(require_member),
-    user: AuthenticatedUser = Depends(require_user),
+    user: PublicUser = Depends(current_user),
     rest: SupabaseRestClient = Depends(get_rest_client),
 ) -> MutationResponse:
     user_id = str(user.user_id)

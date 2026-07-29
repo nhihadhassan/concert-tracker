@@ -169,6 +169,7 @@ vi.mock('./hooks/useAlbumLibrary', () => ({
   }),
 }))
 
+import * as api from './lib/api'
 import App, { Dashboard } from './App'
 
 const member = {
@@ -179,10 +180,13 @@ const member = {
 }
 
 describe('Concert Tracker cloud shell', () => {
-  beforeEach(() => window.history.replaceState({}, '', '/'))
+  beforeEach(() => {
+    vi.restoreAllMocks()
+    window.history.replaceState({}, '', '/')
+  })
 
   it('renders cloud totals and concert cards', () => {
-    render(<Dashboard accessToken="token" member={member} onSignOut={() => undefined} />)
+    render(<Dashboard member={member} />)
     expect(screen.getByRole('heading', { name: "Nhihad's Concerts" })).toBeInTheDocument()
     expect(screen.getByText('Total concerts')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Kali Uchis' })).toBeInTheDocument()
@@ -201,14 +205,14 @@ describe('Concert Tracker cloud shell', () => {
   })
 
   it('filters the cloud list by artist', () => {
-    render(<Dashboard accessToken="token" member={member} onSignOut={() => undefined} />)
+    render(<Dashboard member={member} />)
     fireEvent.change(screen.getByPlaceholderText('e.g. Kendrick, Scotiabank...'), { target: { value: 'No match' } })
     expect(screen.queryByRole('heading', { name: 'Kali Uchis' })).not.toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'No concerts match' })).toBeInTheDocument()
   })
 
   it('shows next concert timing without total spend on the main page', () => {
-    render(<Dashboard accessToken="token" member={member} onSignOut={() => undefined} />)
+    render(<Dashboard member={member} />)
     expect(screen.getByText('Next concert')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'J. Cole' })).toBeInTheDocument()
     expect(screen.getByText('Monday')).toBeInTheDocument()
@@ -216,7 +220,7 @@ describe('Concert Tracker cloud shell', () => {
   })
 
   it('opens the functional add form', () => {
-    render(<Dashboard accessToken="token" member={member} onSignOut={() => undefined} />)
+    render(<Dashboard member={member} />)
     fireEvent.click(screen.getByRole('button', { name: 'Add concert' }))
     expect(screen.getByRole('heading', { name: 'Add concert' })).toBeInTheDocument()
     expect(screen.getByText('Your review', { selector: 'legend' })).toBeInTheDocument()
@@ -224,7 +228,7 @@ describe('Concert Tracker cloud shell', () => {
   })
 
   it('preloads and selects artwork while editing a concert', async () => {
-    render(<Dashboard accessToken="token" member={member} onSignOut={() => undefined} />)
+    render(<Dashboard member={member} />)
     fireEvent.click(screen.getByRole('button', { name: 'View Kali Uchis details' }))
     fireEvent.click(screen.getByRole('button', { name: 'Edit Kali Uchis' }))
     const artworkOption = await screen.findByRole('button', { name: 'Use Sincerely artwork' })
@@ -237,7 +241,7 @@ describe('Concert Tracker cloud shell', () => {
   })
 
   it('switches between concerts and stats with rankings inside stats', () => {
-    render(<Dashboard accessToken="token" member={member} onSignOut={() => undefined} />)
+    render(<Dashboard member={member} />)
     const concertsButton = screen.getByRole('button', { name: 'Concerts' })
     const statsButton = screen.getByRole('button', { name: 'Stats' })
     expect(concertsButton).toHaveAttribute('aria-current', 'page')
@@ -250,7 +254,7 @@ describe('Concert Tracker cloud shell', () => {
 
   it('opens the live-show rewind visualizer', () => {
     window.history.replaceState({}, '', '/?view=wrapped')
-    render(<Dashboard accessToken="token" member={member} onSignOut={() => undefined} />)
+    render(<Dashboard member={member} />)
     expect(screen.getByRole('button', { name: 'Wrapped' })).toHaveAttribute('aria-current', 'page')
     expect(screen.getByRole('heading', { name: 'Nhihad, your year in the crowd.' })).toBeInTheDocument()
     expect(screen.getByText('Your main character moment')).toBeInTheDocument()
@@ -258,7 +262,7 @@ describe('Concert Tracker cloud shell', () => {
   })
 
   it('opens the album journal and keeps track order separate from personal rank', async () => {
-    render(<Dashboard accessToken="token" member={member} onSignOut={() => undefined} />)
+    render(<Dashboard member={member} />)
     fireEvent.click(screen.getByRole('button', { name: 'Albums' }))
     expect(window.location.search).toBe('?view=albums')
     expect(screen.getByRole('heading', { name: 'Album journal' })).toBeInTheDocument()
@@ -273,7 +277,7 @@ describe('Concert Tracker cloud shell', () => {
 
   it('opens a formatted album review studio with optional track controls', async () => {
     window.history.replaceState({}, '', '/?album=aaaaaaaa-1111-4111-8111-111111111111')
-    render(<Dashboard accessToken="token" member={member} onSignOut={() => undefined} />)
+    render(<Dashboard member={member} />)
     fireEvent.click(await screen.findByRole('button', { name: 'Edit review' }))
     expect(window.location.search).toContain('mode=edit')
     expect(await screen.findByRole('toolbar', { name: 'Review formatting' })).toBeInTheDocument()
@@ -283,7 +287,7 @@ describe('Concert Tracker cloud shell', () => {
   })
 
   it('opens a concert detail and restores focus when returning to concerts', async () => {
-    render(<Dashboard accessToken="token" member={member} onSignOut={() => undefined} />)
+    render(<Dashboard member={member} />)
     fireEvent.click(screen.getByRole('button', { name: 'View Kali Uchis details' }))
     expect(window.location.search).toBe('?concert=33333333-3333-4333-8333-333333333333')
     expect(screen.getByRole('heading', { name: 'Kali Uchis', level: 1 })).toBeInTheDocument()
@@ -297,7 +301,7 @@ describe('Concert Tracker cloud shell', () => {
 
   it('honors a shared stats deep link and scope switching', () => {
     window.history.replaceState({}, '', '/?view=stats&scope=shared')
-    render(<Dashboard accessToken="token" member={member} onSignOut={() => undefined} />)
+    render(<Dashboard member={member} />)
     expect(screen.getByRole('heading', { name: 'Shared stats' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Shared' })).toHaveAttribute('aria-pressed', 'true')
     fireEvent.click(screen.getByRole('button', { name: 'Personal' }))
@@ -305,7 +309,7 @@ describe('Concert Tracker cloud shell', () => {
   })
 
   it('responds to popstate deep links and handles deleted concert URLs', () => {
-    render(<Dashboard accessToken="token" member={member} onSignOut={() => undefined} />)
+    render(<Dashboard member={member} />)
     window.history.pushState({}, '', '/?view=stats&scope=shared')
     fireEvent(window, new PopStateEvent('popstate'))
     expect(screen.getByRole('heading', { name: 'Shared stats' })).toBeInTheDocument()
@@ -321,7 +325,7 @@ describe('Concert Tracker cloud shell', () => {
     Object.assign(row, { personal_rating: null, combined_rating: null, reviews: [], notes: null })
     window.history.replaceState({}, '', `/?concert=${row.id}`)
 
-    const view = render(<Dashboard accessToken="token" member={member} onSignOut={() => undefined} />)
+    const view = render(<Dashboard member={member} />)
     expect(screen.queryByRole('img', { name: 'Kali Uchis concert artwork' })).not.toBeInTheDocument()
     expect(screen.getByText('Not rated yet')).toBeInTheDocument()
     expect(screen.getByText('No personal memory recorded yet.')).toBeInTheDocument()
@@ -332,7 +336,7 @@ describe('Concert Tracker cloud shell', () => {
   })
 
   it('expands secondary filters without hiding search', () => {
-    render(<Dashboard accessToken="token" member={member} onSignOut={() => undefined} />)
+    render(<Dashboard member={member} />)
     const filterButton = screen.getByRole('button', { name: 'Filters' })
     expect(filterButton).toHaveAttribute('aria-expanded', 'false')
     fireEvent.click(filterButton)
@@ -340,9 +344,18 @@ describe('Concert Tracker cloud shell', () => {
     expect(screen.getByPlaceholderText('e.g. Kendrick, Scotiabank...')).toBeInTheDocument()
   })
 
-  it('fails closed when staging auth is not configured', async () => {
+  it('opens straight into the library with no sign-in step', async () => {
+    vi.spyOn(api, 'apiRequest').mockResolvedValue(member)
     render(<App />)
-    expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeInTheDocument()
-    expect(screen.getByRole('alert')).toHaveTextContent('Staging authentication is not configured for this deployment.')
+    expect(await screen.findByRole('heading', { name: "Nhihad's Concerts" })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Sign in' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Sign out' })).not.toBeInTheDocument()
+  })
+
+  it('shows an error screen when the profile cannot be loaded', async () => {
+    vi.spyOn(api, 'apiRequest').mockRejectedValue(new Error('Cloud data service is unavailable'))
+    render(<App />)
+    expect(await screen.findByRole('heading', { name: 'Library unavailable' })).toBeInTheDocument()
+    expect(screen.getByText('Cloud data service is unavailable')).toBeInTheDocument()
   })
 })

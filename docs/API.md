@@ -1,7 +1,7 @@
 # API Contract
 
-All routes are mounted below `/api` by Vercel. Calculation routes require a valid Supabase
-Bearer token for an active Nhihad or Rachel membership.
+All routes are mounted below `/api` by Vercel. No route requires authentication: the API has no
+sign-in and serves every caller as the single identity configured by `PUBLIC_USER_ID`.
 
 ## `GET /api/v1/rating-rules/current`
 
@@ -39,18 +39,16 @@ projection.
 
 ## Errors
 
-- `401`: missing, invalid, or expired access token.
-- `403`: user is not allowlisted or is not an active app member.
 - `422`: invalid scores, undocumented overrides, duplicate reviewer IDs, or malformed input.
-- `503`: staging Auth or membership configuration is unavailable.
+- `503`: Supabase configuration is missing or the data service is unreachable.
 
 The generated OpenAPI schema at `/api/v1/openapi.json` is the machine-readable source for all
 request and response fields.
 
 ## Stage 5 Library Routes
 
-All library routes require the same valid member Bearer token. FastAPI passes that token to
-PostgREST, so Supabase RLS authorizes every read and write.
+Library routes are unauthenticated. FastAPI calls PostgREST with the Supabase secret key, which
+bypasses RLS, and scopes rows to the configured public user in application code.
 
 ### `GET /api/v1/library`
 
@@ -96,9 +94,8 @@ rows and `409` for stale row versions.
 
 ## Album Journal Routes
 
-Album routes require the same active-member Bearer token. Albums and original tracklists are
-shared; drafts are visible only to their author, and published reviews are visible to both
-members.
+Album routes are unauthenticated like the rest of the API. Albums and original tracklists are
+shared; drafts and published reviews are attributed to the configured public user.
 
 ### `GET /api/v1/albums`
 

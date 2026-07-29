@@ -5,7 +5,6 @@ import { searchArtwork } from '../lib/api'
 import type { ArtworkOption, Concert } from '../types'
 
 interface ArtworkDialogProps {
-  accessToken: string
   concert: Concert | null
   error: string
   open: boolean
@@ -21,7 +20,6 @@ const cleanArtistName = (value: string) => value
   .trim()
 
 export function ArtworkDialog({
-  accessToken,
   concert,
   error,
   open,
@@ -50,7 +48,7 @@ export function ArtworkDialog({
     setArtworkLoading(true)
     setArtworkError('')
     try {
-      const response = await searchArtwork(accessToken, trimmedQuery, controller.signal)
+      const response = await searchArtwork(trimmedQuery, controller.signal)
       setArtworkResults(response.results)
       if (!response.results.length) setArtworkError('No artwork found. Try just the artist name.')
     } catch (searchError) {
@@ -60,7 +58,7 @@ export function ArtworkDialog({
     } finally {
       if (artworkRequest.current === controller) setArtworkLoading(false)
     }
-  }, [accessToken])
+  }, [])
 
   useEffect(() => {
     const dialog = dialogRef.current

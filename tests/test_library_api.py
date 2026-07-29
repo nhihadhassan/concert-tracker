@@ -6,8 +6,7 @@ from uuid import UUID
 
 from fastapi.testclient import TestClient
 
-from backend.auth import AuthenticatedUser, require_user
-from backend.members import AppMember, require_member
+from backend.identity import PublicUser, current_user
 from backend.server import app
 from backend.supabase_rest import get_rest_client
 
@@ -125,17 +124,10 @@ class InMemoryRest:
 
 
 def client_for(rest: InMemoryRest) -> TestClient:
-    app.dependency_overrides[require_member] = lambda: AppMember(
-        user_id=NHIHAD_ID,
-        email="owner@example.com",
-        display_name="Nhihad",
-        is_active=True,
-    )
-    app.dependency_overrides[require_user] = lambda: AuthenticatedUser(
+    app.dependency_overrides[current_user] = lambda: PublicUser(
         user_id=UUID(NHIHAD_ID),
         email="owner@example.com",
-        role="authenticated",
-        access_token="test-token",
+        display_name="Nhihad",
     )
     app.dependency_overrides[get_rest_client] = lambda: rest
     return TestClient(app)

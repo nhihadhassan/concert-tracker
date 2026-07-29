@@ -30,7 +30,7 @@ dashboard and table remain available during the 30-day stabilization period.
 
 - React, Vite, and TypeScript
 - FastAPI on Vercel Functions
-- Supabase Auth, Postgres, RLS, and Realtime
+- Supabase Postgres (no sign-in; the API holds the secret key)
 - TanStack Query with IndexedDB snapshot/outbox support
 - Shared Spotify album shelf with private drafts and personal song rankings
 - Local atomic SQLite and Excel backups through macOS launchd
@@ -57,7 +57,11 @@ npm run check
 npm run build
 ```
 
-Without staging environment variables, the React application intentionally fails closed on the sign-in screen. Copy `frontend/.env.example` only for local staging work; never add a service-role key to the frontend environment.
+The application has no sign-in. Every request runs as the single identity described by
+`PUBLIC_USER_ID`, `PUBLIC_USER_EMAIL`, and `PUBLIC_USER_DISPLAY_NAME`, and the API reaches
+Supabase with `SUPABASE_SECRET_KEY`, which bypasses the RLS policies. Anyone who can reach a
+deployment can therefore read and write the whole library, so treat the deployment URL itself
+as the only thing standing between the data and the public.
 
 ## Stage 2 Staging Setup
 
@@ -125,12 +129,14 @@ For split local development, run the API and Vite proxy in separate terminals:
 ```bash
 SUPABASE_URL=https://PROJECT_REF.supabase.co \
 SUPABASE_PUBLISHABLE_KEY=sb_publishable_REPLACE_ME \
+SUPABASE_SECRET_KEY=sb_secret_REPLACE_ME \
+PUBLIC_USER_ID=YOUR_SUPABASE_USER_UUID \
   .venv/bin/uvicorn backend.server:app --port 8001
 
 npm --prefix frontend run dev -- --port 3011
 ```
 
-The Vite proxy maps `/api` to port `8001`. Sign in with either Keychain-managed member password.
+The Vite proxy maps `/api` to port `8001`; the application opens straight into the library.
 The browser caches the latest library snapshot and queues temporary offline mutations in
 IndexedDB. Reconnecting replays each mutation with its idempotency key; stale edits open an
 explicit conflict dialog.

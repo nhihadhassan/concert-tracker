@@ -21,8 +21,7 @@ from backend.album_models import (
     SpotifyAlbumOption,
     SpotifyAlbumSearchResponse,
 )
-from backend.auth import AuthenticatedUser, require_user
-from backend.members import AppMember, require_member
+from backend.identity import PublicUser, current_user
 from backend.settings import Settings, SettingsError, get_settings
 from backend.supabase_rest import SupabaseRestClient, SupabaseRestError, get_rest_client
 
@@ -237,8 +236,6 @@ def _conflict(current: Mapping[str, Any]) -> HTTPException:
 
 @router.get("", response_model=AlbumLibraryResponse)
 def list_albums(
-    _member: AppMember = Depends(require_member),
-    _user: AuthenticatedUser = Depends(require_user),
     rest: SupabaseRestClient = Depends(get_rest_client),
 ) -> AlbumLibraryResponse:
     try:
@@ -250,7 +247,6 @@ def list_albums(
 @router.get("/search", response_model=SpotifyAlbumSearchResponse)
 def search_albums(
     q: str = Query(min_length=2, max_length=160),
-    _member: AppMember = Depends(require_member),
 ) -> SpotifyAlbumSearchResponse:
     with httpx.Client() as client:
         token = _spotify_token(client, _settings())
@@ -268,8 +264,7 @@ def search_albums(
 def import_album(
     payload: AlbumImportWrite,
     _idempotency_key: UUID = Header(alias="Idempotency-Key"),
-    _member: AppMember = Depends(require_member),
-    user: AuthenticatedUser = Depends(require_user),
+    user: PublicUser = Depends(current_user),
     rest: SupabaseRestClient = Depends(get_rest_client),
 ) -> AlbumMutationResponse:
     user_id = str(user.user_id)
@@ -362,8 +357,7 @@ def save_album_review(
     album_id: UUID,
     payload: AlbumReviewWrite,
     idempotency_key: UUID = Header(alias="Idempotency-Key"),
-    _member: AppMember = Depends(require_member),
-    user: AuthenticatedUser = Depends(require_user),
+    user: PublicUser = Depends(current_user),
     rest: SupabaseRestClient = Depends(get_rest_client),
 ) -> AlbumMutationResponse:
     user_id = str(user.user_id)

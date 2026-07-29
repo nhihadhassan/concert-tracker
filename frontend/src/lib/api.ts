@@ -34,13 +34,11 @@ const detailMessage = (detail: unknown) => {
 }
 
 export async function apiRequest<T>(
-  accessToken: string,
   path: string,
   options: RequestInit = {},
   idempotencyKey?: string,
 ): Promise<T> {
   const headers = new Headers(options.headers)
-  headers.set('Authorization', `Bearer ${accessToken}`)
   if (options.body) headers.set('Content-Type', 'application/json')
   if (idempotencyKey) headers.set('Idempotency-Key', idempotencyKey)
   const response = await fetch(`/api${path}`, { ...options, headers })
@@ -51,31 +49,25 @@ export async function apiRequest<T>(
   return response.json() as Promise<T>
 }
 
-export const fetchLibrary = (accessToken: string) =>
-  apiRequest<LibraryResponse>(accessToken, '/v1/library')
+export const fetchLibrary = () =>
+  apiRequest<LibraryResponse>('/v1/library')
 
-export const fetchAlbums = (accessToken: string) =>
-  apiRequest<AlbumLibraryResponse>(accessToken, '/v1/albums')
+export const fetchAlbums = () =>
+  apiRequest<AlbumLibraryResponse>('/v1/albums')
 
 export const searchSpotifyAlbums = (
-  accessToken: string,
   query: string,
   signal?: AbortSignal,
 ) =>
-  apiRequest<{ results: SpotifyAlbumOption[] }>(
-    accessToken,
-    `/v1/albums/search?q=${encodeURIComponent(query)}`,
+  apiRequest<{ results: SpotifyAlbumOption[] }>(`/v1/albums/search?q=${encodeURIComponent(query)}`,
     { signal },
   )
 
 export const importSpotifyAlbum = (
-  accessToken: string,
   spotifyAlbumId: string,
   idempotencyKey = crypto.randomUUID(),
 ) =>
-  apiRequest<AlbumMutationResponse>(
-    accessToken,
-    '/v1/albums/import',
+  apiRequest<AlbumMutationResponse>('/v1/albums/import',
     {
       method: 'POST',
       body: JSON.stringify({
@@ -87,53 +79,48 @@ export const importSpotifyAlbum = (
   )
 
 export const saveAlbumReview = (
-  accessToken: string,
   albumId: string,
   review: AlbumReviewWrite,
   idempotencyKey = crypto.randomUUID(),
 ) =>
-  apiRequest<AlbumMutationResponse>(
-    accessToken,
-    `/v1/albums/${albumId}/review`,
+  apiRequest<AlbumMutationResponse>(`/v1/albums/${albumId}/review`,
     { method: 'PUT', body: JSON.stringify(review) },
     idempotencyKey,
   )
 
-export const searchArtwork = (accessToken: string, query: string, signal?: AbortSignal) =>
-  apiRequest<ArtworkSearchResponse>(
-    accessToken,
-    `/v1/artwork/search?q=${encodeURIComponent(query)}`,
+export const searchArtwork = (query: string, signal?: AbortSignal) =>
+  apiRequest<ArtworkSearchResponse>(`/v1/artwork/search?q=${encodeURIComponent(query)}`,
     { signal },
   )
 
-export const fetchSpotifyStatus = (accessToken: string) =>
-  apiRequest<SpotifyStatus>(accessToken, '/v1/spotify/status')
+export const fetchSpotifyStatus = () =>
+  apiRequest<SpotifyStatus>('/v1/spotify/status')
 
-export const startSpotifyLogin = (accessToken: string) =>
-  apiRequest<{ authorize_url: string }>(accessToken, '/v1/spotify/login')
+export const startSpotifyLogin = () =>
+  apiRequest<{ authorize_url: string }>('/v1/spotify/login')
 
-export const connectSpotify = (accessToken: string, refreshToken: string) =>
-  apiRequest<SpotifyStatus>(accessToken, '/v1/spotify/connect', {
+export const connectSpotify = (refreshToken: string) =>
+  apiRequest<SpotifyStatus>('/v1/spotify/connect', {
     method: 'POST',
     body: JSON.stringify({ refresh_token: refreshToken }),
   })
 
-export const disconnectSpotify = (accessToken: string) =>
-  apiRequest<SpotifyStatus>(accessToken, '/v1/spotify/disconnect', { method: 'POST' })
+export const disconnectSpotify = () =>
+  apiRequest<SpotifyStatus>('/v1/spotify/disconnect', { method: 'POST' })
 
-export const fetchSpotifyPulse = (accessToken: string, signal?: AbortSignal) =>
-  apiRequest<SpotifyPulse>(accessToken, '/v1/spotify/pulse', { signal })
+export const fetchSpotifyPulse = (signal?: AbortSignal) =>
+  apiRequest<SpotifyPulse>('/v1/spotify/pulse', { signal })
 
-export const fetchSpotifyInsights = (accessToken: string, range: SpotifyRange, signal?: AbortSignal) =>
-  apiRequest<SpotifyInsights>(accessToken, `/v1/spotify/insights?range=${range}`, { signal })
+export const fetchSpotifyInsights = (range: SpotifyRange, signal?: AbortSignal) =>
+  apiRequest<SpotifyInsights>(`/v1/spotify/insights?range=${range}`, { signal })
 
-export const fetchLyricBreakdown = (accessToken: string, artist: string, track?: string, signal?: AbortSignal) => {
+export const fetchLyricBreakdown = (artist: string, track?: string, signal?: AbortSignal) => {
   const params = new URLSearchParams({ artist })
   if (track) params.set('track', track)
-  return apiRequest<LyricBreakdown>(accessToken, `/v1/lyrics/breakdown?${params.toString()}`, { signal })
+  return apiRequest<LyricBreakdown>(`/v1/lyrics/breakdown?${params.toString()}`, { signal })
 }
 
-export const sendQueuedMutation = (accessToken: string, mutation: QueuedMutation) => {
+export const sendQueuedMutation = (mutation: QueuedMutation) => {
   const query = mutation.method === 'DELETE' && mutation.body && typeof mutation.body === 'object'
     ? `?expected_row_version=${encodeURIComponent(String((mutation.body as { expected_row_version: number }).expected_row_version))}`
     : ''
@@ -142,9 +129,7 @@ export const sendQueuedMutation = (accessToken: string, mutation: QueuedMutation
     resource_row_version: number
     replayed: boolean
     message: string
-  }>(
-    accessToken,
-    `${mutation.path}${query}`,
+  }>(`${mutation.path}${query}`,
     {
       method: mutation.method,
       body: mutation.method === 'DELETE' ? undefined : JSON.stringify(mutation.body),
@@ -153,10 +138,8 @@ export const sendQueuedMutation = (accessToken: string, mutation: QueuedMutation
   )
 }
 
-export async function downloadCsv(accessToken: string): Promise<void> {
-  const response = await fetch('/api/v1/concerts/export.csv', {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  })
+export async function downloadCsv(): Promise<void> {
+  const response = await fetch('/api/v1/concerts/export.csv')
   if (!response.ok) throw new ApiError(response.status, 'CSV export failed.', null)
   const blob = await response.blob()
   const url = URL.createObjectURL(blob)

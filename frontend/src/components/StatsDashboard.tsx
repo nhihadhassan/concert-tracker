@@ -5,7 +5,6 @@ import type { Analytics, GroupSummary, LyricBreakdown, RankingRow, SpotifyInsigh
 import { connectSpotify, disconnectSpotify, fetchLyricBreakdown, fetchSpotifyInsights, fetchSpotifyPulse, fetchSpotifyStatus, startSpotifyLogin } from '../lib/api'
 
 interface StatsDashboardProps {
-  accessToken: string
   analytics: Analytics
   memberName: string
   rankings: RankingRow[]
@@ -27,18 +26,18 @@ const SPOTIFY_ERROR_MESSAGES: Record<string, string> = {
   missing_code: 'Spotify returned no authorization code. Try again.',
 }
 
-function useSpotifyPulse(accessToken: string) {
+function useSpotifyPulse() {
   const [state, setState] = useState<SpotifyState>({ kind: 'loading' })
 
   const loadPulse = useCallback(async (signal?: AbortSignal) => {
-    const pulse = await fetchSpotifyPulse(accessToken, signal)
+    const pulse = await fetchSpotifyPulse(signal)
     if (signal?.aborted) return
     if (!pulse.connected) {
       setState({ kind: 'disconnected' })
       return
     }
     setState({ kind: 'connected', releases: pulse.releases, checkedArtists: pulse.checked_artists })
-  }, [accessToken])
+  }, [])
 
   // Finalize an OAuth redirect (refresh token / error arrives in the URL fragment),
   // then load status + pulse.
@@ -64,10 +63,10 @@ function useSpotifyPulse(accessToken: string) {
 
       try {
         if (refreshToken) {
-          await connectSpotify(accessToken, refreshToken)
+          await connectSpotify(refreshToken)
           if (!active) return
         } else {
-          const status = await fetchSpotifyStatus(accessToken)
+          const status = await fetchSpotifyStatus()
           if (!active) return
           if (!status.connected) {
             setState({ kind: 'disconnected' })
@@ -83,26 +82,26 @@ function useSpotifyPulse(accessToken: string) {
 
     void run()
     return () => { active = false; controller.abort() }
-  }, [accessToken, loadPulse])
+  }, [loadPulse])
 
   const connect = useCallback(async () => {
     setState({ kind: 'connecting' })
     try {
-      const { authorize_url } = await startSpotifyLogin(accessToken)
+      const { authorize_url } = await startSpotifyLogin()
       window.location.href = authorize_url
     } catch (error) {
       setState({ kind: 'error', message: error instanceof Error ? error.message : 'Could not start Spotify sign-in.' })
     }
-  }, [accessToken])
+  }, [])
 
   const disconnect = useCallback(async () => {
     try {
-      await disconnectSpotify(accessToken)
+      await disconnectSpotify()
       setState({ kind: 'disconnected' })
     } catch (error) {
       setState({ kind: 'error', message: error instanceof Error ? error.message : 'Could not disconnect Spotify.' })
     }
-  }, [accessToken])
+  }, [])
 
   return { state, connect, disconnect }
 }
@@ -119,7 +118,7 @@ const RANGE_OPTIONS: { value: SpotifyRange; label: string }[] = [
   { value: 'long_term', label: 'All time' },
 ]
 
-function useSpotifyInsights(accessToken: string, enabled: boolean) {
+function useSpotifyInsights(enabled: boolean) {
   const [range, setRange] = useState<SpotifyRange>('medium_term')
   const [state, setState] = useState<InsightsState>({ kind: 'idle' })
 
@@ -130,11 +129,11 @@ function useSpotifyInsights(accessToken: string, enabled: boolean) {
     }
     const controller = new AbortController()
     setState({ kind: 'loading' })
-    fetchSpotifyInsights(accessToken, range, controller.signal)
+    fetchSpotifyInsights(range, controller.signal)
       .then((data) => { if (!controller.signal.aborted) setState({ kind: 'ready', data }) })
       .catch((error) => { if (!controller.signal.aborted) setState({ kind: 'error', message: error instanceof Error ? error.message : 'Spotify insights failed.' }) })
     return () => controller.abort()
-  }, [accessToken, enabled, range])
+  }, [enabled, range])
 
   return { state, range, setRange }
 }
@@ -151,7 +150,7 @@ interface LyricSubject {
   track?: string
 }
 
-function useLyricBreakdown(accessToken: string, subject: LyricSubject | undefined) {
+function useLyricBreakdown(subject: LyricSubject | undefined) {
   const [state, setState] = useState<LyricState>({ kind: 'idle' })
 
   useEffect(() => {
@@ -161,11 +160,11 @@ function useLyricBreakdown(accessToken: string, subject: LyricSubject | undefine
     }
     const controller = new AbortController()
     setState({ kind: 'loading' })
-    fetchLyricBreakdown(accessToken, subject.artist, subject.track, controller.signal)
+    fetchLyricBreakdown(subject.artist, subject.track, controller.signal)
       .then((data) => { if (!controller.signal.aborted) setState({ kind: 'ready', data }) })
       .catch((error) => { if (!controller.signal.aborted) setState({ kind: 'error', message: error instanceof Error ? error.message : 'Lyric lookup failed.' }) })
     return () => controller.abort()
-  }, [accessToken, subject?.artist, subject?.track])
+  }, [subject?.artist, subject?.track])
 
   return state
 }
@@ -229,10 +228,10 @@ function LyricCard({ state, subject }: { state: LyricState; subject: LyricSubjec
   )
 }
 
-export function StatsDashboard({ accessToken, analytics, memberName, rankings, scope, onScopeChange }: StatsDashboardProps) {
+export function StatsDashboard({ analytics, memberName, rankings, scope, onScopeChange }: StatsDashboardProps) {
   const reduceMotion = useReducedMotion()
-  const spotify = useSpotifyPulse(accessToken)
-  const insights = useSpotifyInsights(accessToken, spotify.state.kind === 'connected')
+  const spotify = useSpotifyPulse()
+  const insights = useSpotifyInsights(spotify.state.kind === 'connected')
   const lyricSubjects = useMemo(() => {
     if (insights.state.kind !== 'ready') return {
       recent: dailyPick(CURRENT_LYRIC_PICKS),
@@ -254,8 +253,8 @@ export function StatsDashboard({ accessToken, analytics, memberName, rankings, s
         : dailyPick(topArtistSubjects.length ? topArtistSubjects : CURRENT_LYRIC_PICKS.map((pick) => ({ ...pick, label: 'Wildcard daily pick' })), 3),
     }
   }, [insights.state])
-  const recentLyric = useLyricBreakdown(accessToken, lyricSubjects.recent)
-  const concertLyric = useLyricBreakdown(accessToken, lyricSubjects.concert)
+  const recentLyric = useLyricBreakdown(lyricSubjects.recent)
+  const concertLyric = useLyricBreakdown(lyricSubjects.concert)
   const years = useMemo(() => [...new Set(analytics.monthly_trends.map((row) => row.year))].sort((a, b) => b - a), [analytics.monthly_trends])
   const latestYear = years[0]
 

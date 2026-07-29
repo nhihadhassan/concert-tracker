@@ -4,7 +4,6 @@ import { importSpotifyAlbum, searchSpotifyAlbums } from '../lib/api'
 import type { SpotifyAlbumOption } from '../types'
 
 interface AlbumImportDialogProps {
-  accessToken: string
   open: boolean
   onClose: () => void
   onImported: (albumId: string, message: string) => void
@@ -13,7 +12,6 @@ interface AlbumImportDialogProps {
 const resultYear = (value: string | null) => value?.slice(0, 4) || 'Unknown year'
 
 export function AlbumImportDialog({
-  accessToken,
   open,
   onClose,
   onImported,
@@ -51,7 +49,7 @@ export function AlbumImportDialog({
     setSearching(true)
     setError('')
     try {
-      const response = await searchSpotifyAlbums(accessToken, value, controller.signal)
+      const response = await searchSpotifyAlbums(value, controller.signal)
       setResults(response.results)
       if (!response.results.length) {
         setError('Spotify did not find a matching album. Try the artist and album title together.')
@@ -69,7 +67,7 @@ export function AlbumImportDialog({
     setImportingId(album.spotify_album_id)
     setError('')
     try {
-      const response = await importSpotifyAlbum(accessToken, album.spotify_album_id)
+      const response = await importSpotifyAlbum(album.spotify_album_id)
       onImported(response.album_id, response.message)
       setQuery('')
       setResults([])

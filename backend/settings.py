@@ -1,6 +1,9 @@
 import os
 from dataclasses import dataclass
 from functools import lru_cache
+from uuid import UUID
+
+DEFAULT_PUBLIC_USER_ID = "11111111-1111-4111-8111-111111111111"
 
 
 class SettingsError(RuntimeError):
@@ -11,19 +14,24 @@ class SettingsError(RuntimeError):
 class Settings:
     supabase_url: str
     supabase_publishable_key: str
-    allowed_emails: frozenset[str]
+    supabase_secret_key: str = ""
+    public_user_id: UUID = UUID(DEFAULT_PUBLIC_USER_ID)
+    public_user_email: str = "owner@example.com"
+    public_user_display_name: str = "Nhihad"
     spotify_client_id: str = ""
     spotify_client_secret: str = ""
     spotify_redirect_uri: str = ""
     genius_access_token: str = ""
 
     @property
-    def issuer(self) -> str:
-        return f"{self.supabase_url}/auth/v1"
+    def rest_key(self) -> str:
+        """Key used for PostgREST calls.
 
-    @property
-    def jwks_url(self) -> str:
-        return f"{self.issuer}/.well-known/jwks.json"
+        With sign-in removed there is no per-user JWT, so the secret (service
+        role) key is what reaches the data behind the RLS policies. The
+        publishable key stays as a fallback for fixture and local setups.
+        """
+        return self.supabase_secret_key or self.supabase_publishable_key
 
     @property
     def spotify_configured(self) -> bool:
@@ -35,20 +43,24 @@ class Settings:
     def from_environment(cls) -> "Settings":
         supabase_url = os.getenv("SUPABASE_URL", "").strip().rstrip("/")
         publishable_key = os.getenv("SUPABASE_PUBLISHABLE_KEY", "").strip()
-        allowed_emails = frozenset(
-            email.strip().lower()
-            for email in os.getenv(
-                "ALLOWED_EMAILS",
-                "owner@example.com,partner@example.com",
-            ).split(",")
-            if email.strip()
-        )
         if not supabase_url or not publishable_key:
             raise SettingsError("Supabase staging environment is not configured")
+
+        raw_user_id = os.getenv("PUBLIC_USER_ID", DEFAULT_PUBLIC_USER_ID).strip()
+        try:
+            public_user_id = UUID(raw_user_id)
+        except ValueError as exc:
+            raise SettingsError("PUBLIC_USER_ID must be a UUID") from exc
+
         return cls(
             supabase_url=supabase_url,
             supabase_publishable_key=publishable_key,
-            allowed_emails=allowed_emails,
+            supabase_secret_key=os.getenv("SUPABASE_SECRET_KEY", "").strip(),
+            public_user_id=public_user_id,
+            public_user_email=os.getenv("PUBLIC_USER_EMAIL", "owner@example.com")
+            .strip()
+            .lower(),
+            public_user_display_name=os.getenv("PUBLIC_USER_DISPLAY_NAME", "Nhihad").strip(),
             spotify_client_id=os.getenv("SPOTIFY_CLIENT_ID", "").strip(),
             spotify_client_secret=os.getenv("SPOTIFY_CLIENT_SECRET", "").strip(),
             spotify_redirect_uri=os.getenv("SPOTIFY_REDIRECT_URI", "").strip(),

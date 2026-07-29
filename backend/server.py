@@ -7,8 +7,8 @@ from backend.album_routes import router as album_router
 from backend.artwork_routes import router as artwork_router
 from backend.calculation_routes import router as calculation_router
 from backend.genius_routes import router as genius_router
+from backend.identity import PublicUser, current_user
 from backend.library_routes import router as library_router
-from backend.members import AppMember, require_member
 from backend.settings import SettingsError, get_settings
 from backend.spotify_routes import router as spotify_router
 
@@ -57,10 +57,10 @@ def health() -> HealthResponse:
     )
 
 
-@app.get("/v1/session", response_model=SessionResponse, tags=["auth"])
-def session(member: AppMember = Depends(require_member)) -> SessionResponse:
+@app.get("/v1/session", response_model=SessionResponse, tags=["system"])
+def session(user: PublicUser = Depends(current_user)) -> SessionResponse:
     return SessionResponse(
-        user_id=member.user_id,
-        email=member.email,
-        display_name=member.display_name,
+        user_id=str(user.user_id),
+        email=user.email,
+        display_name=user.display_name,
     )

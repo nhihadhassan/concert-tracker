@@ -13,10 +13,9 @@ import re
 from typing import Any, Optional
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel
 
-from backend.members import AppMember, require_member
 from backend.settings import SettingsError, get_settings
 
 router = APIRouter(prefix="/v1/lyrics", tags=["lyrics"])
@@ -85,7 +84,6 @@ def _best_annotation(referents: list[dict[str, Any]]) -> Optional[tuple[str, str
 def lyric_breakdown(
     artist: str = Query(min_length=1, max_length=160),
     track: Optional[str] = Query(default=None, max_length=160),
-    _member: AppMember = Depends(require_member),
 ) -> BreakdownResponse:
     try:
         settings = get_settings()

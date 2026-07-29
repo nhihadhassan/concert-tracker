@@ -1,4 +1,4 @@
-import { BarChart3, Cloud, Disc3, Download, ListMusic, LogOut, Mic2, Moon, Plus, RefreshCw, Sparkles, Sun, TriangleAlert, WifiOff } from 'lucide-react'
+import { BarChart3, Cloud, Disc3, Download, ListMusic, Mic2, Moon, Plus, RefreshCw, Sparkles, Sun, TriangleAlert, WifiOff } from 'lucide-react'
 import { AnimatePresence, m } from 'motion/react'
 import type { SyncState } from '../types'
 
@@ -11,7 +11,6 @@ interface AppHeaderProps {
   syncState: SyncState
   onAdd: () => void
   onExport: () => void
-  onSignOut: () => void
   onThemeToggle: () => void
   onViewChange: (view: 'concerts' | 'albums' | 'stats' | 'wrapped') => void
 }
@@ -51,7 +50,6 @@ export function AppHeader(props: AppHeaderProps) {
           </button>
           <button className="button button-secondary" type="button" onClick={props.onExport}><Download size={18} /><span>Export CSV</span></button>
           <button className="button button-primary" type="button" onClick={props.onAdd}><Plus size={18} /><span>{props.addLabel}</span></button>
-          <button className="button button-secondary sign-out" type="button" onClick={props.onSignOut} aria-label="Sign out"><LogOut size={18} /><span>Sign out</span></button>
         </div>
       </div>
     </header>

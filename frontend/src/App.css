@@ -1258,42 +1258,11 @@
   box-shadow: var(--shadow);
 }
 
-.auth-brand,
 .auth-heading {
   display: flex;
-  align-items: center;
-  gap: 13px;
-}
-
-.auth-brand h1 {
-  font-size: 1.15rem;
-}
-
-.auth-brand p,
-.auth-heading p,
-.auth-access-note {
-  color: var(--text-muted);
-  font-size: 0.78rem;
-}
-
-.auth-brand p {
-  margin-top: 3px;
-}
-
-.auth-heading {
+  gap: 12px;
   margin-top: 28px;
   align-items: flex-start;
-}
-
-.auth-heading-icon {
-  display: grid;
-  flex: 0 0 36px;
-  width: 36px;
-  height: 36px;
-  place-items: center;
-  border-radius: 7px;
-  color: #c4b5fd;
-  background: rgba(124, 58, 237, 0.18);
 }
 
 .auth-heading h2 {
@@ -1302,62 +1271,9 @@
 
 .auth-heading p {
   margin-top: 4px;
-  line-height: 1.45;
-}
-
-.auth-form {
-  display: grid;
-  gap: 17px;
-  margin-top: 24px;
-}
-
-.password-field {
-  position: relative;
-  display: block;
-}
-
-.password-field input {
-  padding-right: 48px;
-}
-
-.password-field button {
-  position: absolute;
-  top: 50%;
-  right: 4px;
-  display: grid;
-  width: 38px;
-  height: 38px;
-  padding: 0;
-  border: 0;
-  border-radius: 6px;
-  place-items: center;
   color: var(--text-muted);
-  background: transparent;
-  transform: translateY(-50%);
-}
-
-.password-field button:hover {
-  color: var(--text);
-  background: var(--surface-soft);
-}
-
-.auth-error {
-  padding: 10px 12px;
-  border: 1px solid rgba(244, 63, 94, 0.45);
-  border-radius: 7px;
-  color: #fecdd3;
-  background: rgba(190, 18, 60, 0.16);
-  font-size: 0.78rem;
+  font-size: 0.82rem;
   line-height: 1.45;
-}
-
-.auth-submit {
-  width: 100%;
-}
-
-.auth-access-note {
-  margin-top: 18px;
-  text-align: center;
 }
 
 .auth-skeleton {
@@ -1442,7 +1358,6 @@
 .text-action:focus-visible,
 .field input:focus-visible,
 .field select:focus-visible,
-.password-field button:focus-visible,
 .ranking-scroll th button:focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
@@ -1464,13 +1379,11 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .button-label,
-  .sign-out span {
+  .button-label {
     display: none;
   }
 
-  .button-icon,
-  .sign-out {
+  .button-icon {
     width: 44px;
     padding: 0;
   }
@@ -1554,12 +1467,11 @@
     display: inline;
   }
 
-  .header-actions .button-icon span,
-  .header-actions .sign-out span {
+  .header-actions .button-icon span {
     display: none;
   }
 
-  .header-actions .button:not(.button-icon):not(.sign-out) {
+  .header-actions .button:not(.button-icon) {
     padding: 0 10px;
   }
 
@@ -4193,7 +4105,6 @@
   font-size: 0.82rem;
   line-height: 1.45;
 }
-
 
 .stats-panel-head {
   display: flex;

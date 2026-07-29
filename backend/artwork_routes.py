@@ -2,10 +2,8 @@ import re
 from typing import Any, Optional
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel
-
-from backend.members import AppMember, require_member
 
 
 class ArtworkOption(BaseModel):
@@ -29,7 +27,6 @@ def _large_artwork_url(url: str) -> str:
 @router.get("/artwork/search", response_model=ArtworkSearchResponse)
 def search_artwork(
     q: str = Query(min_length=1, max_length=120),
-    _member: AppMember = Depends(require_member),
 ) -> ArtworkSearchResponse:
     try:
         response = httpx.get(
