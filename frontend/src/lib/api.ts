@@ -3,6 +3,7 @@ import type {
   AlbumMutationResponse,
   AlbumReviewWrite,
   ArtworkSearchResponse,
+  ConcertSuggestionResponse,
   LibraryResponse,
   LyricBreakdown,
   QueuedMutation,
@@ -90,6 +91,11 @@ export const saveAlbumReview = (
 
 export const searchArtwork = (query: string, signal?: AbortSignal) =>
   apiRequest<ArtworkSearchResponse>(`/v1/artwork/search?q=${encodeURIComponent(query)}`,
+    { signal },
+  )
+
+export const searchUpcomingConcerts = (artist: string, signal?: AbortSignal) =>
+  apiRequest<ConcertSuggestionResponse>(`/v1/discovery/concerts?artist=${encodeURIComponent(artist)}`,
     { signal },
   )
 

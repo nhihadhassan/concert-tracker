@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Check, Image, LoaderCircle, Search, X } from 'lucide-react'
+import { Check, Image, LoaderCircle, Search, Sparkles, X } from 'lucide-react'
 import { AnimatePresence, m } from 'motion/react'
-import { searchArtwork } from '../lib/api'
+import { searchArtwork, searchUpcomingConcerts } from '../lib/api'
 import type {
   ArtworkOption,
   Concert,
   ConcertFormSubmission,
   ConcertStatus,
+  ConcertSuggestion,
   MemberSummary,
   ReviewWrite,
 } from '../types'
@@ -44,12 +45,19 @@ export function AddConcertDialog({
   onSave,
 }: ConcertDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
+  const formRef = useRef<HTMLFormElement>(null)
   const artworkRequest = useRef<AbortController | null>(null)
+  const suggestionRequest = useRef<AbortController | null>(null)
   const [imageUrl, setImageUrl] = useState(concert?.image ?? '')
   const [artworkQuery, setArtworkQuery] = useState('')
   const [artworkResults, setArtworkResults] = useState<ArtworkOption[]>([])
   const [artworkLoading, setArtworkLoading] = useState(false)
   const [artworkError, setArtworkError] = useState('')
+  const [suggestQuery, setSuggestQuery] = useState('')
+  const [suggestions, setSuggestions] = useState<ConcertSuggestion[]>([])
+  const [suggestLoading, setSuggestLoading] = useState(false)
+  const [suggestMessage, setSuggestMessage] = useState('')
+  const [appliedSuggestion, setAppliedSuggestion] = useState<string | null>(null)
   const personalReview = useMemo(
     () => concert?.reviews.find((review) => review.reviewer_user_id === currentUserId) ?? null,
     [concert, currentUserId],
@@ -93,10 +101,65 @@ export function AddConcertDialog({
       setArtworkQuery(initialQuery)
       setArtworkResults([])
       setArtworkError('')
+      setSuggestQuery('')
+      setSuggestions([])
+      setSuggestMessage('')
+      setSuggestLoading(false)
+      setAppliedSuggestion(null)
       if (initialQuery) void loadArtwork(initialQuery)
     }
-    return () => artworkRequest.current?.abort()
+    return () => {
+      artworkRequest.current?.abort()
+      suggestionRequest.current?.abort()
+    }
   }, [concert, loadArtwork, open])
+
+  const loadSuggestions = useCallback(async (artistName: string) => {
+    const trimmed = artistName.trim()
+    if (!trimmed) return
+    suggestionRequest.current?.abort()
+    const controller = new AbortController()
+    suggestionRequest.current = controller
+    setSuggestLoading(true)
+    setSuggestMessage('')
+    setSuggestions([])
+    try {
+      const response = await searchUpcomingConcerts(trimmed, controller.signal)
+      if (controller.signal.aborted) return
+      if (!response.configured) {
+        setSuggestMessage('Show lookup is not configured yet.')
+      } else if (!response.results.length) {
+        setSuggestMessage(`No upcoming Toronto dates found for ${trimmed}.`)
+      }
+      setSuggestions(response.results)
+    } catch (error) {
+      if (controller.signal.aborted) return
+      setSuggestMessage(error instanceof Error ? error.message : 'Show lookup failed.')
+    } finally {
+      if (!controller.signal.aborted) setSuggestLoading(false)
+    }
+  }, [])
+
+  // The form is uncontrolled, so prefill writes straight to the inputs and
+  // leaves anything the suggestion does not know about untouched.
+  const applySuggestion = useCallback((suggestion: ConcertSuggestion) => {
+    const form = formRef.current
+    if (!form) return
+    const setField = (name: string, value: string | null) => {
+      if (!value) return
+      const field = form.elements.namedItem(name)
+      if (field instanceof HTMLInputElement || field instanceof HTMLSelectElement) field.value = value
+    }
+    setField('artist', suggestion.artist)
+    setField('tour', suggestion.tour)
+    setField('date', suggestion.date)
+    setField('venue', suggestion.venue)
+    setField('genre', suggestion.genre)
+    setField('status', 'Want to Go')
+    if (suggestion.image) setImageUrl(suggestion.image)
+    setAppliedSuggestion(`${suggestion.date}|${suggestion.venue}`)
+    if (!artworkResults.length) void loadArtwork(cleanArtistName(suggestion.artist))
+  }, [artworkResults.length, loadArtwork])
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -146,6 +209,7 @@ export function AddConcertDialog({
     <dialog ref={dialogRef} className="concert-dialog" onClose={onClose} onCancel={onClose}>
       <m.form
         key={concert?.id ?? 'new-concert'}
+        ref={formRef}
         className="dialog-shell"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -171,6 +235,46 @@ export function AddConcertDialog({
 
         <fieldset className="form-section" id="concert-form-event">
           <legend>Event</legend>
+          {concert ? null : <div className="suggest-box">
+            <label className="field field-wide">
+              <span><Sparkles size={14} aria-hidden="true" />Find an upcoming Toronto show</span>
+              <span className="input-with-icon">
+                <Search size={16} aria-hidden="true" />
+                <input
+                  type="search"
+                  value={suggestQuery}
+                  placeholder="Search an artist, e.g. Yeat"
+                  onChange={(event) => setSuggestQuery(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key !== 'Enter') return
+                    event.preventDefault()
+                    void loadSuggestions(suggestQuery)
+                  }}
+                />
+              </span>
+            </label>
+            <button type="button" className="button button-secondary" disabled={suggestLoading || !suggestQuery.trim()} onClick={() => void loadSuggestions(suggestQuery)}>
+              {suggestLoading ? <LoaderCircle className="spin" size={16} aria-hidden="true" /> : <Search size={16} aria-hidden="true" />}
+              {suggestLoading ? 'Searching…' : 'Search shows'}
+            </button>
+            {suggestMessage ? <p className="suggest-note">{suggestMessage}</p> : null}
+            {suggestions.length ? <ul className="suggest-results">{suggestions.map((suggestion) => {
+              const key = `${suggestion.date}|${suggestion.venue}`
+              const applied = appliedSuggestion === key
+              return <li key={key}>
+                <button type="button" className={applied ? 'applied' : ''} aria-pressed={applied} onClick={() => applySuggestion(suggestion)}>
+                  {suggestion.image
+                    ? <img src={suggestion.image} alt="" loading="lazy" />
+                    : <span className="suggest-art-fallback" aria-hidden="true" />}
+                  <span className="suggest-meta">
+                    <strong>{suggestion.tour ?? suggestion.artist}</strong>
+                    <span>{suggestion.venue}{suggestion.city ? `, ${suggestion.city}` : ''}</span>
+                  </span>
+                  <span className="suggest-date">{suggestion.date}{applied ? <em><Check size={13} aria-hidden="true" />Filled in</em> : null}</span>
+                </button>
+              </li>
+            })}</ul> : null}
+          </div>}
           <div className="form-grid">
             <label className="field field-wide"><span>Artist</span><input name="artist" required defaultValue={concert?.artist} onBlur={(event) => {
               if (concert || artworkQuery.trim()) return

@@ -1024,6 +1024,126 @@
   animation: artwork-spin 800ms linear infinite;
 }
 
+.suggest-box {
+  display: grid;
+  margin-bottom: 18px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  gap: 10px;
+  background: var(--surface-soft);
+}
+
+.suggest-box > .field span:first-child {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.suggest-box > button {
+  justify-self: start;
+}
+
+.suggest-note {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.suggest-results {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  gap: 6px;
+  list-style: none;
+}
+
+.suggest-results button {
+  display: grid;
+  width: 100%;
+  padding: 8px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  align-items: center;
+  gap: 12px;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  background: var(--surface-raised);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 160ms ease-out, background 160ms ease-out;
+}
+
+.suggest-results button:hover {
+  border-color: var(--border-strong);
+}
+
+.suggest-results button:focus-visible,
+.suggest-results button.applied {
+  border-color: #62fae3;
+  outline: none;
+}
+
+.suggest-results img,
+.suggest-art-fallback {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: var(--surface-soft);
+}
+
+.suggest-meta {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.suggest-meta strong,
+.suggest-meta span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.suggest-meta strong {
+  font-size: 0.92rem;
+}
+
+.suggest-meta span {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.suggest-date {
+  display: grid;
+  justify-items: end;
+  gap: 3px;
+  color: var(--text-muted);
+  font-family: var(--font-data);
+  font-size: 0.74rem;
+  white-space: nowrap;
+}
+
+.suggest-date em {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #62fae3;
+  font-style: normal;
+}
+
+@media (max-width: 560px) {
+  .suggest-results button {
+    grid-template-columns: 44px minmax(0, 1fr);
+  }
+
+  .suggest-date {
+    grid-column: 2;
+    justify-items: start;
+  }
+}
+
 .artwork-results {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));

@@ -7,6 +7,7 @@ from backend.album_routes import router as album_router
 from backend.artwork_routes import router as artwork_router
 from backend.calculation_routes import router as calculation_router
 from backend.genius_routes import router as genius_router
+from backend.discovery_routes import router as discovery_router
 from backend.identity import PublicUser, current_user
 from backend.library_routes import router as library_router
 from backend.settings import SettingsError, get_settings
@@ -40,6 +41,7 @@ app.include_router(album_router)
 app.include_router(artwork_router)
 app.include_router(spotify_router)
 app.include_router(genius_router)
+app.include_router(discovery_router)
 
 
 @app.get("/v1/health", response_model=HealthResponse, tags=["system"])

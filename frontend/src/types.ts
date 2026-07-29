@@ -70,6 +70,22 @@ export interface ArtworkOption {
   store_url: string | null
 }
 
+export interface ConcertSuggestion {
+  artist: string
+  tour: string | null
+  date: string
+  venue: string
+  city: string | null
+  genre: string | null
+  image: string | null
+  ticket_url: string | null
+}
+
+export interface ConcertSuggestionResponse {
+  configured: boolean
+  results: ConcertSuggestion[]
+}
+
 export interface ArtworkSearchResponse {
   results: ArtworkOption[]
 }
