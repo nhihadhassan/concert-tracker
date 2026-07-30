@@ -131,6 +131,7 @@ SUPABASE_URL=https://PROJECT_REF.supabase.co \
 SUPABASE_PUBLISHABLE_KEY=sb_publishable_REPLACE_ME \
 SUPABASE_SECRET_KEY=sb_secret_REPLACE_ME \
 PUBLIC_USER_ID=YOUR_SUPABASE_USER_UUID \
+SETLISTFM_API_KEY=REPLACE_ME \
   .venv/bin/uvicorn backend.server:app --port 8001
 
 npm --prefix frontend run dev -- --port 3011
@@ -202,3 +203,15 @@ python3 scripts/stage0_baseline.py --browser-json /tmp/ct-browser-local.json
 ```
 
 Private raw backups are written under ignored `data/`. Safe comparison fixtures are written under `docs/baseline/`.
+
+## Add-Concert Prefill
+
+Searching an artist in the add-concert form looks up shows they have played on
+[setlist.fm](https://api.setlist.fm/docs/1.0/index.html) and prefills artist, tour, date, venue,
+and city from the one you pick. Artwork still comes from the existing iTunes lookup, and genre is
+still entered by hand, because setlist.fm carries neither.
+
+The feature needs `SETLISTFM_API_KEY`. A key is issued immediately from the API settings page of a
+signed-in setlist.fm account and is free for non-commercial use, with a limit of 2 requests per
+second. Without the variable the endpoint reports `configured=false` and the form hides the search
+box rather than erroring, so an unset key looks like a missing feature rather than a broken one.

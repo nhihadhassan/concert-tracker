@@ -1,14 +1,18 @@
-"""Upcoming-show lookup used to prefill the add-concert form.
+"""Show lookup used to prefill the add-concert form.
 
-Searches Ticketmaster's Discovery API for upcoming music events by artist in a
-given city (Toronto by default) so the form can be populated with the real
-date, venue, tour name, genre, and artwork instead of being typed by hand.
-Requires a Ticketmaster API key; without one the endpoint reports
+Searches setlist.fm for concerts an artist has played so the form can be
+populated with the real date, venue, city, and tour name instead of being typed
+from memory. setlist.fm is built from setlists of shows that already happened,
+which is what a concert tracker is mostly recording; it carries no artwork, so
+the form falls back to its existing iTunes artwork lookup after a pick.
+
+Requires a setlist.fm API key; without one the endpoint reports
 ``configured=false`` so the UI hides the feature rather than erroring.
 """
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any, Optional
 
 import httpx
@@ -19,7 +23,7 @@ from backend.settings import SettingsError, get_settings
 
 router = APIRouter(prefix="/v1/discovery", tags=["discovery"])
 
-TICKETMASTER_EVENTS_URL = "https://app.ticketmaster.com/discovery/v2/events.json"
+SETLISTFM_SEARCH_URL = "https://api.setlist.fm/rest/1.0/search/setlists"
 MAX_SUGGESTIONS = 8
 
 
@@ -31,7 +35,7 @@ class ConcertSuggestion(BaseModel):
     city: Optional[str] = None
     genre: Optional[str] = None
     image: Optional[str] = None
-    ticket_url: Optional[str] = None
+    source_url: Optional[str] = None
 
 
 class SuggestionResponse(BaseModel):
@@ -39,62 +43,46 @@ class SuggestionResponse(BaseModel):
     results: list[ConcertSuggestion]
 
 
-def _best_image(images: list[dict[str, Any]]) -> Optional[str]:
-    """Pick the widest usable image, preferring non-cropped wide art."""
-    usable = [image for image in images if isinstance(image.get("url"), str)]
-    if not usable:
+def _iso_date(event_date: str) -> Optional[str]:
+    """setlist.fm reports dates as dd-MM-yyyy; the library stores yyyy-MM-dd."""
+    try:
+        return datetime.strptime(event_date, "%d-%m-%Y").date().isoformat()
+    except ValueError:
         return None
-    preferred = [image for image in usable if image.get("ratio") in {"16_9", "3_2"}] or usable
-    widest = max(preferred, key=lambda image: int(image.get("width") or 0))
-    return str(widest["url"])
 
 
-def _event_to_suggestion(event: dict[str, Any]) -> Optional[ConcertSuggestion]:
-    embedded = event.get("_embedded") or {}
-    venues = embedded.get("venues") or []
-    if not venues:
-        return None
-    venue = venues[0] or {}
+def _setlist_to_suggestion(setlist: dict[str, Any]) -> Optional[ConcertSuggestion]:
+    venue = setlist.get("venue") or {}
     venue_name = str(venue.get("name") or "").strip()
-
-    start = (event.get("dates") or {}).get("start") or {}
-    local_date = str(start.get("localDate") or "").strip()
-    if not venue_name or not local_date:
+    date = _iso_date(str(setlist.get("eventDate") or "").strip())
+    if not venue_name or not date:
         return None
 
-    attractions = embedded.get("attractions") or []
-    event_name = str(event.get("name") or "").strip()
-    artist = str((attractions[0] or {}).get("name") or "").strip() if attractions else ""
+    city_node = venue.get("city") or {}
+    city_name = str(city_node.get("name") or "").strip()
+    state = str(city_node.get("stateCode") or "").strip()
+    city = f"{city_name}, {state}" if city_name and state else city_name or None
 
-    classifications = event.get("classifications") or []
-    genre = None
-    if classifications:
-        genre_node = (classifications[0] or {}).get("genre") or {}
-        genre_name = str(genre_node.get("name") or "").strip()
-        # Ticketmaster uses "Undefined" as a placeholder genre.
-        if genre_name and genre_name.lower() != "undefined":
-            genre = genre_name
-
-    # The event name usually carries the tour ("Yeat: The Bell Tour"); only keep
-    # it as the tour when it adds something beyond the artist name itself.
-    tour = event_name if event_name and event_name.lower() != artist.lower() else None
+    tour_name = str((setlist.get("tour") or {}).get("name") or "").strip()
 
     return ConcertSuggestion(
-        artist=artist or event_name,
-        tour=tour,
-        date=local_date,
+        artist=str((setlist.get("artist") or {}).get("name") or "").strip(),
+        tour=tour_name or None,
+        date=date,
         venue=venue_name,
-        city=str((venue.get("city") or {}).get("name") or "").strip() or None,
-        genre=genre,
-        image=_best_image(event.get("images") or []),
-        ticket_url=str(event.get("url") or "").strip() or None,
+        city=city,
+        # setlist.fm classifies neither genre nor artwork; both are left for the
+        # existing artwork search and manual entry to fill in.
+        genre=None,
+        image=None,
+        source_url=str(setlist.get("url") or "").strip() or None,
     )
 
 
 @router.get("/concerts", response_model=SuggestionResponse)
 def suggest_concerts(
     artist: str = Query(min_length=1, max_length=120),
-    city: str = Query(default="Toronto", max_length=80),
+    city: Optional[str] = Query(default=None, max_length=80),
 ) -> SuggestionResponse:
     try:
         settings = get_settings()
@@ -102,24 +90,28 @@ def suggest_concerts(
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
         ) from exc
-    if not settings.ticketmaster_api_key:
+    if not settings.setlistfm_api_key:
         return SuggestionResponse(configured=False, results=[])
+
+    params: dict[str, Any] = {"artistName": artist.strip(), "p": 1}
+    if city and city.strip():
+        params["cityName"] = city.strip()
 
     try:
         response = httpx.get(
-            TICKETMASTER_EVENTS_URL,
-            params={
-                "apikey": settings.ticketmaster_api_key,
-                "keyword": artist.strip(),
-                "city": city.strip(),
-                "countryCode": "CA",
-                "classificationName": "Music",
-                "sort": "date,asc",
-                "size": 24,
+            SETLISTFM_SEARCH_URL,
+            params=params,
+            headers={
+                "x-api-key": settings.setlistfm_api_key,
+                "Accept": "application/json",
             },
             timeout=10,
             follow_redirects=True,
         )
+        # setlist.fm answers an unmatched search with 404 rather than an empty
+        # list, which is a normal "nothing found" and not a failure.
+        if response.status_code == status.HTTP_404_NOT_FOUND:
+            return SuggestionResponse(configured=True, results=[])
         response.raise_for_status()
         payload: dict[str, Any] = response.json()
     except (httpx.HTTPError, ValueError) as exc:
@@ -128,11 +120,10 @@ def suggest_concerts(
             detail="Concert search is temporarily unavailable",
         ) from exc
 
-    events = (payload.get("_embedded") or {}).get("events") or []
     results: list[ConcertSuggestion] = []
     seen: set[tuple[str, str]] = set()
-    for event in events:
-        suggestion = _event_to_suggestion(event)
+    for setlist in payload.get("setlist") or []:
+        suggestion = _setlist_to_suggestion(setlist)
         if suggestion is None:
             continue
         key = (suggestion.date, suggestion.venue.lower())

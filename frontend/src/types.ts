@@ -78,7 +78,7 @@ export interface ConcertSuggestion {
   city: string | null
   genre: string | null
   image: string | null
-  ticket_url: string | null
+  source_url: string | null
 }
 
 export interface ConcertSuggestionResponse {

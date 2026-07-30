@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Check, Image, LoaderCircle, Search, Sparkles, X } from 'lucide-react'
 import { AnimatePresence, m } from 'motion/react'
-import { searchArtwork, searchUpcomingConcerts } from '../lib/api'
+import { searchArtwork, searchConcertDates } from '../lib/api'
 import type {
   ArtworkOption,
   Concert,
@@ -124,12 +124,12 @@ export function AddConcertDialog({
     setSuggestMessage('')
     setSuggestions([])
     try {
-      const response = await searchUpcomingConcerts(trimmed, controller.signal)
+      const response = await searchConcertDates(trimmed, controller.signal)
       if (controller.signal.aborted) return
       if (!response.configured) {
         setSuggestMessage('Show lookup is not configured yet.')
       } else if (!response.results.length) {
-        setSuggestMessage(`No upcoming Toronto dates found for ${trimmed}.`)
+        setSuggestMessage(`No past dates found for ${trimmed}.`)
       }
       setSuggestions(response.results)
     } catch (error) {
@@ -237,7 +237,7 @@ export function AddConcertDialog({
           <legend>Event</legend>
           {concert ? null : <div className="suggest-box">
             <label className="field field-wide">
-              <span><Sparkles size={14} aria-hidden="true" />Find an upcoming Toronto show</span>
+              <span><Sparkles size={14} aria-hidden="true" />Find a show by artist</span>
               <span className="input-with-icon">
                 <Search size={16} aria-hidden="true" />
                 <input

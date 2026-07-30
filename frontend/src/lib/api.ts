@@ -94,7 +94,7 @@ export const searchArtwork = (query: string, signal?: AbortSignal) =>
     { signal },
   )
 
-export const searchUpcomingConcerts = (artist: string, signal?: AbortSignal) =>
+export const searchConcertDates = (artist: string, signal?: AbortSignal) =>
   apiRequest<ConcertSuggestionResponse>(`/v1/discovery/concerts?artist=${encodeURIComponent(artist)}`,
     { signal },
   )
