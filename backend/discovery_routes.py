@@ -526,4 +526,5 @@ def suggest_concerts(
         if len(results) == MAX_SUGGESTIONS:
             break
 
+    results.sort(key=lambda suggestion: suggestion.date)
     return SuggestionResponse(configured=True, results=results, provider=provider)
