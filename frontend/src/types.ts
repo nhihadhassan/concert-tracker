@@ -84,6 +84,7 @@ export interface ConcertSuggestion {
 export interface ConcertSuggestionResponse {
   configured: boolean
   results: ConcertSuggestion[]
+  provider?: string | null
 }
 
 export interface ArtworkSearchResponse {

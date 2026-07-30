@@ -23,6 +23,8 @@ class Settings:
     spotify_redirect_uri: str = ""
     genius_access_token: str = ""
     ticketmaster_api_key: str = ""
+    seatgeek_client_id: str = ""
+    seatgeek_client_secret: str = ""
 
     @property
     def rest_key(self) -> str:
@@ -67,6 +69,8 @@ class Settings:
             spotify_redirect_uri=os.getenv("SPOTIFY_REDIRECT_URI", "").strip(),
             genius_access_token=os.getenv("GENIUS_ACCESS_TOKEN", "").strip(),
             ticketmaster_api_key=os.getenv("TICKETMASTER_API_KEY", "").strip(),
+            seatgeek_client_id=os.getenv("SEATGEEK_CLIENT_ID", "").strip(),
+            seatgeek_client_secret=os.getenv("SEATGEEK_CLIENT_SECRET", "").strip(),
         )
 
 
