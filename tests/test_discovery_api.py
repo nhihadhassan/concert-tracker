@@ -1,5 +1,6 @@
 from backend.discovery_routes import (
     _gemini_suggestion,
+    _tavily_suggestion,
     _seatgeek_suggestion,
     _setlistfm_suggestion,
     _ticketmaster_suggestion,
@@ -189,3 +190,16 @@ def test_gemini_event_maps_to_suggestion():
     assert suggestion.artist == "Yeat"
     assert suggestion.city == "Toronto"
     assert suggestion.ticket_url == "https://example.com/tickets"
+
+
+def test_tavily_result_maps_only_explicit_toronto_event_details():
+    suggestion = _tavily_suggestion({
+        "title": "Yeat Toronto Tickets - Coca-Cola Coliseum | Sep 13, 2026",
+        "content": "Yeat concert Sep 13, 2026 at Coca-Cola Coliseum, Toronto, ON.",
+        "url": "https://example.com/yeat-toronto",
+    }, "Yeat")
+
+    assert suggestion is not None
+    assert suggestion.date == "2026-09-13"
+    assert suggestion.venue == "Coca-Cola Coliseum"
+    assert suggestion.city == "Toronto"

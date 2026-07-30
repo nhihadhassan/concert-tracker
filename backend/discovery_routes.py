@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from datetime import datetime
 import json
+import re
 from typing import Any, Optional
 
 import httpx
@@ -35,6 +36,7 @@ router = APIRouter(prefix="/v1/discovery", tags=["discovery"])
 TICKETMASTER_EVENTS_URL = "https://app.ticketmaster.com/discovery/v2/events.json"
 SEATGEEK_EVENTS_URL = "https://api.seatgeek.com/2/events"
 SETLISTFM_SEARCH_URL = "https://api.setlist.fm/rest/1.0/search/setlists"
+TAVILY_SEARCH_URL = "https://api.tavily.com/search"
 GEMINI_GENERATE_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent"
 MAX_SUGGESTIONS = 8
 PLACEHOLDER_GENRES = {"undefined", "other", "unknown"}
@@ -75,6 +77,7 @@ def discovery_status() -> DiscoveryStatus:
         upcoming=bool(
             settings.ticketmaster_api_key
             or settings.seatgeek_client_id
+            or settings.tavily_api_key
             or settings.gemini_api_key
         ),
         past=bool(settings.setlistfm_api_key),
@@ -200,6 +203,86 @@ def _setlistfm_suggestion(entry: dict[str, Any]) -> Optional[ConcertSuggestion]:
         image=None,
         ticket_url=str(entry.get("url") or "").strip() or None,
     )
+
+
+MONTH_DATE = re.compile(
+    r"\b(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|"
+    r"Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|"
+    r"Dec(?:ember)?)\s+\d{1,2},\s+\d{4}\b",
+    re.IGNORECASE,
+)
+
+
+def _tavily_suggestion(event: dict[str, Any], artist: str) -> Optional[ConcertSuggestion]:
+    """Convert a Tavily result when its Toronto event details are explicit."""
+    text = " ".join(str(event.get(key) or "") for key in ("title", "content", "answer"))
+    if "toronto" not in text.casefold():
+        return None
+    dates = MONTH_DATE.findall(text)
+    if not dates:
+        return None
+    raw_date = dates[0]
+    try:
+        date = datetime.strptime(raw_date, "%b %d, %Y").date()
+    except ValueError:
+        try:
+            date = datetime.strptime(raw_date, "%B %d, %Y").date()
+        except ValueError:
+            return None
+    venue_match = re.search(
+        r"([A-Z][A-Za-z0-9'&./-]*(?:\s+[A-Z][A-Za-z0-9'&./-]*){0,6}),\s+Toronto\b",
+        text,
+    )
+    if not venue_match:
+        venue_match = re.search(
+            r"\bat\s+([A-Z][A-Za-z0-9'&./-]*(?:\s+[A-Z][A-Za-z0-9'&./-]*){0,6}?)(?:\.|,|\s+Toronto\b)",
+            text,
+        )
+    if not venue_match:
+        return None
+    return ConcertSuggestion(
+        artist=artist,
+        tour=None,
+        date=date.isoformat(),
+        venue=venue_match.group(1).strip(),
+        city=TORONTO,
+        genre=None,
+        image=None,
+        ticket_url=str(event.get("url") or "").strip() or None,
+    )
+
+
+def _search_tavily(settings: Settings, artist: str, city: str) -> list[dict[str, Any]]:
+    query = f"{artist} upcoming concert {city} 2026 official venue tickets"
+    try:
+        response = httpx.post(
+            TAVILY_SEARCH_URL,
+            headers={"Authorization": f"Bearer {settings.tavily_api_key}"},
+            json={
+                "query": query,
+                "search_depth": "basic",
+                "max_results": MAX_SUGGESTIONS,
+                "include_answer": "basic",
+            },
+            timeout=15,
+        )
+        if response.status_code == 429:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Tavily search quota is unavailable. Wait for the free monthly credits to reset.",
+            )
+        response.raise_for_status()
+        payload: dict[str, Any] = response.json()
+    except (httpx.HTTPError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Tavily concert search is temporarily unavailable",
+        ) from exc
+    results = payload.get("results") or []
+    answer = payload.get("answer")
+    if isinstance(answer, str) and answer.strip():
+        results.insert(0, {"answer": answer, "url": None, "title": "Tavily summary", "content": answer})
+    return results
 
 
 def _fetch(
@@ -408,6 +491,10 @@ def suggest_concerts(
         provider = "seatgeek"
         events = _search_seatgeek(settings, artist_query, city_query)
         to_suggestion = _seatgeek_suggestion
+    elif settings.tavily_api_key:
+        provider = "tavily"
+        events = _search_tavily(settings, artist_query, city_query)
+        to_suggestion = lambda event: _tavily_suggestion(event, artist_query)
     elif settings.gemini_api_key:
         provider = "gemini"
         events = _search_gemini(settings, artist_query, city_query)
