@@ -105,7 +105,7 @@ export const searchConcertSuggestions = (
   signal?: AbortSignal,
 ) =>
   apiRequest<ConcertSuggestionResponse>(
-    `/v1/discovery/concerts?artist=${encodeURIComponent(artist)}&mode=${mode}`,
+    `/v1/discovery/concerts?artist=${encodeURIComponent(artist)}&mode=${mode}&city=Toronto`,
     { signal },
   )
 

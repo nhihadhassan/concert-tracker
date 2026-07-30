@@ -3,7 +3,9 @@ from backend.discovery_routes import (
     _setlistfm_suggestion,
     _ticketmaster_suggestion,
     _tour_name,
+    suggest_concerts,
 )
+from backend.settings import Settings
 
 # Trimmed from a real api.setlist.fm response for Kendrick Lamar in Toronto.
 SETLISTFM_ENTRY = {
@@ -138,3 +140,34 @@ def test_events_missing_venue_or_date_are_skipped():
 
     sg_bad_date = {**SEATGEEK_EVENT, "datetime_local": ""}
     assert _seatgeek_suggestion(sg_bad_date) is None
+
+
+def test_discovery_is_toronto_only_even_when_provider_returns_other_cities(monkeypatch):
+    import backend.discovery_routes as discovery
+
+    settings = Settings(
+        supabase_url="https://example.supabase.co",
+        supabase_publishable_key="key",
+        ticketmaster_api_key="ticket-key",
+    )
+    monkeypatch.setattr(discovery, "get_settings", lambda: settings)
+    monkeypatch.setattr(
+        discovery,
+        "_search_ticketmaster",
+        lambda _settings, _artist, city: [
+            TICKETMASTER_EVENT,
+            {
+                **TICKETMASTER_EVENT,
+                "dates": {"start": {"localDate": "2026-10-01"}},
+                "_embedded": {
+                    "venues": [{"name": "Madison Square Garden", "city": {"name": "New York"}}],
+                    "attractions": [{"name": "Yeat"}],
+                },
+            },
+        ],
+    )
+
+    response = suggest_concerts(artist="Yeat", mode="upcoming", city="New York")
+
+    assert response.results[0].city == "Toronto"
+    assert len(response.results) == 1

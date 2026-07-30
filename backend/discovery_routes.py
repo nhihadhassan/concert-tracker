@@ -36,6 +36,7 @@ SEATGEEK_EVENTS_URL = "https://api.seatgeek.com/2/events"
 SETLISTFM_SEARCH_URL = "https://api.setlist.fm/rest/1.0/search/setlists"
 MAX_SUGGESTIONS = 8
 PLACEHOLDER_GENRES = {"undefined", "other", "unknown"}
+TORONTO = "Toronto"
 
 
 class ConcertSuggestion(BaseModel):
@@ -275,6 +276,8 @@ def _search_setlistfm(settings: Settings, artist: str, city: str) -> list[dict[s
 def suggest_concerts(
     artist: str = Query(min_length=1, max_length=120),
     mode: str = Query(default="upcoming", pattern="^(upcoming|past)$"),
+    # Kept as an optional query parameter for backwards-compatible clients,
+    # but discovery is intentionally Toronto-only for this app.
     city: Optional[str] = Query(default=None, max_length=80),
 ) -> SuggestionResponse:
     try:
@@ -285,9 +288,9 @@ def suggest_concerts(
         ) from exc
 
     artist_query = artist.strip()
-    # Upcoming search is about "who is coming here", so it defaults to Toronto;
-    # past search defaults to everywhere so travelled-for shows still appear.
-    city_query = (city if city is not None else ("Toronto" if mode == "upcoming" else "")).strip()
+    # The tracker is for Toronto shows. Never let a provider's broader fallback
+    # results (or a caller-supplied city) leak other cities into the form.
+    city_query = TORONTO
 
     if mode == "past":
         if not settings.setlistfm_api_key:
@@ -311,6 +314,8 @@ def suggest_concerts(
     for event in events:
         suggestion = to_suggestion(event)
         if suggestion is None:
+            continue
+        if (suggestion.city or "").strip().casefold() != TORONTO.casefold():
             continue
         key = (suggestion.date, suggestion.venue.lower())
         if key in seen:

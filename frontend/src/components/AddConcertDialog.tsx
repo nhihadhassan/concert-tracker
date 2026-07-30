@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Check, Image, LoaderCircle, Search, Sparkles, X } from 'lucide-react'
 import { AnimatePresence, m } from 'motion/react'
-import { fetchDiscoveryStatus, searchArtwork, searchConcertSuggestions } from '../lib/api'
+import { searchArtwork, searchConcertSuggestions } from '../lib/api'
 import { addGuests, parseGuests, serializeGuests } from '../lib/guests'
 import type {
   ArtworkOption,
@@ -10,7 +10,6 @@ import type {
   ConcertStatus,
   ConcertSuggestion,
   ConcertSuggestionMode,
-  DiscoveryStatus,
   MemberSummary,
   ReviewWrite,
 } from '../types'
@@ -64,8 +63,6 @@ export function AddConcertDialog({
   const [appliedSuggestion, setAppliedSuggestion] = useState<string | null>(null)
   const [guests, setGuests] = useState<string[]>(() => parseGuests(concert?.companions))
   const [guestDraft, setGuestDraft] = useState('')
-  // Null until known, so the toggle does not flicker on open.
-  const [modeStatus, setModeStatus] = useState<DiscoveryStatus | null>(null)
   const personalReview = useMemo(
     () => concert?.reviews.find((review) => review.reviewer_user_id === currentUserId) ?? null,
     [concert, currentUserId],
@@ -124,24 +121,6 @@ export function AddConcertDialog({
       suggestionRequest.current?.abort()
     }
   }, [concert, loadArtwork, open])
-
-  // Only new concerts show the search, so only they need provider availability.
-  useEffect(() => {
-    if (!open || concert) return
-    const controller = new AbortController()
-    fetchDiscoveryStatus(controller.signal)
-      .then((status) => {
-        if (controller.signal.aborted) return
-        setModeStatus(status)
-        // Start on a mode that can actually return something, so a missing key
-        // never looks like a broken search.
-        if (!status.upcoming && status.past) setSuggestMode('past')
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setModeStatus({ upcoming: true, past: true })
-      })
-    return () => controller.abort()
-  }, [concert, open])
 
   const loadSuggestions = useCallback(async (artistName: string, mode: ConcertSuggestionMode) => {
     const trimmed = artistName.trim()
@@ -279,16 +258,12 @@ export function AddConcertDialog({
                   type="button"
                   className={suggestMode === 'upcoming' ? 'active' : ''}
                   aria-pressed={suggestMode === 'upcoming'}
-                  disabled={modeStatus !== null && !modeStatus.upcoming}
-                  title={modeStatus !== null && !modeStatus.upcoming ? 'Needs a ticket provider key' : undefined}
                   onClick={() => { setSuggestMode('upcoming'); setSuggestions([]); setSuggestMessage('') }}
                 >Upcoming</button>
                 <button
                   type="button"
                   className={suggestMode === 'past' ? 'active' : ''}
                   aria-pressed={suggestMode === 'past'}
-                  disabled={modeStatus !== null && !modeStatus.past}
-                  title={modeStatus !== null && !modeStatus.past ? 'Needs a setlist.fm key' : undefined}
                   onClick={() => { setSuggestMode('past'); setSuggestions([]); setSuggestMessage('') }}
                 >Already played</button>
               </div>
