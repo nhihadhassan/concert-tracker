@@ -1075,6 +1075,15 @@
   color: var(--text);
 }
 
+.suggest-modes button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.suggest-modes button:disabled:hover {
+  color: var(--text-muted);
+}
+
 .suggest-modes button.active {
   background: var(--accent-soft, rgba(98, 250, 227, 0.16));
   color: #62fae3;

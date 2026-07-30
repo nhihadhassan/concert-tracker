@@ -55,6 +55,25 @@ class SuggestionResponse(BaseModel):
     provider: Optional[str] = None
 
 
+class DiscoveryStatus(BaseModel):
+    """Which search modes have a key, so the form can offer only what works."""
+
+    upcoming: bool
+    past: bool
+
+
+@router.get("/status", response_model=DiscoveryStatus)
+def discovery_status() -> DiscoveryStatus:
+    try:
+        settings = get_settings()
+    except SettingsError:
+        return DiscoveryStatus(upcoming=False, past=False)
+    return DiscoveryStatus(
+        upcoming=bool(settings.ticketmaster_api_key or settings.seatgeek_client_id),
+        past=bool(settings.setlistfm_api_key),
+    )
+
+
 def _clean_genre(value: Any) -> Optional[str]:
     name = str(value or "").strip()
     if not name or name.lower() in PLACEHOLDER_GENRES:

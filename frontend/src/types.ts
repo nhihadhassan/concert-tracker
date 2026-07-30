@@ -83,6 +83,11 @@ export interface ConcertSuggestion {
 
 export type ConcertSuggestionMode = 'upcoming' | 'past'
 
+export interface DiscoveryStatus {
+  upcoming: boolean
+  past: boolean
+}
+
 export interface ConcertSuggestionResponse {
   configured: boolean
   results: ConcertSuggestion[]

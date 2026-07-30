@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Check, Image, LoaderCircle, Search, Sparkles, X } from 'lucide-react'
 import { AnimatePresence, m } from 'motion/react'
-import { searchArtwork, searchConcertSuggestions } from '../lib/api'
+import { fetchDiscoveryStatus, searchArtwork, searchConcertSuggestions } from '../lib/api'
 import { addGuests, parseGuests, serializeGuests } from '../lib/guests'
 import type {
   ArtworkOption,
@@ -10,6 +10,7 @@ import type {
   ConcertStatus,
   ConcertSuggestion,
   ConcertSuggestionMode,
+  DiscoveryStatus,
   MemberSummary,
   ReviewWrite,
 } from '../types'
@@ -63,6 +64,8 @@ export function AddConcertDialog({
   const [appliedSuggestion, setAppliedSuggestion] = useState<string | null>(null)
   const [guests, setGuests] = useState<string[]>(() => parseGuests(concert?.companions))
   const [guestDraft, setGuestDraft] = useState('')
+  // Null until known, so the toggle does not flicker on open.
+  const [modeStatus, setModeStatus] = useState<DiscoveryStatus | null>(null)
   const personalReview = useMemo(
     () => concert?.reviews.find((review) => review.reviewer_user_id === currentUserId) ?? null,
     [concert, currentUserId],
@@ -122,6 +125,24 @@ export function AddConcertDialog({
     }
   }, [concert, loadArtwork, open])
 
+  // Only new concerts show the search, so only they need provider availability.
+  useEffect(() => {
+    if (!open || concert) return
+    const controller = new AbortController()
+    fetchDiscoveryStatus(controller.signal)
+      .then((status) => {
+        if (controller.signal.aborted) return
+        setModeStatus(status)
+        // Start on a mode that can actually return something, so a missing key
+        // never looks like a broken search.
+        if (!status.upcoming && status.past) setSuggestMode('past')
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setModeStatus({ upcoming: true, past: true })
+      })
+    return () => controller.abort()
+  }, [concert, open])
+
   const loadSuggestions = useCallback(async (artistName: string, mode: ConcertSuggestionMode) => {
     const trimmed = artistName.trim()
     if (!trimmed) return
@@ -136,8 +157,8 @@ export function AddConcertDialog({
       if (controller.signal.aborted) return
       if (!response.configured) {
         setSuggestMessage(mode === 'past'
-          ? 'Past-show lookup is not configured yet.'
-          : 'Upcoming-show lookup is not configured yet.')
+          ? 'Past-show search needs a setlist.fm key.'
+          : 'Upcoming-show search needs a ticket provider key. Try "Already played" to find shows you have been to.')
       } else if (!response.results.length) {
         setSuggestMessage(mode === 'past'
           ? `No past shows found for ${trimmed}.`
@@ -254,8 +275,22 @@ export function AddConcertDialog({
             <div className="suggest-head">
               <span className="suggest-title"><Sparkles size={14} aria-hidden="true" />Find a show to fill in</span>
               <div className="suggest-modes" role="group" aria-label="Show search mode">
-                <button type="button" className={suggestMode === 'upcoming' ? 'active' : ''} aria-pressed={suggestMode === 'upcoming'} onClick={() => { setSuggestMode('upcoming'); setSuggestions([]); setSuggestMessage('') }}>Upcoming</button>
-                <button type="button" className={suggestMode === 'past' ? 'active' : ''} aria-pressed={suggestMode === 'past'} onClick={() => { setSuggestMode('past'); setSuggestions([]); setSuggestMessage('') }}>Already played</button>
+                <button
+                  type="button"
+                  className={suggestMode === 'upcoming' ? 'active' : ''}
+                  aria-pressed={suggestMode === 'upcoming'}
+                  disabled={modeStatus !== null && !modeStatus.upcoming}
+                  title={modeStatus !== null && !modeStatus.upcoming ? 'Needs a ticket provider key' : undefined}
+                  onClick={() => { setSuggestMode('upcoming'); setSuggestions([]); setSuggestMessage('') }}
+                >Upcoming</button>
+                <button
+                  type="button"
+                  className={suggestMode === 'past' ? 'active' : ''}
+                  aria-pressed={suggestMode === 'past'}
+                  disabled={modeStatus !== null && !modeStatus.past}
+                  title={modeStatus !== null && !modeStatus.past ? 'Needs a setlist.fm key' : undefined}
+                  onClick={() => { setSuggestMode('past'); setSuggestions([]); setSuggestMessage('') }}
+                >Already played</button>
               </div>
             </div>
             <label className="field field-wide">

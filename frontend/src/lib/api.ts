@@ -5,6 +5,7 @@ import type {
   ArtworkSearchResponse,
   ConcertSuggestionMode,
   ConcertSuggestionResponse,
+  DiscoveryStatus,
   LibraryResponse,
   LyricBreakdown,
   QueuedMutation,
@@ -94,6 +95,9 @@ export const searchArtwork = (query: string, signal?: AbortSignal) =>
   apiRequest<ArtworkSearchResponse>(`/v1/artwork/search?q=${encodeURIComponent(query)}`,
     { signal },
   )
+
+export const fetchDiscoveryStatus = (signal?: AbortSignal) =>
+  apiRequest<DiscoveryStatus>('/v1/discovery/status', { signal })
 
 export const searchConcertSuggestions = (
   artist: string,
