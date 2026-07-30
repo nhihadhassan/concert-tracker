@@ -149,9 +149,9 @@ export function AlbumJournal({
                     <strong>{track.title}</strong>
                     <small>{formatDuration(track.duration_ms)}</small>
                   </div>
-                  <span role="cell" data-label="Personal rank">{review?.personal_rank ?? '—'}</span>
-                  <span role="cell" data-label="Score">{review?.score !== null && review?.score !== undefined ? `${review.score}/10` : '—'}</span>
-                  <p role="cell" data-label="Note">{review?.notes || '—'}</p>
+                  <span role="cell" data-label="Personal rank">{review?.personal_rank ?? '-'}</span>
+                  <span role="cell" data-label="Score">{review?.score !== null && review?.score !== undefined ? `${review.score}/10` : '-'}</span>
+                  <p role="cell" data-label="Note">{review?.notes || '-'}</p>
                 </div>
               )
             })}
