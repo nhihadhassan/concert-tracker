@@ -5155,6 +5155,71 @@
   font-weight: 700;
 }
 
+.guest-field {
+  display: grid;
+  gap: 8px;
+}
+
+.guest-label {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.guest-hint {
+  margin: -4px 0 0;
+  color: var(--text-subtle);
+  font-size: 0.76rem;
+}
+
+.guest-chips {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  gap: 6px;
+  flex-wrap: wrap;
+  list-style: none;
+}
+
+.guest-chips li {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 4px 0 11px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  gap: 4px;
+  background: var(--surface-raised);
+  font-size: 0.8rem;
+}
+
+.guest-chips button {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 999px;
+  place-items: center;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 150ms ease-out, color 150ms ease-out;
+}
+
+.guest-chips button:hover {
+  background: var(--surface-soft);
+  color: var(--text);
+}
+
+.guest-chips button:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.people-list .guest-chip b {
+  background: var(--surface-raised);
+  color: var(--text-muted);
+}
+
 .people-list {
   display: flex;
   margin-top: 18px;

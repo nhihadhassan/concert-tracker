@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Check, Image, LoaderCircle, Search, Sparkles, X } from 'lucide-react'
 import { AnimatePresence, m } from 'motion/react'
 import { searchArtwork, searchConcertSuggestions } from '../lib/api'
+import { addGuests, parseGuests, serializeGuests } from '../lib/guests'
 import type {
   ArtworkOption,
   Concert,
@@ -60,6 +61,8 @@ export function AddConcertDialog({
   const [suggestLoading, setSuggestLoading] = useState(false)
   const [suggestMessage, setSuggestMessage] = useState('')
   const [appliedSuggestion, setAppliedSuggestion] = useState<string | null>(null)
+  const [guests, setGuests] = useState<string[]>(() => parseGuests(concert?.companions))
+  const [guestDraft, setGuestDraft] = useState('')
   const personalReview = useMemo(
     () => concert?.reviews.find((review) => review.reviewer_user_id === currentUserId) ?? null,
     [concert, currentUserId],
@@ -109,6 +112,8 @@ export function AddConcertDialog({
       setSuggestMessage('')
       setSuggestLoading(false)
       setAppliedSuggestion(null)
+      setGuests(parseGuests(concert?.companions))
+      setGuestDraft('')
       if (initialQuery) void loadArtwork(initialQuery)
     }
     return () => {
@@ -204,7 +209,9 @@ export function AddConcertDialog({
         spotify_url: String(form.get('spotify') ?? '').trim() || null,
         image: String(form.get('image') ?? '').trim() || null,
         notes: String(form.get('notes') ?? '').trim() || null,
-        companions: String(form.get('companions') ?? '').trim() || null,
+        // Include a name still sitting in the input so it is not lost by
+        // submitting without pressing Enter first.
+        companions: serializeGuests(addGuests(guests, guestDraft)),
       },
       attendee_user_ids: members
         .filter((member) => form.get(`attendee-${member.user_id}`) === 'on')
@@ -320,7 +327,49 @@ export function AddConcertDialog({
               return <label className="check-field" key={member.user_id}><input name={`attendee-${member.user_id}`} type="checkbox" defaultChecked={checked} /><span>{member.display_name} attended</span></label>
             })}
           </div>
-          <label className="field"><span>Other companions</span><input name="companions" defaultValue={concert?.companions ?? ''} /></label>
+          <div className="field field-wide guest-field">
+            <span className="guest-label" id="guest-label">Guests</span>
+            <p className="guest-hint">Anyone who came along without an account here.</p>
+            {guests.length ? <ul className="guest-chips">{guests.map((guest) => (
+              <li key={guest}>
+                <span>{guest}</span>
+                <button type="button" aria-label={`Remove ${guest}`} onClick={() => setGuests((current) => current.filter((name) => name !== guest))}>
+                  <X size={13} aria-hidden="true" />
+                </button>
+              </li>
+            ))}</ul> : null}
+            <input
+              type="text"
+              aria-labelledby="guest-label"
+              placeholder="Add a name, then press Enter"
+              value={guestDraft}
+              onChange={(event) => {
+                // Typing a comma commits the name, matching how the list reads.
+                if (event.target.value.includes(',')) {
+                  setGuests((current) => addGuests(current, event.target.value))
+                  setGuestDraft('')
+                  return
+                }
+                setGuestDraft(event.target.value)
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault()
+                  setGuests((current) => addGuests(current, guestDraft))
+                  setGuestDraft('')
+                  return
+                }
+                if (event.key === 'Backspace' && !guestDraft && guests.length) {
+                  setGuests((current) => current.slice(0, -1))
+                }
+              }}
+              onBlur={() => {
+                if (!guestDraft.trim()) return
+                setGuests((current) => addGuests(current, guestDraft))
+                setGuestDraft('')
+              }}
+            />
+          </div>
         </fieldset>
 
         <fieldset className="form-section" id="concert-form-review">

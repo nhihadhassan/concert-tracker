@@ -1,5 +1,6 @@
 import { Armchair, ArrowLeft, CalendarDays, Image, MapPin, Music2, Pencil, Star, Ticket, Trash2, Users, WalletCards } from 'lucide-react'
 import type { SessionMember } from '../session/useSession'
+import { parseGuests } from '../lib/guests'
 import type { Concert } from '../types'
 
 interface ConcertDetailProps {
@@ -49,7 +50,7 @@ export function ConcertDetail({ concert, member, onArtwork, onBack, onDelete, on
 
         <section className="detail-people" aria-labelledby="detail-people-title">
           <div className="detail-section-heading"><Users aria-hidden="true" /><h2 id="detail-people-title">Who went</h2></div>
-          {attendees.length || concert.companions ? <div className="people-list">{attendees.map((attendee) => <span key={attendee.user_id}><b aria-hidden="true">{attendee.display_name.slice(0, 1)}</b>{attendee.display_name}</span>)}{concert.companions ? <span><b aria-hidden="true">+</b>{concert.companions}</span> : null}</div> : <p className="detail-empty-copy">No companions recorded.</p>}
+          {attendees.length || concert.companions ? <div className="people-list">{attendees.map((attendee) => <span key={attendee.user_id}><b aria-hidden="true">{attendee.display_name.slice(0, 1)}</b>{attendee.display_name}</span>)}{parseGuests(concert.companions).map((guest) => <span key={guest} className="guest-chip"><b aria-hidden="true">{guest.slice(0, 1).toUpperCase()}</b>{guest}</span>)}</div> : <p className="detail-empty-copy">No companions recorded.</p>}
         </section>
 
         <section className="detail-facts" aria-label="Concert details">
