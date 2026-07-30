@@ -5,8 +5,8 @@ covers both:
 
 ``upcoming``
     Shows an artist is about to play, for logging something you plan to
-    attend. Ticketmaster is preferred (it operates most Toronto venues), with
-    SeatGeek as a fallback when only that key is available.
+    attend. Ticketmaster and SeatGeek are preferred, with Gemini's grounded
+    Google Search as a temporary fallback when those keys are unavailable.
 
 ``past``
     Shows an artist has already played, for backfilling a concert you attended
@@ -21,6 +21,7 @@ UI hides the feature rather than erroring.
 from __future__ import annotations
 
 from datetime import datetime
+import json
 from typing import Any, Optional
 
 import httpx
@@ -34,6 +35,7 @@ router = APIRouter(prefix="/v1/discovery", tags=["discovery"])
 TICKETMASTER_EVENTS_URL = "https://app.ticketmaster.com/discovery/v2/events.json"
 SEATGEEK_EVENTS_URL = "https://api.seatgeek.com/2/events"
 SETLISTFM_SEARCH_URL = "https://api.setlist.fm/rest/1.0/search/setlists"
+GEMINI_GENERATE_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent"
 MAX_SUGGESTIONS = 8
 PLACEHOLDER_GENRES = {"undefined", "other", "unknown"}
 TORONTO = "Toronto"
@@ -70,7 +72,11 @@ def discovery_status() -> DiscoveryStatus:
     except SettingsError:
         return DiscoveryStatus(upcoming=False, past=False)
     return DiscoveryStatus(
-        upcoming=bool(settings.ticketmaster_api_key or settings.seatgeek_client_id),
+        upcoming=bool(
+            settings.ticketmaster_api_key
+            or settings.seatgeek_client_id
+            or settings.gemini_api_key
+        ),
         past=bool(settings.setlistfm_api_key),
     )
 
@@ -272,6 +278,102 @@ def _search_setlistfm(settings: Settings, artist: str, city: str) -> list[dict[s
     return payload.get("setlist") or []
 
 
+def _search_gemini(settings: Settings, artist: str, city: str) -> list[dict[str, Any]]:
+    """Find future Toronto shows through Gemini's grounded Google Search."""
+    today = datetime.now().date().isoformat()
+    prompt = f"""
+Search the live web for upcoming concerts or tour dates for {artist} in {city},
+Ontario, Canada, on or after {today}. Return only actual public events, not
+rumours, cancelled events, or generic tour announcements. Prefer official
+artist, venue, promoter, or ticketing pages. Return at most {MAX_SUGGESTIONS}
+results, sorted by date ascending.
+
+Return JSON in exactly this shape:
+{{"events":[{{"artist":"...","tour":"...","date":"YYYY-MM-DD",
+"venue":"...","city":"Toronto","genre":"...","ticket_url":"..."}}]}}
+Use null when tour, genre, or ticket_url is not known. Do not include events
+outside Toronto, and do not invent missing dates or venues.
+""".strip()
+    request_body = {
+            "contents": [{"parts": [{"text": prompt}]}],
+            "tools": [{"google_search": {}}],
+            "generationConfig": {
+                "responseMimeType": "application/json",
+                "responseSchema": {
+                    "type": "OBJECT",
+                    "properties": {
+                        "events": {
+                            "type": "ARRAY",
+                            "items": {
+                                "type": "OBJECT",
+                                "properties": {
+                                    "artist": {"type": "STRING"},
+                                    "tour": {"type": "STRING", "nullable": True},
+                                    "date": {"type": "STRING"},
+                                    "venue": {"type": "STRING"},
+                                    "city": {"type": "STRING"},
+                                    "genre": {"type": "STRING", "nullable": True},
+                                    "ticket_url": {"type": "STRING", "nullable": True},
+                                },
+                                "required": ["artist", "date", "venue", "city"],
+                            },
+                        }
+                    },
+                    "required": ["events"],
+                },
+            },
+    }
+    try:
+        response = httpx.post(
+            GEMINI_GENERATE_URL,
+            params={"key": settings.gemini_api_key},
+            json=request_body,
+            timeout=20,
+            follow_redirects=True,
+        )
+        if response.status_code == 429:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Gemini search quota is unavailable. Enable Gemini API billing or wait for quota to reset.",
+            )
+        response.raise_for_status()
+        payload: dict[str, Any] = response.json()
+    except (httpx.HTTPError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Concert search is temporarily unavailable",
+        ) from exc
+    candidates = payload.get("candidates") or []
+    parts = ((candidates[0] if candidates else {}).get("content") or {}).get("parts") or []
+    text = next((part.get("text") for part in parts if isinstance(part.get("text"), str)), "")
+    try:
+        payload = json.loads(text)
+    except (TypeError, ValueError):
+        return []
+    return payload.get("events") or []
+
+
+def _gemini_suggestion(event: dict[str, Any]) -> Optional[ConcertSuggestion]:
+    date = str(event.get("date") or "").strip()
+    venue = str(event.get("venue") or "").strip()
+    if not date or not venue:
+        return None
+    try:
+        datetime.strptime(date, "%Y-%m-%d")
+    except ValueError:
+        return None
+    return ConcertSuggestion(
+        artist=str(event.get("artist") or "").strip(),
+        tour=str(event.get("tour") or "").strip() or None,
+        date=date,
+        venue=venue,
+        city=str(event.get("city") or "").strip() or None,
+        genre=_clean_genre(event.get("genre")),
+        image=None,
+        ticket_url=str(event.get("ticket_url") or "").strip() or None,
+    )
+
+
 @router.get("/concerts", response_model=SuggestionResponse)
 def suggest_concerts(
     artist: str = Query(min_length=1, max_length=120),
@@ -306,6 +408,10 @@ def suggest_concerts(
         provider = "seatgeek"
         events = _search_seatgeek(settings, artist_query, city_query)
         to_suggestion = _seatgeek_suggestion
+    elif settings.gemini_api_key:
+        provider = "gemini"
+        events = _search_gemini(settings, artist_query, city_query)
+        to_suggestion = _gemini_suggestion
     else:
         return SuggestionResponse(configured=False, results=[], provider=None)
 
@@ -316,6 +422,8 @@ def suggest_concerts(
         if suggestion is None:
             continue
         if (suggestion.city or "").strip().casefold() != TORONTO.casefold():
+            continue
+        if mode == "upcoming" and suggestion.date < datetime.now().date().isoformat():
             continue
         key = (suggestion.date, suggestion.venue.lower())
         if key in seen:

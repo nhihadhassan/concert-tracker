@@ -1,4 +1,5 @@
 from backend.discovery_routes import (
+    _gemini_suggestion,
     _seatgeek_suggestion,
     _setlistfm_suggestion,
     _ticketmaster_suggestion,
@@ -171,3 +172,20 @@ def test_discovery_is_toronto_only_even_when_provider_returns_other_cities(monke
 
     assert response.results[0].city == "Toronto"
     assert len(response.results) == 1
+
+
+def test_gemini_event_maps_to_suggestion():
+    suggestion = _gemini_suggestion({
+        "artist": "Yeat",
+        "tour": "The Bell Tour",
+        "date": "2026-09-14",
+        "venue": "Scotiabank Arena",
+        "city": "Toronto",
+        "genre": "Hip-Hop",
+        "ticket_url": "https://example.com/tickets",
+    })
+
+    assert suggestion is not None
+    assert suggestion.artist == "Yeat"
+    assert suggestion.city == "Toronto"
+    assert suggestion.ticket_url == "https://example.com/tickets"
