@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Check, Image, LoaderCircle, Search, Sparkles, X } from 'lucide-react'
 import { AnimatePresence, m } from 'motion/react'
-import { searchArtwork, searchUpcomingConcerts } from '../lib/api'
+import { searchArtwork, searchConcertSuggestions } from '../lib/api'
 import type {
   ArtworkOption,
   Concert,
   ConcertFormSubmission,
   ConcertStatus,
   ConcertSuggestion,
+  ConcertSuggestionMode,
   MemberSummary,
   ReviewWrite,
 } from '../types'
@@ -54,6 +55,7 @@ export function AddConcertDialog({
   const [artworkLoading, setArtworkLoading] = useState(false)
   const [artworkError, setArtworkError] = useState('')
   const [suggestQuery, setSuggestQuery] = useState('')
+  const [suggestMode, setSuggestMode] = useState<ConcertSuggestionMode>('upcoming')
   const [suggestions, setSuggestions] = useState<ConcertSuggestion[]>([])
   const [suggestLoading, setSuggestLoading] = useState(false)
   const [suggestMessage, setSuggestMessage] = useState('')
@@ -102,6 +104,7 @@ export function AddConcertDialog({
       setArtworkResults([])
       setArtworkError('')
       setSuggestQuery('')
+      setSuggestMode('upcoming')
       setSuggestions([])
       setSuggestMessage('')
       setSuggestLoading(false)
@@ -114,7 +117,7 @@ export function AddConcertDialog({
     }
   }, [concert, loadArtwork, open])
 
-  const loadSuggestions = useCallback(async (artistName: string) => {
+  const loadSuggestions = useCallback(async (artistName: string, mode: ConcertSuggestionMode) => {
     const trimmed = artistName.trim()
     if (!trimmed) return
     suggestionRequest.current?.abort()
@@ -124,12 +127,16 @@ export function AddConcertDialog({
     setSuggestMessage('')
     setSuggestions([])
     try {
-      const response = await searchUpcomingConcerts(trimmed, controller.signal)
+      const response = await searchConcertSuggestions(trimmed, mode, controller.signal)
       if (controller.signal.aborted) return
       if (!response.configured) {
-        setSuggestMessage('Show lookup is not configured yet.')
+        setSuggestMessage(mode === 'past'
+          ? 'Past-show lookup is not configured yet.'
+          : 'Upcoming-show lookup is not configured yet.')
       } else if (!response.results.length) {
-        setSuggestMessage(`No upcoming Toronto dates found for ${trimmed}.`)
+        setSuggestMessage(mode === 'past'
+          ? `No past shows found for ${trimmed}.`
+          : `No upcoming Toronto dates found for ${trimmed}.`)
       }
       setSuggestions(response.results)
     } catch (error) {
@@ -155,11 +162,12 @@ export function AddConcertDialog({
     setField('date', suggestion.date)
     setField('venue', suggestion.venue)
     setField('genre', suggestion.genre)
-    setField('status', 'Want to Go')
+    setField('status', suggestMode === 'past' ? 'Attended' : 'Want to Go')
     if (suggestion.image) setImageUrl(suggestion.image)
     setAppliedSuggestion(`${suggestion.date}|${suggestion.venue}`)
+    // setlist.fm carries no artwork, so fall back to the iTunes lookup.
     if (!artworkResults.length) void loadArtwork(cleanArtistName(suggestion.artist))
-  }, [artworkResults.length, loadArtwork])
+  }, [artworkResults.length, loadArtwork, suggestMode])
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -236,24 +244,31 @@ export function AddConcertDialog({
         <fieldset className="form-section" id="concert-form-event">
           <legend>Event</legend>
           {concert ? null : <div className="suggest-box">
+            <div className="suggest-head">
+              <span className="suggest-title"><Sparkles size={14} aria-hidden="true" />Find a show to fill in</span>
+              <div className="suggest-modes" role="group" aria-label="Show search mode">
+                <button type="button" className={suggestMode === 'upcoming' ? 'active' : ''} aria-pressed={suggestMode === 'upcoming'} onClick={() => { setSuggestMode('upcoming'); setSuggestions([]); setSuggestMessage('') }}>Upcoming</button>
+                <button type="button" className={suggestMode === 'past' ? 'active' : ''} aria-pressed={suggestMode === 'past'} onClick={() => { setSuggestMode('past'); setSuggestions([]); setSuggestMessage('') }}>Already played</button>
+              </div>
+            </div>
             <label className="field field-wide">
-              <span><Sparkles size={14} aria-hidden="true" />Find an upcoming Toronto show</span>
+              <span className="sr-only">Artist</span>
               <span className="input-with-icon">
                 <Search size={16} aria-hidden="true" />
                 <input
                   type="search"
                   value={suggestQuery}
-                  placeholder="Search an artist, e.g. Yeat"
+                  placeholder={suggestMode === 'past' ? 'Artist you saw, e.g. Kendrick Lamar' : 'Artist coming to Toronto, e.g. Yeat'}
                   onChange={(event) => setSuggestQuery(event.target.value)}
                   onKeyDown={(event) => {
                     if (event.key !== 'Enter') return
                     event.preventDefault()
-                    void loadSuggestions(suggestQuery)
+                    void loadSuggestions(suggestQuery, suggestMode)
                   }}
                 />
               </span>
             </label>
-            <button type="button" className="button button-secondary" disabled={suggestLoading || !suggestQuery.trim()} onClick={() => void loadSuggestions(suggestQuery)}>
+            <button type="button" className="button button-secondary" disabled={suggestLoading || !suggestQuery.trim()} onClick={() => void loadSuggestions(suggestQuery, suggestMode)}>
               {suggestLoading ? <LoaderCircle className="spin" size={16} aria-hidden="true" /> : <Search size={16} aria-hidden="true" />}
               {suggestLoading ? 'Searching…' : 'Search shows'}
             </button>

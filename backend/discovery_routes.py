@@ -1,17 +1,26 @@
-"""Upcoming-show lookup used to prefill the add-concert form.
+"""Show lookup used to prefill the add-concert form.
 
-Searches for upcoming music events by artist in a given city (Toronto by
-default) so the form can be populated with the real date, venue, tour name,
-genre, and artwork instead of being typed by hand.
+Two modes, because they answer different questions and no single provider
+covers both:
 
-Two providers are supported so the feature is not hostage to one signup flow:
-Ticketmaster is preferred (it operates most Toronto venues), and SeatGeek is
-used when only that key is available. With neither key the endpoint reports
-``configured=false`` so the UI hides the feature rather than erroring.
+``upcoming``
+    Shows an artist is about to play, for logging something you plan to
+    attend. Ticketmaster is preferred (it operates most Toronto venues), with
+    SeatGeek as a fallback when only that key is available.
+
+``past``
+    Shows an artist has already played, for backfilling a concert you attended
+    but never logged. Served by setlist.fm, which is a setlist archive and so
+    carries essentially no future dates.
+
+Whichever provider answers, results share one ``ConcertSuggestion`` shape. With
+no key for the requested mode the endpoint reports ``configured=false`` so the
+UI hides the feature rather than erroring.
 """
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any, Optional
 
 import httpx
@@ -24,6 +33,7 @@ router = APIRouter(prefix="/v1/discovery", tags=["discovery"])
 
 TICKETMASTER_EVENTS_URL = "https://app.ticketmaster.com/discovery/v2/events.json"
 SEATGEEK_EVENTS_URL = "https://api.seatgeek.com/2/events"
+SETLISTFM_SEARCH_URL = "https://api.setlist.fm/rest/1.0/search/setlists"
 MAX_SUGGESTIONS = 8
 PLACEHOLDER_GENRES = {"undefined", "other", "unknown"}
 
@@ -136,9 +146,56 @@ def _seatgeek_suggestion(event: dict[str, Any]) -> Optional[ConcertSuggestion]:
     )
 
 
-def _fetch(url: str, params: dict[str, Any]) -> dict[str, Any]:
+def _setlistfm_suggestion(entry: dict[str, Any]) -> Optional[ConcertSuggestion]:
+    venue = entry.get("venue") or {}
+    venue_name = str(venue.get("name") or "").strip()
+    # setlist.fm dates are dd-MM-yyyy; the library stores ISO dates.
+    raw_date = str(entry.get("eventDate") or "").strip()
     try:
-        response = httpx.get(url, params=params, timeout=10, follow_redirects=True)
+        local_date = datetime.strptime(raw_date, "%d-%m-%Y").date().isoformat()
+    except ValueError:
+        return None
+    if not venue_name:
+        return None
+
+    artist = str((entry.get("artist") or {}).get("name") or "").strip()
+    city = (venue.get("city") or {}).get("name")
+
+    return ConcertSuggestion(
+        artist=artist,
+        # setlist.fm has a real tour field, so no title heuristics needed here.
+        tour=str((entry.get("tour") or {}).get("name") or "").strip() or None,
+        date=local_date,
+        venue=venue_name,
+        city=str(city or "").strip() or None,
+        # setlist.fm classifies neither genre nor artwork; both stay manual and
+        # the form's existing iTunes lookup still fills artwork.
+        genre=None,
+        image=None,
+        ticket_url=str(entry.get("url") or "").strip() or None,
+    )
+
+
+def _fetch(
+    url: str,
+    params: dict[str, Any],
+    headers: Optional[dict[str, str]] = None,
+    empty_on_404: bool = False,
+) -> dict[str, Any]:
+    try:
+        response = httpx.get(
+            url, params=params, headers=headers, timeout=10, follow_redirects=True
+        )
+        # setlist.fm answers an unmatched artist with 404 rather than an empty
+        # list, so a typo should read as "nothing found", not as an outage.
+        if empty_on_404 and response.status_code == 404:
+            return {}
+        # setlist.fm rate-limits tightly; say so instead of blaming the network.
+        if response.status_code == 429:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many searches at once. Wait a moment and try again.",
+            )
         response.raise_for_status()
         payload: dict[str, Any] = response.json()
         return payload
@@ -180,10 +237,26 @@ def _search_seatgeek(settings: Settings, artist: str, city: str) -> list[dict[st
     return payload.get("events") or []
 
 
+def _search_setlistfm(settings: Settings, artist: str, city: str) -> list[dict[str, Any]]:
+    params: dict[str, Any] = {"artistName": artist}
+    # City is an opt-in filter here: past shows are worth finding wherever they
+    # happened, including ones travelled for.
+    if city:
+        params["cityName"] = city
+    payload = _fetch(
+        SETLISTFM_SEARCH_URL,
+        params,
+        headers={"x-api-key": settings.setlistfm_api_key, "Accept": "application/json"},
+        empty_on_404=True,
+    )
+    return payload.get("setlist") or []
+
+
 @router.get("/concerts", response_model=SuggestionResponse)
 def suggest_concerts(
     artist: str = Query(min_length=1, max_length=120),
-    city: str = Query(default="Toronto", max_length=80),
+    mode: str = Query(default="upcoming", pattern="^(upcoming|past)$"),
+    city: Optional[str] = Query(default=None, max_length=80),
 ) -> SuggestionResponse:
     try:
         settings = get_settings()
@@ -193,8 +266,17 @@ def suggest_concerts(
         ) from exc
 
     artist_query = artist.strip()
-    city_query = city.strip()
-    if settings.ticketmaster_api_key:
+    # Upcoming search is about "who is coming here", so it defaults to Toronto;
+    # past search defaults to everywhere so travelled-for shows still appear.
+    city_query = (city if city is not None else ("Toronto" if mode == "upcoming" else "")).strip()
+
+    if mode == "past":
+        if not settings.setlistfm_api_key:
+            return SuggestionResponse(configured=False, results=[], provider=None)
+        provider = "setlistfm"
+        events = _search_setlistfm(settings, artist_query, city_query)
+        to_suggestion = _setlistfm_suggestion
+    elif settings.ticketmaster_api_key:
         provider = "ticketmaster"
         events = _search_ticketmaster(settings, artist_query, city_query)
         to_suggestion = _ticketmaster_suggestion

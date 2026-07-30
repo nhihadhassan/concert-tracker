@@ -3,6 +3,7 @@ import type {
   AlbumMutationResponse,
   AlbumReviewWrite,
   ArtworkSearchResponse,
+  ConcertSuggestionMode,
   ConcertSuggestionResponse,
   LibraryResponse,
   LyricBreakdown,
@@ -94,8 +95,13 @@ export const searchArtwork = (query: string, signal?: AbortSignal) =>
     { signal },
   )
 
-export const searchUpcomingConcerts = (artist: string, signal?: AbortSignal) =>
-  apiRequest<ConcertSuggestionResponse>(`/v1/discovery/concerts?artist=${encodeURIComponent(artist)}`,
+export const searchConcertSuggestions = (
+  artist: string,
+  mode: ConcertSuggestionMode,
+  signal?: AbortSignal,
+) =>
+  apiRequest<ConcertSuggestionResponse>(
+    `/v1/discovery/concerts?artist=${encodeURIComponent(artist)}&mode=${mode}`,
     { signal },
   )
 

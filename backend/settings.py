@@ -25,6 +25,7 @@ class Settings:
     ticketmaster_api_key: str = ""
     seatgeek_client_id: str = ""
     seatgeek_client_secret: str = ""
+    setlistfm_api_key: str = ""
 
     @property
     def rest_key(self) -> str:
@@ -71,6 +72,7 @@ class Settings:
             ticketmaster_api_key=os.getenv("TICKETMASTER_API_KEY", "").strip(),
             seatgeek_client_id=os.getenv("SEATGEEK_CLIENT_ID", "").strip(),
             seatgeek_client_secret=os.getenv("SEATGEEK_CLIENT_SECRET", "").strip(),
+            setlistfm_api_key=os.getenv("SETLISTFM_API_KEY", "").strip(),
         )
 
 

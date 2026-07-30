@@ -1,8 +1,22 @@
 from backend.discovery_routes import (
     _seatgeek_suggestion,
+    _setlistfm_suggestion,
     _ticketmaster_suggestion,
     _tour_name,
 )
+
+# Trimmed from a real api.setlist.fm response for Kendrick Lamar in Toronto.
+SETLISTFM_ENTRY = {
+    "id": "735fce79",
+    "eventDate": "13-06-2025",
+    "artist": {"name": "Kendrick Lamar & SZA"},
+    "venue": {
+        "name": "Rogers Centre",
+        "city": {"name": "Toronto", "country": {"code": "CA"}},
+    },
+    "tour": {"name": "Grand National Tour"},
+    "url": "https://www.setlist.fm/setlist/kendrick-lamar-and-sza/2025/x.html",
+}
 
 TICKETMASTER_EVENT = {
     "name": "Yeat: The Bell Tour",
@@ -87,6 +101,29 @@ def test_placeholder_genres_are_dropped():
     sg_suggestion = _seatgeek_suggestion(sg_event)
     assert sg_suggestion is not None
     assert sg_suggestion.genre is None
+
+
+def test_setlistfm_entry_maps_to_suggestion():
+    suggestion = _setlistfm_suggestion(SETLISTFM_ENTRY)
+    assert suggestion is not None
+    assert suggestion.artist == "Kendrick Lamar & SZA"
+    assert suggestion.tour == "Grand National Tour"
+    # dd-MM-yyyy is converted to the ISO date the library stores.
+    assert suggestion.date == "2025-06-13"
+    assert suggestion.venue == "Rogers Centre"
+    assert suggestion.city == "Toronto"
+    # setlist.fm classifies neither of these.
+    assert suggestion.genre is None
+    assert suggestion.image is None
+
+
+def test_setlistfm_rejects_unparseable_dates():
+    for bad in ("", "2025-06-13", "31-31-2025", "not a date"):
+        assert _setlistfm_suggestion({**SETLISTFM_ENTRY, "eventDate": bad}) is None
+
+
+def test_setlistfm_entry_missing_venue_is_skipped():
+    assert _setlistfm_suggestion({**SETLISTFM_ENTRY, "venue": {}}) is None
 
 
 def test_events_missing_venue_or_date_are_skipped():

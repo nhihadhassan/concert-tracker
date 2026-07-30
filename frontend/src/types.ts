@@ -81,6 +81,8 @@ export interface ConcertSuggestion {
   ticket_url: string | null
 }
 
+export type ConcertSuggestionMode = 'upcoming' | 'past'
+
 export interface ConcertSuggestionResponse {
   configured: boolean
   results: ConcertSuggestion[]

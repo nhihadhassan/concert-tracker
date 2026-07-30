@@ -1034,10 +1034,55 @@
   background: var(--surface-soft);
 }
 
-.suggest-box > .field span:first-child {
+.suggest-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.suggest-title {
   display: flex;
   align-items: center;
   gap: 6px;
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.suggest-modes {
+  display: flex;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  gap: 3px;
+  background: var(--surface-raised);
+}
+
+.suggest-modes button {
+  min-height: 30px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: background 160ms ease-out, color 160ms ease-out;
+}
+
+.suggest-modes button:hover {
+  color: var(--text);
+}
+
+.suggest-modes button.active {
+  background: var(--accent-soft, rgba(98, 250, 227, 0.16));
+  color: #62fae3;
+}
+
+.suggest-modes button:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
 }
 
 .suggest-box > button {
