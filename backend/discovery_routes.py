@@ -240,9 +240,13 @@ def _tavily_suggestion(event: dict[str, Any], artist: str) -> Optional[ConcertSu
         )
     if not venue_match:
         return None
+    tour_match = re.search(
+        r"\b((?:The\s+)?[A-Z][A-Za-z0-9/&'().-]*(?:\s+[A-Z][A-Za-z0-9/&'().-]*){0,5}\s+Tour)\b",
+        text,
+    )
     return ConcertSuggestion(
         artist=artist,
-        tour=None,
+        tour=tour_match.group(1).strip() if tour_match else None,
         date=date.isoformat(),
         venue=venue_match.group(1).strip(),
         city=TORONTO,
@@ -280,8 +284,10 @@ def _search_tavily(settings: Settings, artist: str, city: str) -> list[dict[str,
         ) from exc
     results = payload.get("results") or []
     answer = payload.get("answer")
-    if isinstance(answer, str) and answer.strip():
-        results.insert(0, {"answer": answer, "url": None, "title": "Tavily summary", "content": answer})
+    if isinstance(answer, str) and answer.strip() and results:
+        # Keep the source URL attached to the result instead of turning the
+        # answer into a synthetic, uncited event row.
+        results[0]["answer"] = answer
     return results
 
 
