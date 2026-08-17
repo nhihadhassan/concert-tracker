@@ -1,5 +1,6 @@
 import { Armchair, CalendarDays, Image, MapPin, Music2, Pencil, Star, Trash2, Users } from 'lucide-react'
 import { AnimatePresence, m, useReducedMotion } from 'motion/react'
+import { artworkSrcSet, resizeArtwork } from '../lib/artwork'
 import type { Concert } from '../types'
 
 interface ConcertCardProps {
@@ -39,7 +40,7 @@ export function ConcertCard({ concert, index, onArtwork, onDelete, onEdit, onOpe
       whileHover={reduceMotion ? undefined : { y: -2 }}
     >
       <button id={`concert-open-${concert.id}`} className={`concert-visual${concert.image ? '' : ' concert-visual-empty'}`} type="button" onClick={() => onOpen(concert)} aria-label={`View ${concert.artist} details`}>
-        <AnimatePresence mode="wait" initial={false}>{concert.image ? <m.img key={concert.image} className="concert-art" src={concert.image} alt={`${concert.artist} artwork`} loading="lazy" decoding="async" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} /> : <m.span key="empty-art" className="concert-art concert-art-empty" aria-hidden="true" initial={{ opacity: 0 }} animate={{ opacity: 1 }}><Image size={34} /></m.span>}</AnimatePresence>
+        <AnimatePresence mode="wait" initial={false}>{concert.image ? <m.img key={concert.image} className="concert-art" src={resizeArtwork(concert.image, 480)} srcSet={artworkSrcSet(concert.image, [320, 480, 640])} sizes="(max-width: 720px) calc(100vw - 32px), (max-width: 1240px) 50vw, 320px" alt={`${concert.artist} artwork`} loading={index === 0 ? 'eager' : 'lazy'} fetchPriority={index === 0 ? 'high' : 'auto'} decoding="async" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} /> : <m.span key="empty-art" className="concert-art concert-art-empty" aria-hidden="true" initial={{ opacity: 0 }} animate={{ opacity: 1 }}><Image size={34} /></m.span>}</AnimatePresence>
       </button>
       <div className="concert-card-body">
         <div className="concert-visual-top">

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://concert-tracker-sepia.vercel.app/sitemap.xml

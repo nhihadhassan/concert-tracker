@@ -39,6 +39,7 @@ const PrimaryNavigation = ({ className, activeView, onViewChange }: Pick<AppHead
 
 export function AppHeader(props: AppHeaderProps) {
   const exportMenu = useRef<HTMLDetailsElement>(null)
+  const exportToggle = useRef<HTMLElement>(null)
   const [exportOpen, setExportOpen] = useState(false)
   const sync = syncDisplay(props.syncState, props.pendingCount)
   const SyncIcon = sync.icon
@@ -51,8 +52,17 @@ export function AppHeader(props: AppHeaderProps) {
     const closeOutside = (event: PointerEvent) => {
       if (event.target instanceof Node && !exportMenu.current?.contains(event.target)) setExportOpen(false)
     }
+    const closeWithKeyboard = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      setExportOpen(false)
+      exportToggle.current?.focus()
+    }
     document.addEventListener('pointerdown', closeOutside)
-    return () => document.removeEventListener('pointerdown', closeOutside)
+    document.addEventListener('keydown', closeWithKeyboard)
+    return () => {
+      document.removeEventListener('pointerdown', closeOutside)
+      document.removeEventListener('keydown', closeWithKeyboard)
+    }
   }, [exportOpen])
   return <>
     <header className="app-header">
@@ -70,7 +80,7 @@ export function AppHeader(props: AppHeaderProps) {
             {props.darkMode ? <Sun size={18} /> : <Moon size={18} />}<span className="button-label">{props.darkMode ? 'Light' : 'Dark'}</span>
           </button>
           <details className="export-menu" ref={exportMenu} open={exportOpen} onToggle={(event) => setExportOpen(event.currentTarget.open)}>
-            <summary className="button button-secondary" role="button" aria-label="Export options"><Download size={18} aria-hidden="true" /><span>Export</span></summary>
+            <summary ref={exportToggle} className="button button-secondary" role="button" aria-label="Export options" aria-expanded={exportOpen}><Download size={18} aria-hidden="true" /><span>Export</span></summary>
             <div className="export-menu-popover" role="group" aria-label="Export concert data">
               <button type="button" onClick={() => runExport(props.onExportCsv)}><Table2 size={17} aria-hidden="true" /><span><strong>CSV spreadsheet</strong><small>Concert rows for analysis</small></span></button>
               <button type="button" onClick={() => runExport(props.onExportJson)}><FileJson size={17} aria-hidden="true" /><span><strong>JSON backup</strong><small>Complete library snapshot</small></span></button>

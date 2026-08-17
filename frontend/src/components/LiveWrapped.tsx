@@ -3,6 +3,7 @@ import { CalendarDays, ChevronDown, Clock3, Download, MapPin, Share2, Sparkles, 
 import { m, useReducedMotion } from 'motion/react'
 import type { Analytics, Concert } from '../types'
 import { buildConcertStory, type InsightPeriod } from '../lib/concertInsights'
+import { artworkSrcSet, resizeArtwork } from '../lib/artwork'
 import { downloadBlob } from '../lib/exports'
 import { createRecapCard } from '../lib/recapCard'
 
@@ -93,9 +94,15 @@ export function LiveWrapped({ concerts, analytics, memberName }: LiveWrappedProp
         await navigator.share({ title: 'My Encore live recap', text })
         setShareLabel('Shared')
       } else {
-        await navigator.clipboard.writeText(text)
+        let copied = false
+        try {
+          await navigator.clipboard?.writeText(text)
+          copied = true
+        } catch {
+          // Saving the card is still useful when clipboard access is unavailable.
+        }
         downloadBlob(blob, file.name)
-        setShareLabel('Card saved')
+        setShareLabel(copied ? 'Card saved + text copied' : 'Card saved')
       }
     } catch {
       setShareLabel('Share recap')
@@ -175,7 +182,7 @@ export function LiveWrapped({ concerts, analytics, memberName }: LiveWrappedProp
           <section className="wrapped-panel wrapped-top-show" aria-labelledby="top-show-title">
             <div className="wrapped-panel-head"><span className="wrapped-kicker">Your main character moment</span><Star size={18} aria-hidden="true" /></div>
             <div className="wrapped-show-art">
-              {topShow?.image ? <img src={topShow.image} alt="" /> : <span className="show-art-placeholder" aria-hidden="true"><Sparkles size={32} /></span>}
+              {topShow?.image ? <img src={resizeArtwork(topShow.image, 640)} srcSet={artworkSrcSet(topShow.image, [480, 640, 800])} sizes="(max-width: 720px) calc(100vw - 48px), 520px" alt="" decoding="async" /> : <span className="show-art-placeholder" aria-hidden="true"><Sparkles size={32} /></span>}
               <span className="wrapped-rating">{topShow?.personal_rating ? `${topShow.personal_rating}/10` : 'Unrated'}</span>
             </div>
             <div className="wrapped-show-copy"><h3 id="top-show-title">{topShow?.artist}</h3><p>{topShow?.venue.split('(')[0].trim()} <span aria-hidden="true">·</span> {topShow ? formatDate(topShow.date) : ''}</p></div>
@@ -220,7 +227,7 @@ export function LiveWrapped({ concerts, analytics, memberName }: LiveWrappedProp
           </section>
         </div>
 
-        {artworkShows.length ? <section className="wrapped-artwork-strip" aria-label="Recent live-show memories"><div><span className="wrapped-kicker">The visual evidence</span><h3>Proof you were there.</h3></div><div className="wrapped-artwork-stack">{artworkShows.map((concert, index) => <img key={concert.id} src={concert.image ?? ''} alt={`${concert.artist} show memory`} style={{ '--stack-index': index } as CSSProperties} loading="lazy" decoding="async" />)}</div><button className="wrapped-copy-button" type="button" onClick={() => void shareSnapshot()}><Share2 size={15} aria-hidden="true" /> Share this recap</button></section> : null}
+        {artworkShows.length ? <section className="wrapped-artwork-strip" aria-label="Recent live-show memories"><div><span className="wrapped-kicker">The visual evidence</span><h3>Proof you were there.</h3></div><div className="wrapped-artwork-stack">{artworkShows.map((concert, index) => <img key={concert.id} src={resizeArtwork(concert.image ?? '', 160)} srcSet={artworkSrcSet(concert.image ?? '', [120, 160])} sizes="60px" alt={`${concert.artist} show memory`} style={{ '--stack-index': index } as CSSProperties} loading="lazy" decoding="async" />)}</div><button className="wrapped-copy-button" type="button" onClick={() => void shareSnapshot()}><Share2 size={15} aria-hidden="true" /> Share this recap</button></section> : null}
       </>}
     </m.section>
   )

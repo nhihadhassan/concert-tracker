@@ -17,5 +17,12 @@
         "tests/**"
       ]
     }
-  }
+  },
+  "routes": [
+    {
+      "src": "^/(?!api(?:/|$)|$|index\\.html$|assets/|favicon\\.svg$|manifest\\.webmanifest$|icon-(?:192|512)\\.png$|social-card\\.(?:png|svg)$|sw\\.js$|robots\\.txt$|sitemap\\.xml$|404\\.html$).*",
+      "status": 404,
+      "dest": "/404.html"
+    }
+  ]
 }

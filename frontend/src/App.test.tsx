@@ -185,11 +185,12 @@ describe('Concert Tracker cloud shell', () => {
     window.history.replaceState({}, '', '/')
   })
 
-  it('renders cloud totals and concert cards', () => {
+  it('renders cloud totals and concert cards with a complete heading hierarchy', () => {
     render(<Dashboard member={member} />)
     expect(screen.getByRole('heading', { name: "Nhihad's Concerts" })).toBeInTheDocument()
     expect(screen.getByText('Total concerts')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Kali Uchis' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Concert archive', level: 2 })).toBeInTheDocument()
     expect(screen.getAllByText('Scotiabank Arena').length).toBeGreaterThan(0)
     expect(screen.queryByText(/40 Bay St/)).not.toBeInTheDocument()
     expect(screen.getByText('Proj 8')).toBeInTheDocument()
@@ -219,20 +220,20 @@ describe('Concert Tracker cloud shell', () => {
     expect(screen.queryByText('Total spent')).not.toBeInTheDocument()
   })
 
-  it('opens the functional add form', () => {
+  it('opens the functional add form', async () => {
     render(<Dashboard member={member} />)
     fireEvent.click(screen.getByRole('button', { name: 'Add concert' }))
-    expect(screen.getByRole('heading', { name: 'Add concert' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Add concert' })).toBeInTheDocument()
     expect(screen.getByText('Artist, date, and venue are enough. Everything else can wait.')).toBeInTheDocument()
     expect(screen.getByLabelText('Artist')).toHaveAttribute('list', 'concert-artist-options')
     expect(screen.getByLabelText('Venue')).toHaveAttribute('list', 'concert-venue-options')
     expect(screen.getAllByText('Your review').length).toBeGreaterThan(0)
   })
 
-  it('defaults a newly entered past concert to attended', () => {
+  it('defaults a newly entered past concert to attended', async () => {
     render(<Dashboard member={member} />)
     fireEvent.click(screen.getByRole('button', { name: 'Add concert' }))
-    const dialog = screen.getByRole('dialog')
+    const dialog = await screen.findByRole('dialog')
     fireEvent.change(within(dialog).getByLabelText('Date'), { target: { value: '2020-07-01' } })
     expect(within(dialog).getByLabelText('Status')).toHaveValue('Attended')
   })
@@ -240,7 +241,7 @@ describe('Concert Tracker cloud shell', () => {
   it('preloads and selects artwork while editing a concert', async () => {
     render(<Dashboard member={member} />)
     fireEvent.click(screen.getByRole('button', { name: 'View Kali Uchis details' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Edit Kali Uchis' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit Kali Uchis' }))
     const artworkOption = await screen.findByRole('button', { name: 'Use Sincerely artwork' })
     fireEvent.click(artworkOption)
     expect(artworkOption).toHaveAttribute('aria-pressed', 'true')
@@ -282,8 +283,8 @@ describe('Concert Tracker cloud shell', () => {
     const navigation = screen.getAllByRole('navigation', { name: 'Primary navigation' })[0]
     fireEvent.click(within(navigation).getByRole('button', { name: 'Albums' }))
     expect(window.location.search).toBe('?view=albums')
-    expect(screen.getByRole('heading', { name: 'Album journal' })).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Open In Rainbows by Radiohead' }))
+    expect(await screen.findByRole('heading', { name: 'Album journal' })).toBeInTheDocument()
+    fireEvent.click(await screen.findByRole('button', { name: 'Open In Rainbows by Radiohead' }))
     expect(window.location.search).toBe('?album=aaaaaaaa-1111-4111-8111-111111111111')
     expect(await screen.findByRole('heading', { name: 'In Rainbows', level: 1 })).toBeInTheDocument()
     expect(screen.getByText('A patient, vivid record')).toBeInTheDocument()
@@ -307,7 +308,7 @@ describe('Concert Tracker cloud shell', () => {
     render(<Dashboard member={member} />)
     fireEvent.click(screen.getByRole('button', { name: 'View Kali Uchis details' }))
     expect(window.location.search).toBe('?concert=33333333-3333-4333-8333-333333333333')
-    expect(screen.getByRole('heading', { name: 'Kali Uchis', level: 1 })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Kali Uchis', level: 1 })).toBeInTheDocument()
     expect(screen.getByText('Personal memory')).toBeInTheDocument()
     expect(screen.getByText('Shared event note')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Back to concerts' }))
@@ -344,15 +345,15 @@ describe('Concert Tracker cloud shell', () => {
     expect(window.location.pathname).toBe('/')
   })
 
-  it('shows intentional unrated, image-less, and no-notes detail states', () => {
+  it('shows intentional unrated, image-less, and no-notes detail states', async () => {
     const row = library.concerts[0]
     const original = { personal_rating: row.personal_rating, combined_rating: row.combined_rating, reviews: row.reviews, notes: row.notes }
     Object.assign(row, { personal_rating: null, combined_rating: null, reviews: [], notes: null })
     window.history.replaceState({}, '', `/?concert=${row.id}`)
 
     const view = render(<Dashboard member={member} />)
+    expect(await screen.findByText('Not rated yet')).toBeInTheDocument()
     expect(screen.queryByRole('img', { name: 'Kali Uchis concert artwork' })).not.toBeInTheDocument()
-    expect(screen.getByText('Not rated yet')).toBeInTheDocument()
     expect(screen.getByText('No personal memory recorded yet.')).toBeInTheDocument()
     expect(screen.getByText('No shared event notes recorded.')).toBeInTheDocument()
 
@@ -367,6 +368,17 @@ describe('Concert Tracker cloud shell', () => {
     fireEvent.click(filterButton)
     expect(filterButton).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByPlaceholderText('e.g. Kendrick, Scotiabank...')).toBeInTheDocument()
+  })
+
+  it('closes export options with Escape and returns focus', async () => {
+    render(<Dashboard member={member} />)
+    const toggle = screen.getByLabelText('Export options')
+    const menu = toggle.closest('details')
+    fireEvent.click(toggle)
+    await waitFor(() => expect(menu).toHaveAttribute('open'))
+    fireEvent.keyDown(document, { key: 'Escape' })
+    await waitFor(() => expect(menu).not.toHaveAttribute('open'))
+    expect(toggle).toHaveFocus()
   })
 
   it('opens straight into the library with no sign-in step', async () => {
