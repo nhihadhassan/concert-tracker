@@ -6247,6 +6247,11 @@ a.detail-setlist:hover {
   --wrapped-line: oklch(0.4 0.1 305 / 0.22);
 }
 
+.theme-light .wrapped-hero {
+  --wrapped-ink: oklch(0.98 0.015 95);
+  --wrapped-muted: oklch(0.86 0.035 95);
+}
+
 @media (max-width: 900px) {
   .wrapped-header { align-items: stretch; flex-direction: column; }
   .wrapped-controls { justify-content: space-between; }
