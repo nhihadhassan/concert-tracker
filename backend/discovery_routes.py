@@ -18,7 +18,7 @@ no key for the requested mode the endpoint reports ``configured=false`` so the
 UI hides the feature rather than erroring.
 """
 
-# Vercel's Python 3.9 runtime cannot evaluate PEP 604 unions in Pydantic models.
+# Encore's Python 3.9 test floor cannot evaluate PEP 604 unions in Pydantic models.
 # ruff: noqa: UP045
 
 from __future__ import annotations
