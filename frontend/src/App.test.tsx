@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Album, Analytics, LibraryResponse } from './types'
 
@@ -223,8 +223,18 @@ describe('Concert Tracker cloud shell', () => {
     render(<Dashboard member={member} />)
     fireEvent.click(screen.getByRole('button', { name: 'Add concert' }))
     expect(screen.getByRole('heading', { name: 'Add concert' })).toBeInTheDocument()
-    expect(screen.getByText('Your review', { selector: 'legend' })).toBeInTheDocument()
-    expect(screen.getByRole('navigation', { name: 'Concert form sections' })).toBeInTheDocument()
+    expect(screen.getByText('Artist, date, and venue are enough. Everything else can wait.')).toBeInTheDocument()
+    expect(screen.getByLabelText('Artist')).toHaveAttribute('list', 'concert-artist-options')
+    expect(screen.getByLabelText('Venue')).toHaveAttribute('list', 'concert-venue-options')
+    expect(screen.getAllByText('Your review').length).toBeGreaterThan(0)
+  })
+
+  it('defaults a newly entered past concert to attended', () => {
+    render(<Dashboard member={member} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Add concert' }))
+    const dialog = screen.getByRole('dialog')
+    fireEvent.change(within(dialog).getByLabelText('Date'), { target: { value: '2020-07-01' } })
+    expect(within(dialog).getByLabelText('Status')).toHaveValue('Attended')
   })
 
   it('preloads and selects artwork while editing a concert', async () => {
@@ -240,30 +250,37 @@ describe('Concert Tracker cloud shell', () => {
     )
   })
 
-  it('switches between concerts and stats with rankings inside stats', () => {
+  it('switches between concerts and stats with rankings inside stats', async () => {
     render(<Dashboard member={member} />)
-    const concertsButton = screen.getByRole('button', { name: 'Concerts' })
-    const statsButton = screen.getByRole('button', { name: 'Stats' })
+    const navigation = screen.getAllByRole('navigation', { name: 'Primary navigation' })[0]
+    const concertsButton = within(navigation).getByRole('button', { name: 'Concerts' })
+    const statsButton = within(navigation).getByRole('button', { name: 'Stats' })
     expect(concertsButton).toHaveAttribute('aria-current', 'page')
     fireEvent.click(statsButton)
     expect(statsButton).toHaveAttribute('aria-current', 'page')
     expect(window.location.search).toBe('?view=stats&scope=personal')
-    expect(screen.getByRole('heading', { name: "Nhihad's stats" })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Rankings' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: "Nhihad's stats" })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Rankings' })).toBeInTheDocument()
   })
 
-  it('opens the live-show rewind visualizer', () => {
+  it('opens the live-show rewind visualizer', async () => {
     window.history.replaceState({}, '', '/?view=wrapped')
     render(<Dashboard member={member} />)
-    expect(screen.getByRole('button', { name: 'Wrapped' })).toHaveAttribute('aria-current', 'page')
-    expect(screen.getByRole('heading', { name: 'Nhihad, your year in the crowd.' })).toBeInTheDocument()
+    const navigation = screen.getAllByRole('navigation', { name: 'Primary navigation' })[0]
+    expect(within(navigation).getByRole('button', { name: 'Wrapped' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+    expect(await screen.findByRole('heading', { name: 'Nhihad, your year in the crowd.' })).toBeInTheDocument()
     expect(screen.getByText('Your main character moment')).toBeInTheDocument()
-    expect(screen.getByRole('combobox', { name: 'Show me' })).toHaveValue('all')
+    expect(screen.getByRole('combobox', { name: 'Show me' })).toHaveValue('2025')
+    expect(screen.getByRole('button', { name: 'Save recap card' })).toBeInTheDocument()
   })
 
   it('opens the album journal and keeps track order separate from personal rank', async () => {
     render(<Dashboard member={member} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Albums' }))
+    const navigation = screen.getAllByRole('navigation', { name: 'Primary navigation' })[0]
+    fireEvent.click(within(navigation).getByRole('button', { name: 'Albums' }))
     expect(window.location.search).toBe('?view=albums')
     expect(screen.getByRole('heading', { name: 'Album journal' })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Open In Rainbows by Radiohead' }))
@@ -299,24 +316,32 @@ describe('Concert Tracker cloud shell', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'View Kali Uchis details' })).toHaveFocus())
   })
 
-  it('honors a shared stats deep link and scope switching', () => {
+  it('honors a shared stats deep link and scope switching', async () => {
     window.history.replaceState({}, '', '/?view=stats&scope=shared')
     render(<Dashboard member={member} />)
-    expect(screen.getByRole('heading', { name: 'Shared stats' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Shared stats' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Shared' })).toHaveAttribute('aria-pressed', 'true')
     fireEvent.click(screen.getByRole('button', { name: 'Personal' }))
-    expect(screen.getByRole('heading', { name: "Nhihad's stats" })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: "Nhihad's stats" })).toBeInTheDocument()
   })
 
-  it('responds to popstate deep links and handles deleted concert URLs', () => {
+  it('responds to popstate deep links and handles deleted concert URLs', async () => {
     render(<Dashboard member={member} />)
     window.history.pushState({}, '', '/?view=stats&scope=shared')
     fireEvent(window, new PopStateEvent('popstate'))
-    expect(screen.getByRole('heading', { name: 'Shared stats' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Shared stats' })).toBeInTheDocument()
 
     window.history.pushState({}, '', '/?concert=deleted-concert')
     fireEvent(window, new PopStateEvent('popstate'))
     expect(screen.getByRole('heading', { name: 'Concert not found' })).toBeInTheDocument()
+  })
+
+  it('shows a branded not-found view for unknown paths', () => {
+    window.history.replaceState({}, '', '/lost-show')
+    render(<Dashboard member={member} />)
+    expect(screen.getByRole('heading', { name: 'This page missed the encore' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Back to concerts' }))
+    expect(window.location.pathname).toBe('/')
   })
 
   it('shows intentional unrated, image-less, and no-notes detail states', () => {

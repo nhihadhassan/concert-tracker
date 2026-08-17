@@ -1,15 +1,16 @@
 import { useMemo, useState, type CSSProperties } from 'react'
-import { CalendarDays, ChevronDown, Clock3, Copy, MapPin, Share2, Sparkles, Star, Ticket, Users } from 'lucide-react'
+import { CalendarDays, ChevronDown, Clock3, Download, MapPin, Share2, Sparkles, Star, Ticket, Users } from 'lucide-react'
 import { m, useReducedMotion } from 'motion/react'
 import type { Analytics, Concert } from '../types'
+import { buildConcertStory, type InsightPeriod } from '../lib/concertInsights'
+import { downloadBlob } from '../lib/exports'
+import { createRecapCard } from '../lib/recapCard'
 
 interface LiveWrappedProps {
   concerts: Concert[]
   analytics: Analytics
   memberName: string
 }
-
-type Period = 'all' | number
 
 const formatDate = (value: string) => new Intl.DateTimeFormat('en-CA', {
   month: 'short',
@@ -38,14 +39,19 @@ const firstName = (name: string) => name.trim().split(/\s+/)[0] || name
 
 export function LiveWrapped({ concerts, analytics, memberName }: LiveWrappedProps) {
   const reduceMotion = useReducedMotion()
-  const [period, setPeriod] = useState<Period>('all')
-  const [shareLabel, setShareLabel] = useState('Share snapshot')
-
   const years = useMemo(() => [...new Set(concerts.map((concert) => concert.date.slice(0, 4)))].sort((a, b) => Number(b) - Number(a)), [concerts])
+  const latestAttendedYear = useMemo(() => concerts
+    .filter((concert) => concert.status === 'Attended')
+    .map((concert) => Number(concert.date.slice(0, 4)))
+    .sort((left, right) => right - left)[0] ?? 'all', [concerts])
+  const [period, setPeriod] = useState<InsightPeriod>(latestAttendedYear)
+  const [shareLabel, setShareLabel] = useState('Share recap')
+  const [cardBusy, setCardBusy] = useState(false)
   const selectedConcerts = useMemo(() => period === 'all'
     ? concerts
     : concerts.filter((concert) => concert.date.startsWith(String(period))), [concerts, period])
-  const attended = selectedConcerts.filter((concert) => concert.status === 'Attended')
+  const story = useMemo(() => buildConcertStory(concerts, period), [concerts, period])
+  const attended = story.attended
   const upcoming = selectedConcerts.filter((concert) => concert.status === 'Want to Go')
   const artistCounts = useMemo(() => countBy(attended, (concert) => concert.artist), [attended])
   const genreCounts = useMemo(() => countBy(attended, (concert) => concert.genre), [attended])
@@ -64,22 +70,52 @@ export function LiveWrapped({ concerts, analytics, memberName }: LiveWrappedProp
     ? firstShow && lastShow ? `${formatDate(firstShow.date)} to ${formatDate(lastShow.date)}` : 'Your live-show archive'
     : `${period} season`
 
+  const cardData = () => ({
+    memberName: firstName(memberName),
+    period,
+    story,
+    topArtist: topArtist?.[0] ?? '',
+    topShow: topShow?.artist ?? '',
+  })
+
   const shareSnapshot = async () => {
     const text = topShow
       ? `${firstName(memberName)}'s live-show rewind: ${attended.length} shows, ${topArtist?.[0] ?? 'many good artists'} on repeat, and ${topShow.artist} as the top-rated night.`
       : `${firstName(memberName)}'s live-show rewind is ready.`
+    setCardBusy(true)
     try {
-      if (navigator.share) {
-        await navigator.share({ title: 'My live-show rewind', text })
+      const blob = await createRecapCard(cardData())
+      const file = new File([blob], `encore-recap-${period}.png`, { type: 'image/png' })
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ title: 'My Encore live recap', text, files: [file] })
+        setShareLabel('Shared')
+      } else if (navigator.share) {
+        await navigator.share({ title: 'My Encore live recap', text })
         setShareLabel('Shared')
       } else {
         await navigator.clipboard.writeText(text)
-        setShareLabel('Copied')
+        downloadBlob(blob, file.name)
+        setShareLabel('Card saved')
       }
     } catch {
-      setShareLabel('Share snapshot')
+      setShareLabel('Share recap')
+    } finally {
+      setCardBusy(false)
     }
-    window.setTimeout(() => setShareLabel('Share snapshot'), 1800)
+    window.setTimeout(() => setShareLabel('Share recap'), 1800)
+  }
+
+  const saveCard = async () => {
+    setCardBusy(true)
+    try {
+      downloadBlob(await createRecapCard(cardData()), `encore-recap-${period}.png`)
+      setShareLabel('Card saved')
+    } catch {
+      setShareLabel('Could not save')
+    } finally {
+      setCardBusy(false)
+      window.setTimeout(() => setShareLabel('Share recap'), 1800)
+    }
   }
 
   return (
@@ -106,7 +142,7 @@ export function LiveWrapped({ concerts, analytics, memberName }: LiveWrappedProp
             </select>
             <ChevronDown size={15} aria-hidden="true" />
           </label>
-          <button className="button wrapped-share" type="button" onClick={() => void shareSnapshot()}><Share2 size={16} />{shareLabel}</button>
+          <button className="button wrapped-share" type="button" disabled={cardBusy} onClick={() => void shareSnapshot()}><Share2 size={16} aria-hidden="true" />{cardBusy ? 'Making card…' : shareLabel}</button>
         </div>
       </header>
 
@@ -163,9 +199,28 @@ export function LiveWrapped({ concerts, analytics, memberName }: LiveWrappedProp
             <div className="wrapped-fact"><span>Average rating</span><strong>{averageRating ? `${averageRating.toFixed(1)}/10` : 'Not rated'}</strong><small>{averageRating ? 'across rated nights' : 'Rate a show to unlock this'}</small></div>
             <div className="wrapped-fact"><span>Ticket story</span><strong>{attended.some((concert) => concert.price !== null) ? formatMoney(attended.reduce((total, concert) => total + (concert.price ?? 0), 0)) : 'Unpriced'}</strong><small>spent on attended shows</small></div>
           </section>
+
+          <section className="wrapped-panel wrapped-insights" aria-labelledby="wrapped-insights-title">
+            <div className="wrapped-panel-head"><span className="wrapped-kicker">The story behind the numbers</span><Sparkles size={18} aria-hidden="true" /></div>
+            <h3 id="wrapped-insights-title">This was your live music pattern.</h3>
+            <ul>
+              <li><strong>{story.newArtists.length}</strong><span>{period === 'all' ? 'artists entered the archive' : `first-time ${story.newArtists.length === 1 ? 'artist' : 'artists'} this year`}{story.newArtists.length ? `, including ${story.newArtists.slice(0, 2).join(' and ')}` : ''}.</span></li>
+              <li><strong>{story.longestMonthlyStreak}</strong><span>{story.longestMonthlyStreak === 1 ? 'active month' : 'months in your longest live streak'}.</span></li>
+              <li><strong>{story.closestRun ? `${story.closestRun.days}d` : '—'}</strong><span>{story.closestRun ? `between ${story.closestRun.first.artist} and ${story.closestRun.second.artist}, your tightest two-show run.` : 'Add another show to find your tightest run.'}</span></li>
+              <li><strong>{story.weekendShare}%</strong><span>of these nights landed Friday through Sunday.</span></li>
+            </ul>
+          </section>
+
+          <section className="wrapped-share-card" aria-label="Shareable recap card preview">
+            <span>Encore · {period === 'all' ? 'All time' : period}</span>
+            <strong>{attended.length}</strong>
+            <p>{attended.length === 1 ? 'night in the crowd' : 'nights in the crowd'}</p>
+            <div><small>Most seen</small><b>{topArtist?.[0] ?? 'Still exploring'}</b></div>
+            <button type="button" disabled={cardBusy} onClick={() => void saveCard()}><Download size={16} aria-hidden="true" />Save recap card</button>
+          </section>
         </div>
 
-        {artworkShows.length ? <section className="wrapped-artwork-strip" aria-label="Recent live-show memories"><div><span className="wrapped-kicker">The visual evidence</span><h3>Proof you were there.</h3></div><div className="wrapped-artwork-stack">{artworkShows.map((concert, index) => <img key={concert.id} src={concert.image ?? ''} alt={`${concert.artist} show memory`} style={{ '--stack-index': index } as CSSProperties} loading="lazy" />)}</div><button className="wrapped-copy-button" type="button" onClick={() => void shareSnapshot()}><Copy size={15} /> Copy the headline</button></section> : null}
+        {artworkShows.length ? <section className="wrapped-artwork-strip" aria-label="Recent live-show memories"><div><span className="wrapped-kicker">The visual evidence</span><h3>Proof you were there.</h3></div><div className="wrapped-artwork-stack">{artworkShows.map((concert, index) => <img key={concert.id} src={concert.image ?? ''} alt={`${concert.artist} show memory`} style={{ '--stack-index': index } as CSSProperties} loading="lazy" decoding="async" />)}</div><button className="wrapped-copy-button" type="button" onClick={() => void shareSnapshot()}><Share2 size={15} aria-hidden="true" /> Share this recap</button></section> : null}
       </>}
     </m.section>
   )
