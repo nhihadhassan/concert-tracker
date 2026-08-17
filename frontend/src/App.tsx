@@ -15,11 +15,10 @@ import { ConcertCard } from './components/ConcertCard'
 import { FiltersBar } from './components/FiltersBar'
 import { RankedSummary } from './components/RankedSummary'
 import { StatsStrip } from './components/StatsStrip'
-import { StatsDashboard } from './components/StatsDashboard'
-import { LiveWrapped } from './components/LiveWrapped'
 import { useConcertLibrary } from './hooks/useConcertLibrary'
 import { useAlbumLibrary } from './hooks/useAlbumLibrary'
 import { downloadCsv, saveAlbumReview } from './lib/api'
+import { downloadJsonBackup, downloadUpcomingCalendar } from './lib/exports'
 import type {
   Album,
   AlbumReviewWrite,
@@ -39,6 +38,12 @@ const AlbumJournal = lazy(() => import('./components/AlbumJournal').then((module
 const AlbumReviewStudio = lazy(() => import('./components/AlbumReviewStudio').then((module) => ({
   default: module.AlbumReviewStudio,
 })))
+const StatsDashboard = lazy(() => import('./components/StatsDashboard').then((module) => ({
+  default: module.StatsDashboard,
+})))
+const LiveWrapped = lazy(() => import('./components/LiveWrapped').then((module) => ({
+  default: module.LiveWrapped,
+})))
 
 const AlbumViewLoading = () => (
   <main className="feature-shell">
@@ -47,6 +52,13 @@ const AlbumViewLoading = () => (
       <div className="skeleton skeleton-field" />
     </section>
   </main>
+)
+
+const FeatureViewLoading = () => (
+  <section className="detail-not-found" aria-label="Loading view">
+    <div className="skeleton skeleton-title" />
+    <div className="skeleton skeleton-field" />
+  </section>
 )
 
 const sortConcerts = (rows: Concert[], sort: string) => [...rows].sort((left, right) => {
@@ -64,8 +76,10 @@ type DashboardRoute =
   | { kind: 'stats'; scope: 'personal' | 'shared' }
   | { kind: 'wrapped' }
   | { kind: 'detail'; concertId: string }
+  | { kind: 'not-found' }
 
 const readDashboardRoute = (): DashboardRoute => {
+  if (window.location.pathname !== '/' && window.location.pathname !== '/index.html') return { kind: 'not-found' }
   const params = new URLSearchParams(window.location.search)
   const albumId = params.get('album')
   if (albumId) return { kind: 'album-detail', albumId, editing: params.get('mode') === 'edit' }
@@ -93,7 +107,7 @@ const routeUrl = (route: DashboardRoute) => {
   }
   if (route.kind === 'wrapped') params.set('view', 'wrapped')
   const query = params.toString()
-  return `${window.location.pathname}${query ? `?${query}` : ''}`
+  return `/${query ? `?${query}` : ''}`
 }
 
 const makeMutation = (
@@ -188,6 +202,19 @@ export function Dashboard({ member }: DashboardProps) {
     return () => window.cancelAnimationFrame(frame)
   }, [route])
 
+  useEffect(() => {
+    const titles: Record<DashboardRoute['kind'], string> = {
+      concerts: "Nhihad's Concerts | Encore",
+      albums: 'Album Journal | Encore',
+      'album-detail': 'Album Review | Encore',
+      stats: 'Concert Stats | Encore',
+      wrapped: 'Live Recap | Encore',
+      detail: 'Concert Memory | Encore',
+      'not-found': 'Page Not Found | Encore',
+    }
+    document.title = titles[route.kind]
+  }, [route.kind])
+
   const navigate = useCallback((nextRoute: DashboardRoute, replace = false) => {
     const method = replace ? 'replaceState' : 'pushState'
     window.history[method]({ concertTracker: true }, '', routeUrl(nextRoute))
@@ -195,6 +222,10 @@ export function Dashboard({ member }: DashboardProps) {
   }, [])
 
   const library = cloud.library
+  const personalConcerts = useMemo(() => library?.concerts.filter((concert) =>
+    concert.attendees.some((attendee) => attendee.user_id === member.user_id && attendee.attendance_status !== 'Did Not Attend')
+    || concert.reviews.some((review) => review.reviewer_user_id === member.user_id),
+  ) ?? [], [library, member.user_id])
   const filteredConcerts = useMemo(() => {
     if (!library) return []
     const query = search.trim().toLowerCase()
@@ -338,6 +369,22 @@ export function Dashboard({ member }: DashboardProps) {
     }
   }
 
+  const exportJson = () => {
+    if (!library) return
+    downloadJsonBackup(library)
+    flashNotice('Complete JSON backup downloaded')
+  }
+
+  const exportCalendar = () => {
+    if (!library) return
+    try {
+      downloadUpcomingCalendar(library.concerts)
+      flashNotice('Upcoming concerts calendar downloaded')
+    } catch (error) {
+      flashNotice(error instanceof Error ? error.message : 'Calendar export failed')
+    }
+  }
+
   const importedAlbum = async (albumId: string, message: string) => {
     setAlbumDialogOpen(false)
     await albumCloud.refetch()
@@ -363,6 +410,7 @@ export function Dashboard({ member }: DashboardProps) {
   const toggleTheme = () => {
     setDarkMode((value) => {
       localStorage.setItem('concert-theme', value ? 'light' : 'dark')
+      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', value ? '#f3f5f9' : '#070b16')
       return !value
     })
   }
@@ -395,7 +443,9 @@ export function Dashboard({ member }: DashboardProps) {
   }
   return (
     <div className={darkMode ? 'app theme-dark' : 'app theme-light'}>
-      <AppHeader activeView={activeView} addLabel={activeView === 'albums' ? 'Find album' : 'Add concert'} darkMode={darkMode} memberName={member.display_name} pendingCount={cloud.pendingCount} syncState={cloud.syncState} onAdd={activeView === 'albums' ? () => setAlbumDialogOpen(true) : openNew} onExport={() => void exportCsv()} onThemeToggle={toggleTheme} onViewChange={(view) => navigate(view === 'stats' ? { kind: 'stats', scope: 'personal' } : view === 'wrapped' ? { kind: 'wrapped' } : view === 'albums' ? { kind: 'albums' } : { kind: 'concerts' })} />
+      <a className="skip-link" href="#encore-main">Skip to content</a>
+      <AppHeader activeView={activeView} addLabel={activeView === 'albums' ? 'Find album' : 'Add concert'} darkMode={darkMode} memberName={member.display_name} pendingCount={cloud.pendingCount} syncState={cloud.syncState} onAdd={activeView === 'albums' ? () => setAlbumDialogOpen(true) : openNew} onExportCalendar={exportCalendar} onExportCsv={() => void exportCsv()} onExportJson={exportJson} onThemeToggle={toggleTheme} onViewChange={(view) => navigate(view === 'stats' ? { kind: 'stats', scope: 'personal' } : view === 'wrapped' ? { kind: 'wrapped' } : view === 'albums' ? { kind: 'albums' } : { kind: 'concerts' })} />
+      <div id="encore-main" tabIndex={-1}>
       {route.kind === 'concerts' ? <main className="page-shell page-shell-feed" data-view-heading tabIndex={-1}>
         <div className="dashboard-column">
           <StatsStrip concerts={library.concerts} />
@@ -405,8 +455,9 @@ export function Dashboard({ member }: DashboardProps) {
           {filteredConcerts.length ? <section className="concert-grid" aria-label="Concerts">{filteredConcerts.map((concert, index) => <ConcertCard key={concert.id} concert={concert} index={index} onArtwork={openArtwork} onDelete={(row) => void deleteConcert(row)} onEdit={(row) => { setEditing(row); setFormError(''); setDialogOpen(true) }} onOpen={openConcert} />)}</section> : <section className="empty-state"><h2>{library.concerts.length ? 'No concerts match' : 'Add the first staging concert'}</h2><p>{library.concerts.length ? 'Clear a filter or try another artist or venue.' : 'The shared normalized library is empty and ready for testing.'}</p>{!library.concerts.length ? <button className="button button-primary" type="button" onClick={openNew}>Add concert</button> : null}</section>}
         </div>
         <div className="ranking-column"><RankedSummary personal={personalScopedRankings} /></div>
-      </main> : route.kind === 'albums' ? <AlbumLibrary albums={albumCloud.albums} currentUserId={member.user_id} error={albumCloud.error} loading={albumCloud.loading} onAdd={() => setAlbumDialogOpen(true)} onOpen={openAlbum} /> : route.kind === 'album-detail' ? selectedAlbum ? <Suspense fallback={<AlbumViewLoading />}>{route.editing ? <AlbumReviewStudio album={selectedAlbum} currentUserId={member.user_id} error={albumError} saving={albumSaving} onCancel={() => navigate({ kind: 'album-detail', albumId: selectedAlbum.id, editing: false }, true)} onSave={(review) => saveReview(selectedAlbum, review)} /> : <AlbumJournal album={selectedAlbum} currentUserId={member.user_id} members={library.members} onBack={() => navigate({ kind: 'albums' }, true)} onEdit={() => navigate({ kind: 'album-detail', albumId: selectedAlbum.id, editing: true })} />}</Suspense> : <main className="feature-shell"><section className="detail-not-found"><ArrowLeft size={22} aria-hidden="true" /><h1 data-view-heading tabIndex={-1}>Album not found</h1><p>This album may have been removed or is not available in the shared journal.</p><button className="button button-primary" type="button" onClick={() => navigate({ kind: 'albums' }, true)}>Back to albums</button></section></main> : route.kind === 'stats' ? <main className="feature-shell"><StatsDashboard analytics={route.scope === 'personal' ? library.personal_analytics : library.analytics} memberName={member.display_name} rankings={route.scope === 'personal' ? personalScopedRankings : combinedRankings} scope={route.scope} onScopeChange={(scope) => navigate({ kind: 'stats', scope }, true)} /></main> : route.kind === 'wrapped' ? <main className="feature-shell"><LiveWrapped concerts={library.concerts} analytics={library.personal_analytics} memberName={member.display_name} /></main> : <main className="feature-shell">{selectedConcert ? <ConcertDetail concert={selectedConcert} member={member} onArtwork={openArtwork} onBack={backToConcerts} onEdit={(row) => { setEditing(row); setFormError(''); setDialogOpen(true) }} onDelete={(row) => { void deleteConcert(row).then((deleted) => { if (deleted) navigate({ kind: 'concerts' }, true) }) }} /> : <section className="detail-not-found"><ArrowLeft size={22} aria-hidden="true" /><h1 data-view-heading tabIndex={-1}>Concert not found</h1><p>This concert may have been deleted or is not available in your library.</p><button className="button button-primary" type="button" onClick={() => navigate({ kind: 'concerts' }, true)}>Back to concerts</button></section>}</main>}
-      <AddConcertDialog concert={editing} currentUserId={member.user_id} error={formError} members={library.members} open={dialogOpen} saving={saving} onClose={() => { setDialogOpen(false); setEditing(null) }} onSave={saveConcert} />
+      </main> : route.kind === 'albums' ? <AlbumLibrary albums={albumCloud.albums} currentUserId={member.user_id} error={albumCloud.error} loading={albumCloud.loading} onAdd={() => setAlbumDialogOpen(true)} onOpen={openAlbum} /> : route.kind === 'album-detail' ? selectedAlbum ? <Suspense fallback={<AlbumViewLoading />}>{route.editing ? <AlbumReviewStudio album={selectedAlbum} currentUserId={member.user_id} error={albumError} saving={albumSaving} onCancel={() => navigate({ kind: 'album-detail', albumId: selectedAlbum.id, editing: false }, true)} onSave={(review) => saveReview(selectedAlbum, review)} /> : <AlbumJournal album={selectedAlbum} currentUserId={member.user_id} members={library.members} onBack={() => navigate({ kind: 'albums' }, true)} onEdit={() => navigate({ kind: 'album-detail', albumId: selectedAlbum.id, editing: true })} />}</Suspense> : <main className="feature-shell"><section className="detail-not-found"><ArrowLeft size={22} aria-hidden="true" /><h1 data-view-heading tabIndex={-1}>Album not found</h1><p>This album may have been removed or is not available in the shared journal.</p><button className="button button-primary" type="button" onClick={() => navigate({ kind: 'albums' }, true)}>Back to albums</button></section></main> : route.kind === 'stats' ? <main className="feature-shell"><Suspense fallback={<FeatureViewLoading />}><StatsDashboard analytics={route.scope === 'personal' ? library.personal_analytics : library.analytics} concerts={route.scope === 'personal' ? personalConcerts : library.concerts} memberName={member.display_name} rankings={route.scope === 'personal' ? personalScopedRankings : combinedRankings} scope={route.scope} onScopeChange={(scope) => navigate({ kind: 'stats', scope }, true)} /></Suspense></main> : route.kind === 'wrapped' ? <main className="feature-shell"><Suspense fallback={<FeatureViewLoading />}><LiveWrapped concerts={personalConcerts} analytics={library.personal_analytics} memberName={member.display_name} /></Suspense></main> : route.kind === 'not-found' ? <main className="feature-shell"><section className="detail-not-found"><span className="not-found-code">404</span><h1 data-view-heading tabIndex={-1}>This page missed the encore</h1><p>The link may be old, but your concert archive is still here.</p><button className="button button-primary" type="button" onClick={() => navigate({ kind: 'concerts' }, true)}>Back to concerts</button></section></main> : <main className="feature-shell">{selectedConcert ? <ConcertDetail concert={selectedConcert} member={member} onArtwork={openArtwork} onBack={backToConcerts} onEdit={(row) => { setEditing(row); setFormError(''); setDialogOpen(true) }} onDelete={(row) => { void deleteConcert(row).then((deleted) => { if (deleted) navigate({ kind: 'concerts' }, true) }) }} /> : <section className="detail-not-found"><ArrowLeft size={22} aria-hidden="true" /><h1 data-view-heading tabIndex={-1}>Concert not found</h1><p>This concert may have been deleted or is not available in your library.</p><button className="button button-primary" type="button" onClick={() => navigate({ kind: 'concerts' }, true)}>Back to concerts</button></section>}</main>}
+      </div>
+      <AddConcertDialog concert={editing} concerts={library.concerts} currentUserId={member.user_id} error={formError} members={library.members} open={dialogOpen} saving={saving} onClose={() => { setDialogOpen(false); setEditing(null) }} onSave={saveConcert} />
       <AlbumImportDialog open={albumDialogOpen} onClose={() => setAlbumDialogOpen(false)} onImported={(albumId, message) => void importedAlbum(albumId, message)} />
       <ArtworkDialog concert={artworkEditing} error={artworkError} open={artworkDialogOpen} saving={artworkSaving} onClose={() => { setArtworkDialogOpen(false); setArtworkEditing(null) }} onSave={saveArtwork} />
       <ConflictDialog conflict={cloud.conflict} onDiscard={() => void cloud.discardConflict()} onRetry={() => void cloud.retryConflict()} />

@@ -1,8 +1,8 @@
 from backend.discovery_routes import (
     _gemini_suggestion,
-    _tavily_suggestion,
     _seatgeek_suggestion,
     _setlistfm_suggestion,
+    _tavily_suggestion,
     _ticketmaster_suggestion,
     _tour_name,
     suggest_concerts,
@@ -176,15 +176,17 @@ def test_discovery_is_toronto_only_even_when_provider_returns_other_cities(monke
 
 
 def test_gemini_event_maps_to_suggestion():
-    suggestion = _gemini_suggestion({
-        "artist": "Yeat",
-        "tour": "The Bell Tour",
-        "date": "2026-09-14",
-        "venue": "Scotiabank Arena",
-        "city": "Toronto",
-        "genre": "Hip-Hop",
-        "ticket_url": "https://example.com/tickets",
-    })
+    suggestion = _gemini_suggestion(
+        {
+            "artist": "Yeat",
+            "tour": "The Bell Tour",
+            "date": "2026-09-14",
+            "venue": "Scotiabank Arena",
+            "city": "Toronto",
+            "genre": "Hip-Hop",
+            "ticket_url": "https://example.com/tickets",
+        }
+    )
 
     assert suggestion is not None
     assert suggestion.artist == "Yeat"
@@ -193,11 +195,14 @@ def test_gemini_event_maps_to_suggestion():
 
 
 def test_tavily_result_maps_only_explicit_toronto_event_details():
-    suggestion = _tavily_suggestion({
-        "title": "Yeat Toronto Tickets - Coca-Cola Coliseum | Sep 13, 2026",
-        "content": "Yeat concert Sep 13, 2026 at Coca-Cola Coliseum, Toronto, ON.",
-        "url": "https://example.com/yeat-toronto",
-    }, "Yeat")
+    suggestion = _tavily_suggestion(
+        {
+            "title": "Yeat Toronto Tickets - Coca-Cola Coliseum | Sep 13, 2026",
+            "content": "Yeat concert Sep 13, 2026 at Coca-Cola Coliseum, Toronto, ON.",
+            "url": "https://example.com/yeat-toronto",
+        },
+        "Yeat",
+    )
 
     assert suggestion is not None
     assert suggestion.date == "2026-09-13"

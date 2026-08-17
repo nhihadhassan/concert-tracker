@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { BarChart3, Check, ListMusic, MapPin, Music2, Quote, Radio, Sparkles, Ticket, Trophy, Users, WalletCards } from 'lucide-react'
 import { m, useReducedMotion } from 'motion/react'
-import type { Analytics, GroupSummary, LyricBreakdown, RankingRow, SpotifyInsights, SpotifyRange, SpotifyRelease } from '../types'
+import type { Analytics, Concert, GroupSummary, LyricBreakdown, RankingRow, SpotifyInsights, SpotifyRange, SpotifyRelease } from '../types'
 import { connectSpotify, disconnectSpotify, fetchLyricBreakdown, fetchSpotifyInsights, fetchSpotifyPulse, fetchSpotifyStatus, startSpotifyLogin } from '../lib/api'
+import { buildConcertStory } from '../lib/concertInsights'
 
 interface StatsDashboardProps {
   analytics: Analytics
+  concerts: Concert[]
   memberName: string
   rankings: RankingRow[]
   scope: 'personal' | 'shared'
@@ -228,7 +230,7 @@ function LyricCard({ state, subject }: { state: LyricState; subject: LyricSubjec
   )
 }
 
-export function StatsDashboard({ analytics, memberName, rankings, scope, onScopeChange }: StatsDashboardProps) {
+export function StatsDashboard({ analytics, concerts, memberName, rankings, scope, onScopeChange }: StatsDashboardProps) {
   const reduceMotion = useReducedMotion()
   const spotify = useSpotifyPulse()
   const insights = useSpotifyInsights(spotify.state.kind === 'connected')
@@ -257,6 +259,7 @@ export function StatsDashboard({ analytics, memberName, rankings, scope, onScope
   const concertLyric = useLyricBreakdown(lyricSubjects.concert)
   const years = useMemo(() => [...new Set(analytics.monthly_trends.map((row) => row.year))].sort((a, b) => b - a), [analytics.monthly_trends])
   const latestYear = years[0]
+  const archiveStory = useMemo(() => buildConcertStory(concerts, 'all'), [concerts])
 
   const activityRows = [...years].reverse().map((activityYear) => ({
     year: activityYear,
@@ -269,8 +272,6 @@ export function StatsDashboard({ analytics, memberName, rankings, scope, onScope
   const topArtists = sortGroups(analytics.artist_summaries).slice(0, 5)
   const topGenres = sortGroups(analytics.genre_summaries).slice(0, 8)
   const topVenues = [...analytics.venue_summaries].sort((left, right) => right.concerts - left.concerts || left.key.localeCompare(right.key)).slice(0, 5)
-  const repeatArtist = sortGroups(analytics.repeat_artists)[0]
-  const topGenre = topGenres[0]
   const topRanking = rankings[0]
   const busiestMonth = analytics.monthly_trends.reduce<(typeof analytics.monthly_trends)[number] | null>((best, row) =>
     !best || row.concerts > best.concerts ? row : best, null)
@@ -278,7 +279,6 @@ export function StatsDashboard({ analytics, memberName, rankings, scope, onScope
   const upcoming = analytics.status_counts['Want to Go'] ?? 0
   const cancelled = analytics.status_counts.Cancelled ?? 0
   const attendedShare = analytics.total_concerts ? attended / analytics.total_concerts * 100 : 0
-  const discoveryShare = analytics.total_concerts ? analytics.artist_summaries.length / analytics.total_concerts * 100 : 0
   const monthlySummary = busiestMonth
     ? `${months[busiestMonth.month - 1]} ${busiestMonth.year} is the loudest month with ${busiestMonth.concerts} ${busiestMonth.concerts === 1 ? 'record' : 'records'}.`
     : 'Add concerts across a few months to light up the activity grid.'
@@ -287,11 +287,11 @@ export function StatsDashboard({ analytics, memberName, rankings, scope, onScope
     return totals
   }, {})
   const busiestYear = Object.entries(yearlyTotals).sort((left, right) => right[1] - left[1])[0]
-  const funFacts = [
+  const archiveStories = [
     topRanking ? `Your highest-rated night: ${topRanking.artist} at ${topRanking.rating}/10 back in ${topRanking.concert_date.slice(0, 4)}.` : 'Rate a concert to crown your best night.',
-    busiestYear ? `${busiestYear[0]} was your biggest year with ${busiestYear[1]} ${busiestYear[1] === 1 ? 'show' : 'shows'}.` : 'Your busiest year shows up once concerts span the calendar.',
-    repeatArtist ? `${repeatArtist.key} is your most-seen artist, catching them ${repeatArtist.concerts} ${repeatArtist.concerts === 1 ? 'time' : 'times'}.` : 'See an artist twice to start a streak.',
-    topGenre && attended ? `${topGenre.key} makes up ${formatPercent(topGenre.attended / attended * 100)} of the shows you have actually attended.` : 'Genre facts unlock once concerts have genres.',
+    archiveStory.closestRun ? `Your tightest run was ${archiveStory.closestRun.days} ${archiveStory.closestRun.days === 1 ? 'day' : 'days'} between ${archiveStory.closestRun.first.artist} and ${archiveStory.closestRun.second.artist}.` : 'A second attended show will reveal your tightest live run.',
+    archiveStory.longestMonthlyStreak > 1 ? `Your longest streak ran for ${archiveStory.longestMonthlyStreak} consecutive months with at least one show.` : busiestYear ? `${busiestYear[0]} was your biggest year with ${busiestYear[1]} ${busiestYear[1] === 1 ? 'show' : 'shows'}.` : 'Your busiest year appears once the archive spans the calendar.',
+    archiveStory.repeatArtists.length ? `${archiveStory.repeatArtists.length} ${archiveStory.repeatArtists.length === 1 ? 'artist has' : 'artists have'} earned repeat status; ${archiveStory.repeatArtists[0][0]} leads with ${archiveStory.repeatArtists[0][1]} shows.` : `${archiveStory.uniqueArtists} artists have made the archive so far.`,
   ]
 
   return (
@@ -411,9 +411,9 @@ export function StatsDashboard({ analytics, memberName, rankings, scope, onScope
           </section>
 
           <section className="stats-panel stats-fun-facts" aria-labelledby="fun-facts-title">
-            <div className="stats-panel-head"><h3 id="fun-facts-title"><Sparkles aria-hidden="true" />Fun facts</h3><span>{formatPercent(attendedShare)} attended</span></div>
-            <ul>{funFacts.map((fact) => <li key={fact}>{fact}</li>)}</ul>
-            <div className="spotify-signal"><strong>{formatPercent(discoveryShare)}</strong><span>artist discovery ratio</span></div>
+            <div className="stats-panel-head"><h3 id="fun-facts-title"><Sparkles aria-hidden="true" />Archive stories</h3><span>{formatPercent(attendedShare)} attended</span></div>
+            <ul>{archiveStories.map((fact) => <li key={fact}>{fact}</li>)}</ul>
+            <div className="spotify-signal"><strong>{archiveStory.weekendShare}%</strong><span>of attended shows landed on weekends</span></div>
           </section>
 
           <section className="stats-panel stats-genres" aria-labelledby="genres-title">

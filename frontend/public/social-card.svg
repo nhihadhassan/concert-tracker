@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#261757"/>
+      <stop offset="0.52" stop-color="#101b3e"/>
+      <stop offset="1" stop-color="#3a1436"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="82%" cy="12%" r="62%">
+      <stop stop-color="#db2777" stop-opacity=".72"/>
+      <stop offset="1" stop-color="#db2777" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1200" height="630" rx="36" fill="url(#bg)"/>
+  <rect width="1200" height="630" rx="36" fill="url(#glow)"/>
+  <g fill="none" stroke="#ffe77a" stroke-opacity=".28" stroke-width="2">
+    <circle cx="1000" cy="190" r="160"/>
+    <ellipse cx="1000" cy="190" rx="230" ry="95" transform="rotate(28 1000 190)"/>
+  </g>
+  <text x="74" y="106" fill="#ffe77a" font-family="Arial, sans-serif" font-size="28" font-weight="700" letter-spacing="4">ENCORE</text>
+  <text x="74" y="250" fill="#ffffff" font-family="Arial, sans-serif" font-size="76" font-weight="800">Every show.</text>
+  <text x="74" y="334" fill="#ffffff" font-family="Arial, sans-serif" font-size="76" font-weight="800">Every memory.</text>
+  <text x="78" y="410" fill="#b9c7df" font-family="Arial, sans-serif" font-size="30">Concert history, insights, and yearly live recaps.</text>
+  <g transform="translate(76 494)">
+    <rect width="420" height="72" rx="18" fill="#ffffff" fill-opacity=".09"/>
+    <circle cx="42" cy="36" r="18" fill="#71eadb"/>
+    <path d="M37 27v18l14-9z" fill="#101b3e"/>
+    <text x="78" y="45" fill="#ffffff" font-family="Arial, sans-serif" font-size="25" font-weight="700">Your live archive, replayed</text>
+  </g>
+</svg>

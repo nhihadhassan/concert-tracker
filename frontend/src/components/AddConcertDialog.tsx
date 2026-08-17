@@ -16,6 +16,7 @@ import type {
 
 interface ConcertDialogProps {
   concert: Concert | null
+  concerts: Concert[]
   currentUserId: string
   error: string
   members: MemberSummary[]
@@ -38,6 +39,7 @@ const cleanArtistName = (value: string) => value
 
 export function AddConcertDialog({
   concert,
+  concerts,
   currentUserId,
   error,
   members,
@@ -50,6 +52,7 @@ export function AddConcertDialog({
   const formRef = useRef<HTMLFormElement>(null)
   const artworkRequest = useRef<AbortController | null>(null)
   const suggestionRequest = useRef<AbortController | null>(null)
+  const statusTouched = useRef(false)
   const [imageUrl, setImageUrl] = useState(concert?.image ?? '')
   const [artworkQuery, setArtworkQuery] = useState('')
   const [artworkResults, setArtworkResults] = useState<ArtworkOption[]>([])
@@ -67,6 +70,18 @@ export function AddConcertDialog({
     () => concert?.reviews.find((review) => review.reviewer_user_id === currentUserId) ?? null,
     [concert, currentUserId],
   )
+  const archiveSuggestions = useMemo(() => {
+    const unique = (values: Array<string | null>) => [...new Set(values
+      .map((value) => value?.trim())
+      .filter((value): value is string => Boolean(value)))]
+      .sort((left, right) => left.localeCompare(right))
+    return {
+      artists: unique(concerts.map((row) => row.artist)),
+      venues: unique(concerts.map((row) => row.venue)),
+      genres: unique(concerts.map((row) => row.genre)),
+      types: unique(concerts.map((row) => row.type)),
+    }
+  }, [concerts])
 
   const loadArtwork = useCallback(async (query: string) => {
     const trimmedQuery = query.trim()
@@ -96,9 +111,11 @@ export function AddConcertDialog({
   useEffect(() => {
     const dialog = dialogRef.current
     if (!dialog) return
+    let focusFrame: number | null = null
     if (open && !dialog.open) dialog.showModal()
     if (!open && dialog.open) dialog.close()
     if (open) {
+      statusTouched.current = false
       setImageUrl(concert?.image ?? '')
       const initialQuery = concert
         ? [cleanArtistName(concert.artist), concert.tour].filter(Boolean).join(' ')
@@ -115,8 +132,15 @@ export function AddConcertDialog({
       setGuests(parseGuests(concert?.companions))
       setGuestDraft('')
       if (initialQuery) void loadArtwork(initialQuery)
+      if (!concert) {
+        focusFrame = window.requestAnimationFrame(() => {
+          const artist = formRef.current?.elements.namedItem('artist')
+          if (artist instanceof HTMLInputElement) artist.focus()
+        })
+      }
     }
     return () => {
+      if (focusFrame !== null) window.cancelAnimationFrame(focusFrame)
       artworkRequest.current?.abort()
       suggestionRequest.current?.abort()
     }
@@ -234,101 +258,118 @@ export function AddConcertDialog({
         <div className="dialog-head">
           <div>
             <h2>{concert ? 'Edit concert' : 'Add concert'}</h2>
-            <p>{concert ? 'Update the shared event and your own review.' : 'Add an event to the shared cloud library.'}</p>
+            <p>{concert ? 'Update the event, attendance, or your own review.' : 'Artist, date, and venue are enough. Everything else can wait.'}</p>
           </div>
           <button className="icon-button" type="button" onClick={onClose} title="Close" aria-label="Close concert form">
             <X size={20} />
           </button>
         </div>
 
-        <nav className="form-section-nav" aria-label="Concert form sections">
-          <a href="#concert-form-event"><span>1</span>Event</a>
-          <a href="#concert-form-attendance"><span>2</span>Attendance</a>
-          <a href="#concert-form-review"><span>3</span>Your review</a>
-          <a href="#concert-form-details"><span>4</span>Details</a>
-        </nav>
-
-        <fieldset className="form-section" id="concert-form-event">
-          <legend>Event</legend>
-          {concert ? null : <div className="suggest-box">
-            <div className="suggest-head">
-              <span className="suggest-title"><Sparkles size={14} aria-hidden="true" />Find a show to fill in</span>
-              <div className="suggest-modes" role="group" aria-label="Show search mode">
-                <button
-                  type="button"
-                  className={suggestMode === 'upcoming' ? 'active' : ''}
-                  aria-pressed={suggestMode === 'upcoming'}
-                  onClick={() => { setSuggestMode('upcoming'); setSuggestions([]); setSuggestMessage('') }}
-                >Upcoming</button>
-                <button
-                  type="button"
-                  className={suggestMode === 'past' ? 'active' : ''}
-                  aria-pressed={suggestMode === 'past'}
-                  onClick={() => { setSuggestMode('past'); setSuggestions([]); setSuggestMessage('') }}
-                >Already played</button>
+        {concert ? null : <details className="form-disclosure show-finder">
+          <summary><span><Sparkles size={15} aria-hidden="true" />Find a show and fill it in</span><small>Optional</small></summary>
+          <div className="suggest-box">
+              <div className="suggest-head">
+                <span className="suggest-title">Search free show sources</span>
+                <div className="suggest-modes" role="group" aria-label="Show search mode">
+                  <button
+                    type="button"
+                    className={suggestMode === 'upcoming' ? 'active' : ''}
+                    aria-pressed={suggestMode === 'upcoming'}
+                    onClick={() => { setSuggestMode('upcoming'); setSuggestions([]); setSuggestMessage('') }}
+                  >Upcoming</button>
+                  <button
+                    type="button"
+                    className={suggestMode === 'past' ? 'active' : ''}
+                    aria-pressed={suggestMode === 'past'}
+                    onClick={() => { setSuggestMode('past'); setSuggestions([]); setSuggestMessage('') }}
+                  >Past</button>
+                </div>
               </div>
-            </div>
-            <label className="field field-wide">
-              <span className="sr-only">Artist</span>
-              <span className="input-with-icon">
-                <Search size={16} aria-hidden="true" />
-                <input
-                  type="search"
-                  value={suggestQuery}
-                  placeholder={suggestMode === 'past' ? 'Artist you saw, e.g. Kendrick Lamar' : 'Artist coming to Toronto, e.g. Yeat'}
-                  onChange={(event) => setSuggestQuery(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key !== 'Enter') return
-                    event.preventDefault()
-                    void loadSuggestions(suggestQuery, suggestMode)
-                  }}
-                />
-              </span>
-            </label>
-            <button type="button" className="button button-secondary" disabled={suggestLoading || !suggestQuery.trim()} onClick={() => void loadSuggestions(suggestQuery, suggestMode)}>
-              {suggestLoading ? <LoaderCircle className="spin" size={16} aria-hidden="true" /> : <Search size={16} aria-hidden="true" />}
-              {suggestLoading ? 'Searching…' : 'Search shows'}
-            </button>
-            {suggestMessage ? <p className="suggest-note">{suggestMessage}</p> : null}
-            {suggestions.length ? <ul className="suggest-results">{suggestions.map((suggestion) => {
-              const key = `${suggestion.date}|${suggestion.venue}`
-              const applied = appliedSuggestion === key
-              return <li key={key}>
-                <button type="button" className={applied ? 'applied' : ''} aria-pressed={applied} onClick={() => applySuggestion(suggestion)}>
-                  {suggestion.image
-                    ? <img src={suggestion.image} alt="" loading="lazy" />
-                    : <span className="suggest-art-fallback" aria-hidden="true" />}
-                  <span className="suggest-meta">
-                    <strong>{suggestion.tour ?? suggestion.artist}</strong>
-                    <span>{suggestion.venue}{suggestion.city ? `, ${suggestion.city}` : ''}</span>
+              <div className="suggest-search-row">
+                <label className="field field-wide">
+                  <span className="sr-only">Artist to search</span>
+                  <span className="input-with-icon">
+                    <Search size={16} aria-hidden="true" />
+                    <input
+                      type="search"
+                      value={suggestQuery}
+                      autoComplete="off"
+                      placeholder={suggestMode === 'past' ? 'Artist you saw' : 'Artist coming to Toronto'}
+                      onChange={(event) => setSuggestQuery(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key !== 'Enter') return
+                        event.preventDefault()
+                        void loadSuggestions(suggestQuery, suggestMode)
+                      }}
+                    />
                   </span>
-                  <span className="suggest-date">{suggestion.date}{applied ? <em><Check size={13} aria-hidden="true" />Filled in</em> : null}</span>
+                </label>
+                <button type="button" className="button button-secondary" disabled={suggestLoading || !suggestQuery.trim()} onClick={() => void loadSuggestions(suggestQuery, suggestMode)}>
+                  {suggestLoading ? <LoaderCircle className="spin" size={16} aria-hidden="true" /> : <Search size={16} aria-hidden="true" />}
+                  {suggestLoading ? 'Searching…' : 'Search'}
                 </button>
-              </li>
-            })}</ul> : null}
-          </div>}
-          <div className="form-grid">
-            <label className="field field-wide"><span>Artist</span><input name="artist" required defaultValue={concert?.artist} onBlur={(event) => {
+              </div>
+              {suggestMessage ? <p className="suggest-note" role="status">{suggestMessage}</p> : null}
+              {suggestions.length ? <ul className="suggest-results">{suggestions.map((suggestion) => {
+                const key = `${suggestion.date}|${suggestion.venue}`
+                const applied = appliedSuggestion === key
+                return <li key={key}>
+                  <button type="button" className={applied ? 'applied' : ''} aria-pressed={applied} onClick={() => applySuggestion(suggestion)}>
+                    {suggestion.image
+                      ? <img src={suggestion.image} alt="" loading="lazy" decoding="async" />
+                      : <span className="suggest-art-fallback" aria-hidden="true" />}
+                    <span className="suggest-meta">
+                      <strong>{suggestion.tour ?? suggestion.artist}</strong>
+                      <span>{suggestion.venue}{suggestion.city ? `, ${suggestion.city}` : ''}</span>
+                    </span>
+                    <span className="suggest-date">{suggestion.date}{applied ? <em><Check size={13} aria-hidden="true" />Filled in</em> : null}</span>
+                  </button>
+                </li>
+              })}</ul> : null}
+          </div>
+        </details>}
+
+        <fieldset className="form-section quick-event" id="concert-form-event">
+          <legend>Concert</legend>
+          <p className="form-section-note">Start with the essentials. Archive matches appear as you type.</p>
+          <div className="form-grid quick-event-grid">
+            <label className="field field-wide"><span>Artist</span><input name="artist" list="concert-artist-options" autoComplete="off" required defaultValue={concert?.artist} onBlur={(event) => {
               if (concert || artworkQuery.trim()) return
               const query = cleanArtistName(event.currentTarget.value)
               if (!query) return
               setArtworkQuery(query)
               void loadArtwork(query)
             }} /></label>
-            <label className="field field-wide"><span>Tour name</span><input name="tour" defaultValue={concert?.tour ?? ''} /></label>
-            <label className="field"><span>Date</span><input name="date" type="date" required defaultValue={concert?.date} /></label>
-            <label className="field"><span>Status</span><select name="status" defaultValue={concert?.status ?? 'Want to Go'}><option>Want to Go</option><option>Attended</option><option>Cancelled</option></select></label>
-            <label className="field field-wide"><span>Venue</span><input name="venue" required defaultValue={concert?.venue} /></label>
-            <label className="field"><span>Price</span><input name="price" type="number" min="0" step="0.01" defaultValue={concert?.price ?? ''} /></label>
-            <label className="field"><span>Projected rating</span><input name="projected" type="number" min="0" max="10" step="0.1" defaultValue={concert?.projected ?? ''} /></label>
-            <label className="field"><span>Genre</span><input name="genre" defaultValue={concert?.genre ?? ''} /></label>
-            <label className="field"><span>Type</span><input name="type" defaultValue={concert?.type ?? 'Concert'} /></label>
-            <label className="field field-wide"><span>Seat</span><input name="seat" defaultValue={concert?.seat ?? ''} /></label>
+            <label className="field"><span>Date</span><input name="date" type="date" required defaultValue={concert?.date} onChange={(event) => {
+              if (concert || statusTouched.current) return
+              const field = formRef.current?.elements.namedItem('status')
+              if (field instanceof HTMLSelectElement) field.value = event.currentTarget.value < new Date().toISOString().slice(0, 10) ? 'Attended' : 'Want to Go'
+            }} /></label>
+            <label className="field"><span>Status</span><select name="status" defaultValue={concert?.status ?? 'Want to Go'} onChange={() => { statusTouched.current = true }}><option>Want to Go</option><option>Attended</option><option>Cancelled</option></select></label>
+            <label className="field field-wide"><span>Venue</span><input name="venue" list="concert-venue-options" autoComplete="off" required defaultValue={concert?.venue} /></label>
           </div>
+          <datalist id="concert-artist-options">{archiveSuggestions.artists.map((value) => <option key={value} value={value} />)}</datalist>
+          <datalist id="concert-venue-options">{archiveSuggestions.venues.map((value) => <option key={value} value={value} />)}</datalist>
+          <datalist id="concert-genre-options">{archiveSuggestions.genres.map((value) => <option key={value} value={value} />)}</datalist>
+          <datalist id="concert-type-options">{archiveSuggestions.types.map((value) => <option key={value} value={value} />)}</datalist>
         </fieldset>
 
-        <fieldset className="form-section" id="concert-form-attendance">
-          <legend>Attendance</legend>
+        <details className="form-disclosure" open={Boolean(concert)}>
+          <summary><span>Event details</span><small>Tour, ticket, seat, genre</small></summary>
+          <div className="form-grid disclosure-content">
+            <label className="field field-wide"><span>Tour name</span><input name="tour" defaultValue={concert?.tour ?? ''} /></label>
+            <label className="field"><span>Price</span><input name="price" type="number" min="0" step="0.01" defaultValue={concert?.price ?? ''} /></label>
+            <label className="field"><span>Projected rating</span><input name="projected" type="number" min="0" max="10" step="0.1" defaultValue={concert?.projected ?? ''} /></label>
+            <label className="field"><span>Genre</span><input name="genre" list="concert-genre-options" autoComplete="off" defaultValue={concert?.genre ?? ''} /></label>
+            <label className="field"><span>Type</span><input name="type" list="concert-type-options" autoComplete="off" defaultValue={concert?.type ?? 'Concert'} /></label>
+            <label className="field field-wide"><span>Seat</span><input name="seat" defaultValue={concert?.seat ?? ''} /></label>
+          </div>
+        </details>
+
+        <details className="form-disclosure" open={Boolean(concert)}>
+          <summary><span>Attendance</span><small>{concert ? 'Edit people' : 'You are selected by default'}</small></summary>
+          <fieldset className="disclosure-fieldset" id="concert-form-attendance">
+          <legend className="sr-only">Attendance</legend>
           <div className="attendance-options">
             {members.map((member) => {
               const checked = member.user_id === currentUserId || concert?.attendees.some(
@@ -380,10 +421,13 @@ export function AddConcertDialog({
               }}
             />
           </div>
-        </fieldset>
+          </fieldset>
+        </details>
 
-        <fieldset className="form-section" id="concert-form-review">
-          <legend>Your review</legend>
+        <details className="form-disclosure" open={Boolean(personalReview)}>
+          <summary><span>Your review</span><small>Add after the show</small></summary>
+          <fieldset className="disclosure-fieldset" id="concert-form-review">
+          <legend className="sr-only">Your review</legend>
           <div className="score-grid">
             <label className="field"><span>Enjoyment</span><input name="enjoyment" type="number" min="0" max="10" step="0.1" defaultValue={personalReview?.enjoyment_score ?? ''} /></label>
             <label className="field"><span>Stage</span><input name="stage" type="number" min="0" max="10" step="0.1" defaultValue={personalReview?.stage_score ?? ''} /></label>
@@ -392,10 +436,13 @@ export function AddConcertDialog({
           </div>
           {personalReview?.is_overridden ? <p className="override-note">Historical override: {personalReview.override_rating}/10. Component edits remain visible, while the documented override stays authoritative.</p> : null}
           <label className="field"><span>Review notes</span><textarea name="reviewNotes" rows={3} defaultValue={personalReview?.notes ?? ''} /></label>
-        </fieldset>
+          </fieldset>
+        </details>
 
-        <fieldset className="form-section" id="concert-form-details">
-          <legend>Details</legend>
+        <details className="form-disclosure" open={Boolean(concert?.image || concert?.spotify_url || concert?.notes)}>
+          <summary><span>Artwork and notes</span><small>Optional</small></summary>
+          <fieldset className="disclosure-fieldset" id="concert-form-details">
+          <legend className="sr-only">Artwork and notes</legend>
           <div className="form-grid">
             <div className="artwork-picker field-wide">
               <div className="artwork-picker-head">
@@ -420,7 +467,8 @@ export function AddConcertDialog({
             <label className="field field-wide"><span>Spotify setlist URL</span><input name="spotify" type="url" defaultValue={concert?.spotify_url ?? ''} /></label>
             <label className="field field-wide"><span>Event notes</span><textarea name="notes" rows={3} defaultValue={concert?.notes ?? ''} /></label>
           </div>
-        </fieldset>
+          </fieldset>
+        </details>
 
         {error ? <p className="form-error" role="alert">{error}</p> : null}
         <div className="dialog-actions">

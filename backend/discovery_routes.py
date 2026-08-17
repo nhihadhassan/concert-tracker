@@ -18,11 +18,14 @@ no key for the requested mode the endpoint reports ``configured=false`` so the
 UI hides the feature rather than erroring.
 """
 
+# Vercel's Python 3.9 runtime cannot evaluate PEP 604 unions in Pydantic models.
+# ruff: noqa: UP045
+
 from __future__ import annotations
 
-from datetime import datetime
 import json
 import re
+from datetime import datetime
 from typing import Any, Optional
 
 import httpx
@@ -37,7 +40,9 @@ TICKETMASTER_EVENTS_URL = "https://app.ticketmaster.com/discovery/v2/events.json
 SEATGEEK_EVENTS_URL = "https://api.seatgeek.com/2/events"
 SETLISTFM_SEARCH_URL = "https://api.setlist.fm/rest/1.0/search/setlists"
 TAVILY_SEARCH_URL = "https://api.tavily.com/search"
-GEMINI_GENERATE_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent"
+GEMINI_GENERATE_URL = (
+    "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent"
+)
 MAX_SUGGESTIONS = 8
 PLACEHOLDER_GENRES = {"undefined", "other", "unknown"}
 TORONTO = "Toronto"
@@ -273,7 +278,10 @@ def _search_tavily(settings: Settings, artist: str, city: str) -> list[dict[str,
         if response.status_code == 429:
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="Tavily search quota is unavailable. Wait for the free monthly credits to reset.",
+                detail=(
+                    "Tavily search quota is unavailable. "
+                    "Wait for the free monthly credits to reset."
+                ),
             )
         response.raise_for_status()
         payload: dict[str, Any] = response.json()
@@ -298,9 +306,7 @@ def _fetch(
     empty_on_404: bool = False,
 ) -> dict[str, Any]:
     try:
-        response = httpx.get(
-            url, params=params, headers=headers, timeout=10, follow_redirects=True
-        )
+        response = httpx.get(url, params=params, headers=headers, timeout=10, follow_redirects=True)
         # setlist.fm answers an unmatched artist with 404 rather than an empty
         # list, so a typo should read as "nothing found", not as an outage.
         if empty_on_404 and response.status_code == 404:
@@ -384,33 +390,33 @@ Use null when tour, genre, or ticket_url is not known. Do not include events
 outside Toronto, and do not invent missing dates or venues.
 """.strip()
     request_body = {
-            "contents": [{"parts": [{"text": prompt}]}],
-            "tools": [{"google_search": {}}],
-            "generationConfig": {
-                "responseMimeType": "application/json",
-                "responseSchema": {
-                    "type": "OBJECT",
-                    "properties": {
-                        "events": {
-                            "type": "ARRAY",
-                            "items": {
-                                "type": "OBJECT",
-                                "properties": {
-                                    "artist": {"type": "STRING"},
-                                    "tour": {"type": "STRING", "nullable": True},
-                                    "date": {"type": "STRING"},
-                                    "venue": {"type": "STRING"},
-                                    "city": {"type": "STRING"},
-                                    "genre": {"type": "STRING", "nullable": True},
-                                    "ticket_url": {"type": "STRING", "nullable": True},
-                                },
-                                "required": ["artist", "date", "venue", "city"],
+        "contents": [{"parts": [{"text": prompt}]}],
+        "tools": [{"google_search": {}}],
+        "generationConfig": {
+            "responseMimeType": "application/json",
+            "responseSchema": {
+                "type": "OBJECT",
+                "properties": {
+                    "events": {
+                        "type": "ARRAY",
+                        "items": {
+                            "type": "OBJECT",
+                            "properties": {
+                                "artist": {"type": "STRING"},
+                                "tour": {"type": "STRING", "nullable": True},
+                                "date": {"type": "STRING"},
+                                "venue": {"type": "STRING"},
+                                "city": {"type": "STRING"},
+                                "genre": {"type": "STRING", "nullable": True},
+                                "ticket_url": {"type": "STRING", "nullable": True},
                             },
-                        }
-                    },
-                    "required": ["events"],
+                            "required": ["artist", "date", "venue", "city"],
+                        },
+                    }
                 },
+                "required": ["events"],
             },
+        },
     }
     try:
         response = httpx.post(
@@ -423,7 +429,10 @@ outside Toronto, and do not invent missing dates or venues.
         if response.status_code == 429:
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="Gemini search quota is unavailable. Enable Gemini API billing or wait for quota to reset.",
+                detail=(
+                    "Gemini search quota is unavailable. "
+                    "Wait for the free quota to reset or use another configured provider."
+                ),
             )
         response.raise_for_status()
         payload: dict[str, Any] = response.json()
@@ -500,7 +509,9 @@ def suggest_concerts(
     elif settings.tavily_api_key:
         provider = "tavily"
         events = _search_tavily(settings, artist_query, city_query)
-        to_suggestion = lambda event: _tavily_suggestion(event, artist_query)
+
+        def to_suggestion(event):
+            return _tavily_suggestion(event, artist_query)
     elif settings.gemini_api_key:
         provider = "gemini"
         events = _search_gemini(settings, artist_query, city_query)
