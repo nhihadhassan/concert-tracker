@@ -55,6 +55,7 @@ const library: LibraryResponse = {
     seat: 'Section 319',
     status: 'Attended',
     type: 'Concert',
+    setlist_url: null,
     spotify_url: null,
     image: null,
     notes: 'Shared event note',
@@ -76,6 +77,7 @@ const library: LibraryResponse = {
     seat: null,
     status: 'Want to Go',
     type: 'Concert',
+    setlist_url: null,
     spotify_url: null,
     image: 'https://example.com/j-cole.jpg',
     notes: null,
@@ -345,17 +347,18 @@ describe('Concert Tracker cloud shell', () => {
     expect(window.location.pathname).toBe('/')
   })
 
-  it('shows intentional unrated, image-less, and no-notes detail states', async () => {
+  it('omits empty optional detail metadata', async () => {
     const row = library.concerts[0]
     const original = { personal_rating: row.personal_rating, combined_rating: row.combined_rating, reviews: row.reviews, notes: row.notes }
     Object.assign(row, { personal_rating: null, combined_rating: null, reviews: [], notes: null })
     window.history.replaceState({}, '', `/?concert=${row.id}`)
 
     const view = render(<Dashboard member={member} />)
-    expect(await screen.findByText('Not rated yet')).toBeInTheDocument()
+    await screen.findByRole('heading', { name: 'Kali Uchis' })
+    expect(screen.queryByText('Not rated yet')).not.toBeInTheDocument()
     expect(screen.queryByRole('img', { name: 'Kali Uchis concert artwork' })).not.toBeInTheDocument()
-    expect(screen.getByText('No personal memory recorded yet.')).toBeInTheDocument()
-    expect(screen.getByText('No shared event notes recorded.')).toBeInTheDocument()
+    expect(screen.queryByText('No personal memory recorded yet.')).not.toBeInTheDocument()
+    expect(screen.queryByText('No shared event notes recorded.')).not.toBeInTheDocument()
 
     view.unmount()
     Object.assign(row, original)

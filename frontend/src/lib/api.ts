@@ -3,6 +3,8 @@ import type {
   AlbumMutationResponse,
   AlbumReviewWrite,
   ArtworkSearchResponse,
+  BackupPreview,
+  BackupRestoreResult,
   ConcertSuggestionMode,
   ConcertSuggestionResponse,
   DiscoveryStatus,
@@ -108,6 +110,19 @@ export const searchConcertSuggestions = (
     `/v1/discovery/concerts?artist=${encodeURIComponent(artist)}&mode=${mode}&city=Toronto`,
     { signal },
   )
+
+export const previewBackup = (backup: unknown) =>
+  apiRequest<BackupPreview>('/v1/backups/preview', { method: 'POST', body: JSON.stringify({ backup }) })
+
+export const restoreBackup = (
+  backup: unknown,
+  preview: Pick<BackupPreview, 'backup_hash' | 'revision_hash'>,
+  resolutions: Array<{ key: string, action: 'keep_existing' | 'use_backup' }>,
+  idempotencyKey = crypto.randomUUID(),
+) => apiRequest<BackupRestoreResult>('/v1/backups/restore', {
+  method: 'POST',
+  body: JSON.stringify({ backup, ...preview, resolutions }),
+}, idempotencyKey)
 
 export const fetchSpotifyStatus = () =>
   apiRequest<SpotifyStatus>('/v1/spotify/status')

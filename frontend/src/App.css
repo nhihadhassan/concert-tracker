@@ -6641,6 +6641,61 @@ a.detail-setlist:hover {
   font-size: 0.75rem;
 }
 
+.memory-lane {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  margin: 16px 0;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-raised);
+}
+.memory-lane-icon { display: grid; width: 38px; height: 38px; place-items: center; border-radius: 11px; color: var(--accent); background: var(--surface-soft); }
+.memory-lane-copy, .memory-lane-actions { display: grid; gap: 3px; }
+.memory-lane-copy > span, .memory-lane-copy small { color: var(--text-muted); font-size: .78rem; }
+.memory-lane-copy strong { font-size: .92rem; }
+.memory-lane-actions { grid-auto-flow: column; }
+.text-action { display: inline-flex; min-height: 36px; align-items: center; gap: 6px; border: 0; color: var(--primary); background: transparent; font: inherit; font-size: .8rem; font-weight: 750; }
+
+.detail-milestones { display: grid; gap: 8px; margin: 18px 0; }
+.detail-milestones p { display: flex; gap: 8px; align-items: center; margin: 0; color: var(--text-muted); font-size: .84rem; }
+.detail-milestones svg { color: var(--accent); }
+
+.restore-panel { max-width: 560px; }
+.restore-file input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.restore-notice { display: flex; gap: 8px; align-items: flex-start; padding: 10px; border-radius: 8px; color: var(--text-muted); background: var(--surface-soft); }
+.restore-summary { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
+.restore-summary span { padding: 5px 8px; border-radius: 99px; color: var(--text-muted); background: var(--surface-soft); font-size: .78rem; }
+.restore-preview details { margin: 12px 0; }
+.restore-preview summary { cursor: pointer; font-weight: 750; }
+.restore-conflict { display: grid; gap: 5px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.restore-conflict small { color: var(--text-muted); }
+.restore-conflict div { display: flex; gap: 8px; flex-wrap: wrap; }
+.restore-conflict button { min-height: 36px; padding: 6px 9px; border: 1px solid var(--border); border-radius: 7px; color: var(--text-muted); background: transparent; font: inherit; font-size: .78rem; }
+.restore-conflict button.active { color: var(--primary); border-color: var(--primary); background: var(--surface-soft); }
+
+.stats-year-comparison, .stats-archive-health { grid-column: 1 / -1; }
+.stats-connections-heading { grid-column: 1 / -1; margin-top: 4px; color: var(--text-muted); font-size: .78rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.stats-your-spotify, .stats-lyrics, .stats-spotify { order: 10; }
+.year-comparison-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.year-comparison-grid > div { display: grid; gap: 4px; padding: 12px; border-radius: 10px; background: var(--surface-soft); }
+.year-comparison-grid span, .year-comparison-grid small { color: var(--text-muted); font-size: .78rem; }
+.stats-observations { margin: 14px 0 0; padding-left: 18px; color: var(--text-muted); font-size: .84rem; }
+.archive-health-list { display: grid; gap: 8px; margin: 12px 0 0; padding: 0; list-style: none; }
+.archive-health-list li { display: flex; justify-content: space-between; gap: 12px; align-items: center; padding-top: 9px; border-top: 1px solid var(--border); }
+.archive-health-list div { display: grid; gap: 2px; }
+.archive-health-list small { color: var(--text-muted); font-size: .78rem; }
+.archive-health-list button { min-height: 36px; border: 0; color: var(--primary); background: transparent; font: inherit; font-size: .78rem; font-weight: 750; white-space: nowrap; }
+
+@media (max-width: 620px) {
+  .memory-lane { grid-template-columns: auto minmax(0, 1fr); }
+  .memory-lane-actions { grid-column: 1 / -1; grid-auto-flow: column; justify-content: start; }
+  .year-comparison-grid { grid-template-columns: 1fr; }
+  .archive-health-list li { align-items: flex-start; }
+}
+
 .quick-event {
   margin-top: 18px;
 }

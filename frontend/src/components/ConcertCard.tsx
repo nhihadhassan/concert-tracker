@@ -1,6 +1,7 @@
-import { Armchair, CalendarDays, Image, MapPin, Music2, Pencil, Star, Trash2, Users } from 'lucide-react'
+import { Armchair, CalendarDays, Image, MapPin, Music2, Pencil, Plus, Star, Trash2, Users } from 'lucide-react'
 import { AnimatePresence, m, useReducedMotion } from 'motion/react'
 import { artworkSrcSet, resizeArtwork } from '../lib/artwork'
+import { downloadConcertCalendar } from '../lib/exports'
 import type { Concert } from '../types'
 
 interface ConcertCardProps {
@@ -12,7 +13,7 @@ interface ConcertCardProps {
   onOpen: (concert: Concert) => void
 }
 
-const formatMoney = (value: number | null) => value === null ? 'Price not set' :
+const formatMoney = (value: number) =>
   new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(value)
 
 const formatDate = (value: string) =>
@@ -48,10 +49,10 @@ export function ConcertCard({ concert, index, onArtwork, onDelete, onEdit, onOpe
           {concert.pending ? <span className="chip pending-chip">Pending sync</span> : null}
         </div>
         <div className="concert-card-head">
-          <div className="concert-title"><h3>{concert.artist}</h3><p title={concert.tour ?? ''}>{concert.tour || 'Tour not set'}</p><span className="concert-venue"><MapPin size={14} />{venueName(concert.venue)}</span></div>
-          <AnimatePresence mode="popLayout" initial={false}><m.div key={concert.personal_rating ?? 'unrated'} className={`rating-badge ${ratingTone(concert.personal_rating)}`} title="Your rating" initial={reduceMotion ? false : { opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.94 }} transition={{ type: 'spring', stiffness: 380, damping: 30, mass: 0.8 }}><Star size={16} fill="currentColor" aria-hidden="true" /><strong>{concert.personal_rating ?? 'N/A'}</strong><span>{concert.personal_rating === null ? 'unrated' : '/10'}</span>{concert.projected !== null ? <small>Proj {concert.projected}</small> : null}</m.div></AnimatePresence>
+          <div className="concert-title"><h3>{concert.artist}</h3>{concert.tour ? <p title={concert.tour}>{concert.tour}</p> : null}<span className="concert-venue"><MapPin size={14} />{venueName(concert.venue)}</span></div>
+          {concert.personal_rating !== null ? <AnimatePresence mode="popLayout" initial={false}><m.div key={concert.personal_rating} className={`rating-badge ${ratingTone(concert.personal_rating)}`} title="Your rating" initial={reduceMotion ? false : { opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.94 }} transition={{ type: 'spring', stiffness: 380, damping: 30, mass: 0.8 }}><Star size={16} fill="currentColor" aria-hidden="true" /><strong>{concert.personal_rating}</strong><span>/10</span>{concert.projected !== null ? <small>Proj {concert.projected}</small> : null}</m.div></AnimatePresence> : concert.projected !== null ? <span className="projected-rating">Proj {concert.projected}</span> : null}
         </div>
-        <div className="concert-meta"><span><CalendarDays size={16} />{formatDate(concert.date)}</span><strong className="concert-price">{formatMoney(concert.price)}</strong></div>
+        <div className="concert-meta"><span><CalendarDays size={16} />{formatDate(concert.date)}</span>{concert.price !== null ? <strong className="concert-price">{formatMoney(concert.price)}</strong> : null}</div>
         <div className="chips">
           <span className={`status-chip status-${concert.status.toLowerCase().replaceAll(' ', '-')}`}>{concert.status}</span>
           <span className="chip">{concert.type}</span>
@@ -61,7 +62,7 @@ export function ConcertCard({ concert, index, onArtwork, onDelete, onEdit, onOpe
         {activeAttendees.length || concert.companions ? <span className="companions"><Users size={15} />{[activeAttendees.map((row) => row.display_name).join(', '), concert.companions].filter(Boolean).join(' · ')}</span> : null}
         {concert.notes ? <p className="concert-notes">{concert.notes}</p> : null}
         <div className="card-actions">
-          {concert.spotify_url ? <a className="text-action setlist-action" href={concert.spotify_url} target="_blank" rel="noreferrer"><Music2 size={16} />Setlist</a> : <span />}
+          {concert.setlist_url ? <a className="text-action setlist-action" href={concert.setlist_url} target="_blank" rel="noreferrer"><Music2 size={16} />View setlist</a> : concert.status === 'Want to Go' ? <button className="text-action setlist-action" type="button" onClick={() => downloadConcertCalendar(concert)}><Plus size={16} />Add to calendar</button> : <span />}
           <span className="card-action-spacer" />
           <button className="button button-secondary compact-action" type="button" onClick={() => onArtwork(concert)} aria-label={`Choose artwork for ${concert.artist}`}><Image size={16} /><span>Artwork</span></button>
           <button className="button button-secondary compact-action" type="button" onClick={() => onEdit(concert)} aria-label={`Edit ${concert.artist}`}><Pencil size={16} /><span>Edit</span></button>

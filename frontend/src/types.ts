@@ -43,6 +43,7 @@ export interface Concert {
   seat: string | null
   status: ConcertStatus
   type: string
+  setlist_url: string | null
   spotify_url: string | null
   image: string | null
   notes: string | null
@@ -79,6 +80,7 @@ export interface ConcertSuggestion {
   genre: string | null
   image: string | null
   ticket_url: string | null
+  setlist_url: string | null
 }
 
 export type ConcertSuggestionMode = 'upcoming' | 'past'
@@ -195,6 +197,7 @@ export interface ConcertFields {
   seat: string | null
   status: ConcertStatus
   type: string
+  setlist_url: string | null
   spotify_url: string | null
   image: string | null
   notes: string | null
@@ -235,6 +238,31 @@ export interface QueuedMutation {
 export interface ConflictState {
   mutation: QueuedMutation
   current: Record<string, unknown> | null
+  message: string
+}
+
+export interface BackupPreviewItem {
+  key: string
+  artist: string
+  date: string
+  venue: string
+  status: 'new' | 'duplicate' | 'conflict' | 'invalid'
+  target_id: string | null
+  differences: string[]
+  warnings: string[]
+}
+
+export interface BackupPreview {
+  backup_hash: string
+  revision_hash: string
+  items: BackupPreviewItem[]
+  summary: Record<string, number>
+}
+
+export interface BackupRestoreResult {
+  restored: number
+  skipped_duplicates: number
+  kept_conflicts: number
   message: string
 }
 

@@ -14,6 +14,7 @@ const concert = {
   seat: null,
   status: 'Want to Go',
   type: 'Concert',
+  setlist_url: null,
   spotify_url: null,
   image: null,
   notes: null,

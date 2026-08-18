@@ -62,6 +62,17 @@ export function upcomingConcertCalendar(concerts: Concert[], today = fileDate())
   ].join('\r\n')
 }
 
+export function singleConcertCalendar(concert: Concert) {
+  return upcomingConcertCalendar([concert], '0000-01-01')
+}
+
+export function downloadConcertCalendar(concert: Concert) {
+  downloadBlob(
+    new Blob([singleConcertCalendar(concert)], { type: 'text/calendar;charset=utf-8' }),
+    `encore-${concert.artist.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'concert'}-${concert.date}.ics`,
+  )
+}
+
 export function downloadUpcomingCalendar(concerts: Concert[]) {
   const upcomingCount = concerts.filter((concert) => concert.status === 'Want to Go' && concert.date >= fileDate()).length
   if (!upcomingCount) throw new Error('There are no upcoming concerts to add to a calendar.')

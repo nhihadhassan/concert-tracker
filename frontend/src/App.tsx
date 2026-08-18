@@ -9,10 +9,12 @@ import { ConcertCard } from './components/ConcertCard'
 import { FiltersBar } from './components/FiltersBar'
 import { RankedSummary } from './components/RankedSummary'
 import { StatsStrip } from './components/StatsStrip'
+import { MemoryLane } from './components/MemoryLane'
 import { useConcertLibrary } from './hooks/useConcertLibrary'
 import { useAlbumLibrary } from './hooks/useAlbumLibrary'
 import { downloadCsv, saveAlbumReview } from './lib/api'
 import { downloadJsonBackup, downloadUpcomingCalendar } from './lib/exports'
+import { buildMemoryLane, buildMilestones } from './lib/archiveInsights'
 import type {
   Album,
   AlbumReviewWrite,
@@ -49,6 +51,9 @@ const ConcertDetail = lazy(() => import('./components/ConcertDetail').then((modu
 })))
 const ConflictDialog = lazy(() => import('./components/ConflictDialog').then((module) => ({
   default: module.ConflictDialog,
+})))
+const BackupRestoreDialog = lazy(() => import('./components/BackupRestoreDialog').then((module) => ({
+  default: module.BackupRestoreDialog,
 })))
 const StatsDashboard = lazy(() => import('./components/StatsDashboard').then((module) => ({
   default: module.StatsDashboard,
@@ -172,6 +177,7 @@ export function Dashboard({ member }: DashboardProps) {
   const [editing, setEditing] = useState<Concert | null>(null)
   const [artworkEditing, setArtworkEditing] = useState<Concert | null>(null)
   const [artworkDialogOpen, setArtworkDialogOpen] = useState(false)
+  const [restoreOpen, setRestoreOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [artworkSaving, setArtworkSaving] = useState(false)
   const [formError, setFormError] = useState('')
@@ -248,6 +254,8 @@ export function Dashboard({ member }: DashboardProps) {
       return true
     }), sort)
   }, [genre, library, search, sort, status])
+  const memory = useMemo(() => buildMemoryLane(library?.concerts ?? []), [library])
+  const milestones = useMemo(() => buildMilestones(library?.concerts ?? []), [library])
   const genres = useMemo(() => [...new Set(
     (library?.concerts ?? []).map((concert) => concert.genre).filter((value): value is string => Boolean(value)),
   )].sort(), [library])
@@ -351,6 +359,7 @@ export function Dashboard({ member }: DashboardProps) {
         seat: concert.seat,
         status: concert.status,
         type: concert.type,
+        setlist_url: concert.setlist_url,
         spotify_url: concert.spotify_url,
         image,
         notes: concert.notes,
@@ -456,22 +465,28 @@ export function Dashboard({ member }: DashboardProps) {
   return (
     <div className={darkMode ? 'app theme-dark' : 'app theme-light'}>
       <a className="skip-link" href="#encore-main">Skip to content</a>
-      <AppHeader activeView={activeView} addLabel={activeView === 'albums' ? 'Find album' : 'Add concert'} darkMode={darkMode} memberName={member.display_name} pendingCount={cloud.pendingCount} syncState={cloud.syncState} onAdd={activeView === 'albums' ? () => setAlbumDialogOpen(true) : openNew} onExportCalendar={exportCalendar} onExportCsv={() => void exportCsv()} onExportJson={exportJson} onThemeToggle={toggleTheme} onViewChange={(view) => navigate(view === 'stats' ? { kind: 'stats', scope: 'personal' } : view === 'wrapped' ? { kind: 'wrapped' } : view === 'albums' ? { kind: 'albums' } : { kind: 'concerts' })} />
+      <AppHeader activeView={activeView} addLabel={activeView === 'albums' ? 'Find album' : 'Add concert'} darkMode={darkMode} memberName={member.display_name} pendingCount={cloud.pendingCount} syncState={cloud.syncState} onAdd={activeView === 'albums' ? () => setAlbumDialogOpen(true) : openNew} onExportCalendar={exportCalendar} onExportCsv={() => void exportCsv()} onExportJson={exportJson} onRestoreBackup={() => setRestoreOpen(true)} onThemeToggle={toggleTheme} onViewChange={(view) => navigate(view === 'stats' ? { kind: 'stats', scope: 'personal' } : view === 'wrapped' ? { kind: 'wrapped' } : view === 'albums' ? { kind: 'albums' } : { kind: 'concerts' })} />
       <div id="encore-main" tabIndex={-1}>
       {route.kind === 'concerts' ? <main className="page-shell page-shell-feed" data-view-heading tabIndex={-1}>
         <div className="dashboard-column">
           <StatsStrip concerts={library.concerts} />
+          <MemoryLane memory={memory} onOpen={(concert) => openConcert(concert)} onRandom={() => {
+            const attended = library.concerts.filter((concert) => concert.status === 'Attended')
+            const concert = attended[Math.floor(Math.random() * attended.length)]
+            if (concert) openConcert(concert)
+          }} />
           {cloud.error ? <div className="sync-error-banner" role="status">{cloud.error}<button type="button" onClick={() => void cloud.flushOutbox()}>Retry sync</button></div> : null}
           <FiltersBar genres={genres} genre={genre} search={search} sort={sort} status={status} onGenreChange={setGenre} onSearchChange={setSearch} onSortChange={setSort} onStatusChange={setStatus} />
           <p className="list-meta">Showing {filteredConcerts.length} of {library.concerts.length} cloud concerts</p>
           {filteredConcerts.length ? <><h2 className="sr-only" id="concert-archive-title">Concert archive</h2><section className="concert-grid" aria-labelledby="concert-archive-title">{filteredConcerts.map((concert, index) => <ConcertCard key={concert.id} concert={concert} index={index} onArtwork={openArtwork} onDelete={(row) => void deleteConcert(row)} onEdit={(row) => { setEditing(row); setFormError(''); setDialogOpen(true) }} onOpen={openConcert} />)}</section></> : <section className="empty-state"><h2>{library.concerts.length ? 'No concerts match' : 'Add the first staging concert'}</h2><p>{library.concerts.length ? 'Clear a filter or try another artist or venue.' : 'The shared normalized library is empty and ready for testing.'}</p>{!library.concerts.length ? <button className="button button-primary" type="button" onClick={openNew}>Add concert</button> : null}</section>}
         </div>
         <div className="ranking-column"><RankedSummary personal={personalScopedRankings} /></div>
-      </main> : route.kind === 'albums' ? <Suspense fallback={<AlbumViewLoading />}><AlbumLibrary albums={albumCloud.albums} currentUserId={member.user_id} error={albumCloud.error} loading={albumCloud.loading} onAdd={() => setAlbumDialogOpen(true)} onOpen={openAlbum} /></Suspense> : route.kind === 'album-detail' ? selectedAlbum ? <Suspense fallback={<AlbumViewLoading />}>{route.editing ? <AlbumReviewStudio album={selectedAlbum} currentUserId={member.user_id} error={albumError} saving={albumSaving} onCancel={() => navigate({ kind: 'album-detail', albumId: selectedAlbum.id, editing: false }, true)} onSave={(review) => saveReview(selectedAlbum, review)} /> : <AlbumJournal album={selectedAlbum} currentUserId={member.user_id} members={library.members} onBack={() => navigate({ kind: 'albums' }, true)} onEdit={() => navigate({ kind: 'album-detail', albumId: selectedAlbum.id, editing: true })} />}</Suspense> : <main className="feature-shell"><section className="detail-not-found"><ArrowLeft size={22} aria-hidden="true" /><h1 data-view-heading tabIndex={-1}>Album not found</h1><p>This album may have been removed or is not available in the shared journal.</p><button className="button button-primary" type="button" onClick={() => navigate({ kind: 'albums' }, true)}>Back to albums</button></section></main> : route.kind === 'stats' ? <main className="feature-shell"><Suspense fallback={<FeatureViewLoading />}><StatsDashboard analytics={route.scope === 'personal' ? library.personal_analytics : library.analytics} concerts={route.scope === 'personal' ? personalConcerts : library.concerts} memberName={member.display_name} rankings={route.scope === 'personal' ? personalScopedRankings : combinedRankings} scope={route.scope} onScopeChange={(scope) => navigate({ kind: 'stats', scope }, true)} /></Suspense></main> : route.kind === 'wrapped' ? <main className="feature-shell"><Suspense fallback={<FeatureViewLoading />}><LiveWrapped concerts={personalConcerts} analytics={library.personal_analytics} memberName={member.display_name} /></Suspense></main> : route.kind === 'not-found' ? <main className="feature-shell"><section className="detail-not-found"><span className="not-found-code">404</span><h1 data-view-heading tabIndex={-1}>This page missed the encore</h1><p>The link may be old, but your concert archive is still here.</p><button className="button button-primary" type="button" onClick={() => navigate({ kind: 'concerts' }, true)}>Back to concerts</button></section></main> : <main className="feature-shell">{selectedConcert ? <Suspense fallback={<FeatureViewLoading />}><ConcertDetail concert={selectedConcert} member={member} onArtwork={openArtwork} onBack={backToConcerts} onEdit={(row) => { setEditing(row); setFormError(''); setDialogOpen(true) }} onDelete={(row) => { void deleteConcert(row).then((deleted) => { if (deleted) navigate({ kind: 'concerts' }, true) }) }} /></Suspense> : <section className="detail-not-found"><ArrowLeft size={22} aria-hidden="true" /><h1 data-view-heading tabIndex={-1}>Concert not found</h1><p>This concert may have been deleted or is not available in your library.</p><button className="button button-primary" type="button" onClick={() => navigate({ kind: 'concerts' }, true)}>Back to concerts</button></section>}</main>}
+      </main> : route.kind === 'albums' ? <Suspense fallback={<AlbumViewLoading />}><AlbumLibrary albums={albumCloud.albums} currentUserId={member.user_id} error={albumCloud.error} loading={albumCloud.loading} onAdd={() => setAlbumDialogOpen(true)} onOpen={openAlbum} /></Suspense> : route.kind === 'album-detail' ? selectedAlbum ? <Suspense fallback={<AlbumViewLoading />}>{route.editing ? <AlbumReviewStudio album={selectedAlbum} currentUserId={member.user_id} error={albumError} saving={albumSaving} onCancel={() => navigate({ kind: 'album-detail', albumId: selectedAlbum.id, editing: false }, true)} onSave={(review) => saveReview(selectedAlbum, review)} /> : <AlbumJournal album={selectedAlbum} currentUserId={member.user_id} members={library.members} onBack={() => navigate({ kind: 'albums' }, true)} onEdit={() => navigate({ kind: 'album-detail', albumId: selectedAlbum.id, editing: true })} />}</Suspense> : <main className="feature-shell"><section className="detail-not-found"><ArrowLeft size={22} aria-hidden="true" /><h1 data-view-heading tabIndex={-1}>Album not found</h1><p>This album may have been removed or is not available in the shared journal.</p><button className="button button-primary" type="button" onClick={() => navigate({ kind: 'albums' }, true)}>Back to albums</button></section></main> : route.kind === 'stats' ? <main className="feature-shell"><Suspense fallback={<FeatureViewLoading />}><StatsDashboard analytics={route.scope === 'personal' ? library.personal_analytics : library.analytics} concerts={route.scope === 'personal' ? personalConcerts : library.concerts} memberName={member.display_name} rankings={route.scope === 'personal' ? personalScopedRankings : combinedRankings} scope={route.scope} onEditConcert={(row) => { setEditing(row); setFormError(''); setDialogOpen(true) }} onScopeChange={(scope) => navigate({ kind: 'stats', scope }, true)} /></Suspense></main> : route.kind === 'wrapped' ? <main className="feature-shell"><Suspense fallback={<FeatureViewLoading />}><LiveWrapped concerts={personalConcerts} analytics={library.personal_analytics} memberName={member.display_name} /></Suspense></main> : route.kind === 'not-found' ? <main className="feature-shell"><section className="detail-not-found"><span className="not-found-code">404</span><h1 data-view-heading tabIndex={-1}>This page missed the encore</h1><p>The link may be old, but your concert archive is still here.</p><button className="button button-primary" type="button" onClick={() => navigate({ kind: 'concerts' }, true)}>Back to concerts</button></section></main> : <main className="feature-shell">{selectedConcert ? <Suspense fallback={<FeatureViewLoading />}><ConcertDetail concert={selectedConcert} member={member} milestones={milestones.get(selectedConcert.id) ?? []} onArtwork={openArtwork} onBack={backToConcerts} onEdit={(row) => { setEditing(row); setFormError(''); setDialogOpen(true) }} onDelete={(row) => { void deleteConcert(row).then((deleted) => { if (deleted) navigate({ kind: 'concerts' }, true) }) }} /></Suspense> : <section className="detail-not-found"><ArrowLeft size={22} aria-hidden="true" /><h1 data-view-heading tabIndex={-1}>Concert not found</h1><p>This concert may have been deleted or is not available in your library.</p><button className="button button-primary" type="button" onClick={() => navigate({ kind: 'concerts' }, true)}>Back to concerts</button></section>}</main>}
       </div>
       {dialogOpen ? <Suspense fallback={null}><AddConcertDialog concert={editing} concerts={library.concerts} currentUserId={member.user_id} error={formError} members={library.members} open saving={saving} onClose={() => { setDialogOpen(false); setEditing(null) }} onSave={saveConcert} /></Suspense> : null}
       {albumDialogOpen ? <Suspense fallback={null}><AlbumImportDialog open onClose={() => setAlbumDialogOpen(false)} onImported={(albumId, message) => void importedAlbum(albumId, message)} /></Suspense> : null}
       {artworkDialogOpen ? <Suspense fallback={null}><ArtworkDialog concert={artworkEditing} error={artworkError} open saving={artworkSaving} onClose={() => { setArtworkDialogOpen(false); setArtworkEditing(null) }} onSave={saveArtwork} /></Suspense> : null}
+      {restoreOpen ? <Suspense fallback={null}><BackupRestoreDialog online={cloud.syncState !== 'offline'} pendingCount={cloud.pendingCount} onClose={() => setRestoreOpen(false)} onRestored={(message) => { setRestoreOpen(false); void cloud.refetch(); flashNotice(message) }} /></Suspense> : null}
       {cloud.conflict ? <Suspense fallback={null}><ConflictDialog conflict={cloud.conflict} onDiscard={() => void cloud.discardConflict()} onRetry={() => void cloud.retryConflict()} /></Suspense> : null}
       <AnimatePresence>{notice ? <m.div className={`toast${notice.celebratory ? ' toast-celebration' : ''}`} role="status" initial={{ opacity: 0, y: 12, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 8 }} transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}>{notice.celebratory ? <Sparkles size={18} /> : <CheckCircle2 size={18} />}{notice.message}</m.div> : null}</AnimatePresence>
     </div>

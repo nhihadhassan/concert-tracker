@@ -53,6 +53,7 @@ class ConcertResponse(BaseModel):
     seat: Optional[str]
     status: Literal["Want to Go", "Attended", "Cancelled"]
     type: str
+    setlist_url: Optional[str]
     spotify_url: Optional[str]
     image: Optional[str]
     notes: Optional[str]
@@ -104,6 +105,7 @@ class ConcertFields(StrictInput):
     seat: Optional[str] = Field(default=None, max_length=300)
     status: Literal["Want to Go", "Attended", "Cancelled"]
     type: str = Field(default="Concert", min_length=1, max_length=100)
+    setlist_url: Optional[str] = Field(default=None, max_length=2000)
     spotify_url: Optional[str] = Field(default=None, max_length=2000)
     image: Optional[str] = Field(default=None, max_length=4000)
     notes: Optional[str] = Field(default=None, max_length=4000)

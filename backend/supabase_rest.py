@@ -122,6 +122,10 @@ class SupabaseRestClient:
         except (IndexError, ValueError):
             return 0
 
+    def rpc(self, function: str, payload: dict[str, Any]) -> Any:
+        response = self.request("POST", f"rpc/{function}", json=payload)
+        return response.json()
+
 
 def get_rest_client() -> SupabaseRestClient:
     try:

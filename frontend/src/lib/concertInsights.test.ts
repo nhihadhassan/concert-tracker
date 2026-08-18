@@ -14,6 +14,7 @@ const row = (artist: string, date: string, venue = 'History'): Concert => ({
   seat: null,
   status: 'Attended',
   type: 'Concert',
+  setlist_url: null,
   spotify_url: null,
   image: null,
   notes: null,

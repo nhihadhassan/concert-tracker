@@ -4,6 +4,7 @@ import { m, useReducedMotion } from 'motion/react'
 import type { Analytics, Concert, GroupSummary, LyricBreakdown, RankingRow, SpotifyInsights, SpotifyRange, SpotifyRelease } from '../types'
 import { connectSpotify, disconnectSpotify, fetchLyricBreakdown, fetchSpotifyInsights, fetchSpotifyPulse, fetchSpotifyStatus, startSpotifyLogin } from '../lib/api'
 import { buildConcertStory } from '../lib/concertInsights'
+import { archiveHealth, compareYear, comparisonObservations } from '../lib/archiveInsights'
 
 interface StatsDashboardProps {
   analytics: Analytics
@@ -11,6 +12,7 @@ interface StatsDashboardProps {
   memberName: string
   rankings: RankingRow[]
   scope: 'personal' | 'shared'
+  onEditConcert: (concert: Concert) => void
   onScopeChange: (scope: 'personal' | 'shared') => void
 }
 
@@ -171,16 +173,6 @@ function useLyricBreakdown(subject: LyricSubject | undefined) {
   return state
 }
 
-const CURRENT_LYRIC_PICKS: LyricSubject[] = [
-  { label: 'Recent rotation', artist: 'Olivia Rodrigo', track: 'vampire' },
-  { label: 'Recent rotation', artist: 'Drake', track: 'First Person Shooter' },
-  { label: 'Recent rotation', artist: 'SZA', track: 'Saturn' },
-  { label: 'Recent rotation', artist: 'Sabrina Carpenter', track: 'Espresso' },
-  { label: 'Recent rotation', artist: 'Taylor Swift', track: 'Fortnight' },
-  { label: 'Recent rotation', artist: 'Kendrick Lamar', track: 'Not Like Us' },
-  { label: 'Recent rotation', artist: 'Chappell Roan', track: 'Good Luck, Babe!' },
-]
-
 const daySeed = () => Math.floor(Date.now() / 86_400_000)
 const dailyPick = <T,>(items: T[], offset = 0): T | undefined =>
   items.length ? items[(daySeed() + offset) % items.length] : undefined
@@ -230,14 +222,15 @@ function LyricCard({ state, subject }: { state: LyricState; subject: LyricSubjec
   )
 }
 
-export function StatsDashboard({ analytics, concerts, memberName, rankings, scope, onScopeChange }: StatsDashboardProps) {
+export function StatsDashboard({ analytics, concerts, memberName, rankings, scope, onEditConcert, onScopeChange }: StatsDashboardProps) {
   const reduceMotion = useReducedMotion()
   const spotify = useSpotifyPulse()
   const insights = useSpotifyInsights(spotify.state.kind === 'connected')
   const lyricSubjects = useMemo(() => {
+    const archiveSubjects = concerts.filter((concert) => concert.status !== 'Cancelled').map((concert) => ({ label: concert.status === 'Want to Go' ? 'Upcoming concert' : 'From your archive', artist: concert.artist.replace(/\s+20\d{2}$/i, '') }))
     if (insights.state.kind !== 'ready') return {
-      recent: dailyPick(CURRENT_LYRIC_PICKS),
-      concert: dailyPick(CURRENT_LYRIC_PICKS.map((pick) => ({ ...pick, label: 'Wildcard daily pick' })), 3),
+      recent: dailyPick(archiveSubjects),
+      concert: dailyPick(archiveSubjects, 3),
     }
     const topTrackSubjects = insights.state.data.top_tracks.map((track) => ({
       label: 'Recent rotation',
@@ -249,17 +242,21 @@ export function StatsDashboard({ analytics, concerts, memberName, rankings, scop
       artist: artist.name,
     }))
     return {
-      recent: dailyPick(topTrackSubjects.length ? topTrackSubjects : CURRENT_LYRIC_PICKS),
+      recent: dailyPick(topTrackSubjects.length ? topTrackSubjects : archiveSubjects),
       concert: insights.state.data.next_show
         ? { label: `Upcoming concert · ${formatShowDate(insights.state.data.next_show.date)}`, artist: insights.state.data.next_show.artist }
-        : dailyPick(topArtistSubjects.length ? topArtistSubjects : CURRENT_LYRIC_PICKS.map((pick) => ({ ...pick, label: 'Wildcard daily pick' })), 3),
+        : dailyPick(topArtistSubjects.length ? topArtistSubjects : archiveSubjects, 3),
     }
-  }, [insights.state])
+  }, [concerts, insights.state])
   const recentLyric = useLyricBreakdown(lyricSubjects.recent)
   const concertLyric = useLyricBreakdown(lyricSubjects.concert)
   const years = useMemo(() => [...new Set(analytics.monthly_trends.map((row) => row.year))].sort((a, b) => b - a), [analytics.monthly_trends])
   const latestYear = years[0]
   const archiveStory = useMemo(() => buildConcertStory(concerts, 'all'), [concerts])
+  const health = useMemo(() => archiveHealth(concerts, scope), [concerts, scope])
+  const comparisonYears = years.slice(0, 2)
+  const comparison = comparisonYears.length === 2 ? comparisonYears.map((year) => compareYear(concerts, year, scope)) : []
+  const comparisonNotes = comparison.length === 2 ? comparisonObservations(comparison[0], comparison[1]) : []
 
   const activityRows = [...years].reverse().map((activityYear) => ({
     year: activityYear,
@@ -320,6 +317,11 @@ export function StatsDashboard({ analytics, concerts, memberName, rankings, scop
         </section>
 
         <div className="stats-grid">
+          {comparison.length === 2 ? <section className="stats-panel stats-year-comparison" aria-labelledby="year-comparison-title"><div className="stats-panel-head"><h3 id="year-comparison-title"><BarChart3 aria-hidden="true" />Year comparison</h3><span>{comparison[0].year} · {comparison[1].year}</span></div><div className="year-comparison-grid">{comparison.map((year) => <div key={year.year}><strong>{year.year}</strong><span>{year.attended} attended · {year.artists} artists · {year.venues} venues</span><span>{formatMoney(year.spend)} spent · {year.averageRating === null ? 'Unrated' : `${year.averageRating}/10`}</span><span>{year.newArtists} new artists · {year.busiestMonth ?? 'No busiest month'}</span><small>{year.mostSeenArtist ? `Most seen: ${year.mostSeenArtist}` : 'No repeat artist yet'}</small></div>)}</div>{comparisonNotes.length ? <ul className="stats-observations">{comparisonNotes.map((note) => <li key={note}>{note}</li>)}</ul> : null}</section> : null}
+
+          {health.length ? <section className="stats-panel stats-archive-health" aria-labelledby="archive-health-title"><div className="stats-panel-head"><h3 id="archive-health-title"><Sparkles aria-hidden="true" />Archive Health</h3><span>{health.length} records to enrich</span></div><p className="stats-panel-note">Optional details that can make older concert memories richer.</p><ul className="archive-health-list">{health.slice(0, 6).map(({ concert, issues }) => <li key={concert.id}><div><strong>{concert.artist}</strong><small>{concert.date} · Missing {issues.join(', ')}</small></div><button type="button" onClick={() => onEditConcert(concert)}>Update record</button></li>)}</ul></section> : null}
+
+          <div className="stats-connections-heading">Music connections</div>
           {spotify.state.kind === 'connected' || insights.state.kind === 'ready' ? (
             <section className="stats-panel stats-your-spotify" aria-labelledby="your-spotify-title">
               <div className="stats-panel-head">

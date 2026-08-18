@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { BarChart3, CalendarPlus, Cloud, Disc3, Download, FileJson, ListMusic, Mic2, Moon, Plus, RefreshCw, Sparkles, Sun, Table2, TriangleAlert, WifiOff } from 'lucide-react'
+import { BarChart3, CalendarPlus, Cloud, Disc3, Download, FileJson, FileUp, ListMusic, Mic2, Moon, Plus, RefreshCw, Sparkles, Sun, Table2, TriangleAlert, WifiOff } from 'lucide-react'
 import { AnimatePresence, m } from 'motion/react'
 import type { SyncState } from '../types'
 
@@ -14,6 +14,7 @@ interface AppHeaderProps {
   onExportCalendar: () => void
   onExportCsv: () => void
   onExportJson: () => void
+  onRestoreBackup: () => void
   onThemeToggle: () => void
   onViewChange: (view: 'concerts' | 'albums' | 'stats' | 'wrapped') => void
 }
@@ -84,6 +85,7 @@ export function AppHeader(props: AppHeaderProps) {
             <div className="export-menu-popover" role="group" aria-label="Export concert data">
               <button type="button" onClick={() => runExport(props.onExportCsv)}><Table2 size={17} aria-hidden="true" /><span><strong>CSV spreadsheet</strong><small>Concert rows for analysis</small></span></button>
               <button type="button" onClick={() => runExport(props.onExportJson)}><FileJson size={17} aria-hidden="true" /><span><strong>JSON backup</strong><small>Complete library snapshot</small></span></button>
+              <button type="button" onClick={() => runExport(props.onRestoreBackup)}><FileUp size={17} aria-hidden="true" /><span><strong>Restore backup</strong><small>Preview changes before restoring</small></span></button>
               <button type="button" onClick={() => runExport(props.onExportCalendar)}><CalendarPlus size={17} aria-hidden="true" /><span><strong>Upcoming calendar</strong><small>ICS file for calendar apps</small></span></button>
             </div>
           </details>

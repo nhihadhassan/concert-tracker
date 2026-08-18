@@ -191,6 +191,7 @@ export function AddConcertDialog({
     setField('date', suggestion.date)
     setField('venue', suggestion.venue)
     setField('genre', suggestion.genre)
+    setField('setlistUrl', suggestion.setlist_url)
     setField('status', suggestMode === 'past' ? 'Attended' : 'Want to Go')
     if (suggestion.image) setImageUrl(suggestion.image)
     setAppliedSuggestion(`${suggestion.date}|${suggestion.venue}`)
@@ -230,6 +231,7 @@ export function AddConcertDialog({
         seat: String(form.get('seat') ?? '').trim() || null,
         status: String(form.get('status') ?? 'Want to Go') as ConcertStatus,
         type: String(form.get('type') ?? '').trim() || 'Concert',
+        setlist_url: String(form.get('setlistUrl') ?? '').trim() || null,
         spotify_url: String(form.get('spotify') ?? '').trim() || null,
         image: String(form.get('image') ?? '').trim() || null,
         notes: String(form.get('notes') ?? '').trim() || null,
@@ -439,7 +441,7 @@ export function AddConcertDialog({
           </fieldset>
         </details>
 
-        <details className="form-disclosure" open={Boolean(concert?.image || concert?.spotify_url || concert?.notes)}>
+        <details className="form-disclosure" open={Boolean(concert?.image || concert?.setlist_url || concert?.spotify_url || concert?.notes)}>
           <summary><span>Artwork and notes</span><small>Optional</small></summary>
           <fieldset className="disclosure-fieldset" id="concert-form-details">
           <legend className="sr-only">Artwork and notes</legend>
@@ -464,7 +466,8 @@ export function AddConcertDialog({
             <div className="image-preview field-wide">
               <AnimatePresence mode="wait" initial={false}>{imageUrl ? <m.img key={imageUrl} src={imageUrl} alt="Artwork preview" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} /> : <m.span key="empty-preview" initial={{ opacity: 0 }} animate={{ opacity: 1 }}><Image size={18} />No artwork selected</m.span>}</AnimatePresence>
             </div>
-            <label className="field field-wide"><span>Spotify setlist URL</span><input name="spotify" type="url" defaultValue={concert?.spotify_url ?? ''} /></label>
+            <label className="field field-wide"><span>Concert setlist URL</span><input name="setlistUrl" type="url" defaultValue={concert?.setlist_url ?? ''} /></label>
+            <label className="field field-wide"><span>Spotify playlist URL</span><input name="spotify" type="url" defaultValue={concert?.spotify_url ?? ''} /></label>
             <label className="field field-wide"><span>Event notes</span><textarea name="notes" rows={3} defaultValue={concert?.notes ?? ''} /></label>
           </div>
           </fieldset>
