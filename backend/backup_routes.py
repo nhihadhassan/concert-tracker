@@ -222,7 +222,7 @@ def _preview(
             PreviewItem(
                 key=str(concert.id),
                 artist=concert.artist,
-                date=concert.date,
+                date=str(concert.date),
                 venue=concert.venue,
                 status=item_status,
                 target_id=target_id,
