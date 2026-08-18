@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import json
 import re
+import unicodedata
 from datetime import datetime
 from typing import Any, Optional
 
@@ -57,6 +58,7 @@ class ConcertSuggestion(BaseModel):
     genre: Optional[str] = None
     image: Optional[str] = None
     ticket_url: Optional[str] = None
+    setlist_url: Optional[str] = None
 
 
 class SuggestionResponse(BaseModel):
@@ -96,6 +98,60 @@ def _clean_genre(value: Any) -> Optional[str]:
     return name
 
 
+def _normalized_artist(value: str) -> str:
+    """Normalize display punctuation without turning partial matches into matches."""
+    folded = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode("ascii")
+    folded = folded.casefold().replace("$", "s")
+    return " ".join(re.findall(r"[a-z0-9]+", folded))
+
+
+def _artist_segments(value: str) -> list[str]:
+    """Return complete billing names such as ``Kendrick Lamar`` and ``SZA``."""
+    return [
+        normalized
+        for segment in re.split(
+            r"\b(?:feat\.?|ft\.?|featuring|with|and|x)\b|[,&/]", value, flags=re.IGNORECASE
+        )
+        for normalized in [_normalized_artist(segment)]
+        if normalized
+    ]
+
+
+def _artist_relevance(query: str, candidate: str) -> int:
+    """Score confident artist matches while rejecting incidental name fragments.
+
+    setlist.fm's artist-name endpoint performs broad substring matching. A query
+    for ``Dave`` therefore returns Player Dave, Dave Baksh, and unrelated rows.
+    Single-word searches intentionally require an exact billing segment; longer
+    searches may match a complete sequence inside a multi-artist billing.
+    """
+    wanted = _normalized_artist(query)
+    actual = _normalized_artist(candidate)
+    if not wanted or not actual:
+        return 0
+    if wanted == actual:
+        return 100
+    if wanted in _artist_segments(candidate):
+        return 90
+    wanted_tokens = wanted.split()
+    actual_tokens = actual.split()
+    if len(wanted_tokens) >= 2 and all(token in actual_tokens for token in wanted_tokens):
+        return 70
+    return 0
+
+
+def _best_matching_artist(performers: list[dict[str, Any]], query: Optional[str]) -> str:
+    names = [str((performer or {}).get("name") or "").strip() for performer in performers]
+    names = [name for name in names if name]
+    if query:
+        matches = sorted(
+            ((-_artist_relevance(query, name), index, name) for index, name in enumerate(names)),
+        )
+        if matches and -matches[0][0] > 0:
+            return matches[0][2]
+    return names[0] if names else ""
+
+
 def _tour_name(event_name: str, artist: str) -> Optional[str]:
     """Keep the event title as the tour only when it adds something.
 
@@ -118,7 +174,9 @@ def _best_image(images: list[dict[str, Any]]) -> Optional[str]:
     return str(widest["url"])
 
 
-def _ticketmaster_suggestion(event: dict[str, Any]) -> Optional[ConcertSuggestion]:
+def _ticketmaster_suggestion(
+    event: dict[str, Any], artist_query: Optional[str] = None
+) -> Optional[ConcertSuggestion]:
     embedded = event.get("_embedded") or {}
     venues = embedded.get("venues") or []
     if not venues:
@@ -133,7 +191,7 @@ def _ticketmaster_suggestion(event: dict[str, Any]) -> Optional[ConcertSuggestio
 
     attractions = embedded.get("attractions") or []
     event_name = str(event.get("name") or "").strip()
-    artist = str((attractions[0] or {}).get("name") or "").strip() if attractions else ""
+    artist = _best_matching_artist(attractions, artist_query)
 
     classifications = event.get("classifications") or []
     genre = None
@@ -152,7 +210,9 @@ def _ticketmaster_suggestion(event: dict[str, Any]) -> Optional[ConcertSuggestio
     )
 
 
-def _seatgeek_suggestion(event: dict[str, Any]) -> Optional[ConcertSuggestion]:
+def _seatgeek_suggestion(
+    event: dict[str, Any], artist_query: Optional[str] = None
+) -> Optional[ConcertSuggestion]:
     venue = event.get("venue") or {}
     venue_name = str(venue.get("name") or "").strip()
     # SeatGeek returns an ISO local datetime; the form only stores the date.
@@ -162,7 +222,7 @@ def _seatgeek_suggestion(event: dict[str, Any]) -> Optional[ConcertSuggestion]:
 
     performers = event.get("performers") or []
     primary = (performers[0] or {}) if performers else {}
-    artist = str(primary.get("name") or "").strip()
+    artist = _best_matching_artist(performers, artist_query)
     event_name = str(event.get("title") or "").strip()
 
     genres = primary.get("genres") or []
@@ -206,7 +266,7 @@ def _setlistfm_suggestion(entry: dict[str, Any]) -> Optional[ConcertSuggestion]:
         # the form's existing iTunes lookup still fills artwork.
         genre=None,
         image=None,
-        ticket_url=str(entry.get("url") or "").strip() or None,
+        setlist_url=str(entry.get("url") or "").strip() or None,
     )
 
 
@@ -501,11 +561,15 @@ def suggest_concerts(
     elif settings.ticketmaster_api_key:
         provider = "ticketmaster"
         events = _search_ticketmaster(settings, artist_query, city_query)
-        to_suggestion = _ticketmaster_suggestion
+
+        def to_suggestion(event):
+            return _ticketmaster_suggestion(event, artist_query)
     elif settings.seatgeek_client_id:
         provider = "seatgeek"
         events = _search_seatgeek(settings, artist_query, city_query)
-        to_suggestion = _seatgeek_suggestion
+
+        def to_suggestion(event):
+            return _seatgeek_suggestion(event, artist_query)
     elif settings.tavily_api_key:
         provider = "tavily"
         events = _search_tavily(settings, artist_query, city_query)
@@ -519,11 +583,14 @@ def suggest_concerts(
     else:
         return SuggestionResponse(configured=False, results=[], provider=None)
 
-    results: list[ConcertSuggestion] = []
+    ranked: list[tuple[int, ConcertSuggestion]] = []
     seen: set[tuple[str, str]] = set()
     for event in events:
         suggestion = to_suggestion(event)
         if suggestion is None:
+            continue
+        relevance = _artist_relevance(artist_query, suggestion.artist)
+        if relevance == 0:
             continue
         if (suggestion.city or "").strip().casefold() != TORONTO.casefold():
             continue
@@ -533,9 +600,8 @@ def suggest_concerts(
         if key in seen:
             continue
         seen.add(key)
-        results.append(suggestion)
-        if len(results) == MAX_SUGGESTIONS:
-            break
+        ranked.append((relevance, suggestion))
 
-    results.sort(key=lambda suggestion: suggestion.date)
+    ranked.sort(key=lambda item: (-item[0], item[1].date, item[1].artist.casefold()))
+    results = [suggestion for _, suggestion in ranked[:MAX_SUGGESTIONS]]
     return SuggestionResponse(configured=True, results=results, provider=provider)

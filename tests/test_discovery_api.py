@@ -1,4 +1,5 @@
 from backend.discovery_routes import (
+    _artist_relevance,
     _gemini_suggestion,
     _seatgeek_suggestion,
     _setlistfm_suggestion,
@@ -119,6 +120,16 @@ def test_setlistfm_entry_maps_to_suggestion():
     # setlist.fm classifies neither of these.
     assert suggestion.genre is None
     assert suggestion.image is None
+    assert suggestion.setlist_url == SETLISTFM_ENTRY["url"]
+    assert suggestion.ticket_url is None
+
+
+def test_artist_relevance_keeps_exact_and_billing_matches_but_rejects_incidental_partials():
+    assert _artist_relevance("Dave", "Dave") > 0
+    assert _artist_relevance("Kendrick Lamar", "Kendrick Lamar & SZA") > 0
+    assert _artist_relevance("J Cole", "J. Cole") > 0
+    assert _artist_relevance("Dave", "Dave Baksh") == 0
+    assert _artist_relevance("Dave", "Player Dave") == 0
 
 
 def test_setlistfm_rejects_unparseable_dates():

@@ -37,4 +37,6 @@ def test_stage_five_exposes_only_reviewed_write_routes() -> None:
         ("PUT", "/v1/albums/{album_id}/review"),
         ("POST", "/v1/spotify/connect"),
         ("POST", "/v1/spotify/disconnect"),
+        ("POST", "/v1/backups/preview"),
+        ("POST", "/v1/backups/restore"),
     }

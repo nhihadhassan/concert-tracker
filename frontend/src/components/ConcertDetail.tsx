@@ -1,4 +1,6 @@
-import { Armchair, ArrowLeft, CalendarDays, Image, MapPin, Music2, Pencil, Star, Ticket, Trash2, Users, WalletCards } from 'lucide-react'
+import { Armchair, ArrowLeft, CalendarDays, Image, MapPin, Music2, Pencil, Plus, Star, Ticket, Trash2, Users, WalletCards } from 'lucide-react'
+import { downloadConcertCalendar } from '../lib/exports'
+import type { Milestone } from '../lib/archiveInsights'
 import type { SessionMember } from '../session/useSession'
 import { parseGuests } from '../lib/guests'
 import type { Concert } from '../types'
@@ -6,6 +8,7 @@ import type { Concert } from '../types'
 interface ConcertDetailProps {
   concert: Concert
   member: SessionMember
+  milestones: Milestone[]
   onArtwork: (concert: Concert) => void
   onBack: () => void
   onDelete: (concert: Concert) => void
@@ -13,9 +16,9 @@ interface ConcertDetailProps {
 }
 
 const formatDate = (value: string) => new Intl.DateTimeFormat('en-CA', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }).format(new Date(`${value}T12:00:00`))
-const formatMoney = (value: number | null) => value === null ? 'Price not set' : new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(value)
+const formatMoney = (value: number) => new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(value)
 
-export function ConcertDetail({ concert, member, onArtwork, onBack, onDelete, onEdit }: ConcertDetailProps) {
+export function ConcertDetail({ concert, member, milestones, onArtwork, onBack, onDelete, onEdit }: ConcertDetailProps) {
   const personalReview = concert.reviews.find((review) => review.reviewer_user_id === member.user_id)
   const attendees = concert.attendees.filter((attendee) => attendee.attendance_status !== 'Did Not Attend')
   const scores = [
@@ -37,16 +40,16 @@ export function ConcertDetail({ concert, member, onArtwork, onBack, onDelete, on
         <header className="detail-hero-copy">
           <div className="detail-tags">{concert.genre ? <span className="genre-chip">#{concert.genre.replaceAll(' ', '')}</span> : null}<span className={`status-chip status-${concert.status.toLowerCase().replaceAll(' ', '-')}`}>{concert.status}</span>{concert.pending ? <span className="chip pending-chip">Pending sync</span> : null}</div>
           <h1 id="detail-title" data-view-heading tabIndex={-1}>{concert.artist}</h1>
-          <p>{concert.tour || 'Tour not set'}</p>
+          {concert.tour ? <p>{concert.tour}</p> : null}
         </header>
       </section>
 
       <div className="detail-content">
-        <section className="detail-rating" aria-labelledby="detail-rating-title">
-          <div className="detail-rating-primary"><span id="detail-rating-title">Your rating</span><strong>{concert.personal_rating ?? 'N/A'}</strong><small>{concert.personal_rating === null ? 'Not rated yet' : '/10'}</small></div>
-          <div className="detail-rating-combined"><Star size={18} fill="currentColor" aria-hidden="true" /><span>Combined</span><strong>{concert.combined_rating ?? 'N/A'}</strong></div>
-          <dl className="detail-scores">{scores.map(([label, score]) => <div key={label}><dt>{label}</dt><dd>{score ?? 'N/A'}</dd></div>)}</dl>
-        </section>
+        {concert.personal_rating !== null || concert.combined_rating !== null || scores.some(([, score]) => score !== null) ? <section className="detail-rating" aria-labelledby="detail-rating-title">
+          {concert.personal_rating !== null ? <div className="detail-rating-primary"><span id="detail-rating-title">Your rating</span><strong>{concert.personal_rating}</strong><small>/10</small></div> : null}
+          {concert.combined_rating !== null ? <div className="detail-rating-combined"><Star size={18} fill="currentColor" aria-hidden="true" /><span>Combined</span><strong>{concert.combined_rating}</strong></div> : null}
+          {scores.some(([, score]) => score !== null) ? <dl className="detail-scores">{scores.filter(([, score]) => score !== null).map(([label, score]) => <div key={label}><dt>{label}</dt><dd>{score}</dd></div>)}</dl> : null}
+        </section> : null}
 
         <section className="detail-people" aria-labelledby="detail-people-title">
           <div className="detail-section-heading"><Users aria-hidden="true" /><h2 id="detail-people-title">Who went</h2></div>
@@ -56,19 +59,23 @@ export function ConcertDetail({ concert, member, onArtwork, onBack, onDelete, on
         <section className="detail-facts" aria-label="Concert details">
           <div><CalendarDays aria-hidden="true" /><span>Date</span><strong>{formatDate(concert.date)}</strong></div>
           <div><MapPin aria-hidden="true" /><span>Venue</span><strong>{concert.venue}</strong></div>
-          <div><Armchair aria-hidden="true" /><span>Seat</span><strong>{concert.seat || 'Not recorded'}</strong></div>
-          <div><WalletCards aria-hidden="true" /><span>Price</span><strong>{formatMoney(concert.price)}</strong></div>
+          {concert.seat ? <div><Armchair aria-hidden="true" /><span>Seat</span><strong>{concert.seat}</strong></div> : null}
+          {concert.price !== null ? <div><WalletCards aria-hidden="true" /><span>Price</span><strong>{formatMoney(concert.price)}</strong></div> : null}
           <div><Ticket aria-hidden="true" /><span>Type</span><strong>{concert.type}</strong></div>
         </section>
 
-        <section className="detail-notes" aria-labelledby="memory-title">
+        {personalReview?.notes ? <section className="detail-notes" aria-labelledby="memory-title">
           <div className="detail-section-heading"><Star aria-hidden="true" /><h2 id="memory-title">Your memory</h2><button type="button" onClick={() => onEdit(concert)}><Pencil size={15} />Edit review</button></div>
-          <p>{personalReview?.notes || 'No personal memory recorded yet.'}</p>
-        </section>
+          <p>{personalReview.notes}</p>
+        </section> : null}
 
-        <section className="detail-notes detail-event-notes" aria-labelledby="event-notes-title"><div className="detail-section-heading"><Music2 aria-hidden="true" /><h2 id="event-notes-title">Event notes</h2></div><p>{concert.notes || 'No shared event notes recorded.'}</p></section>
+        {concert.notes ? <section className="detail-notes detail-event-notes" aria-labelledby="event-notes-title"><div className="detail-section-heading"><Music2 aria-hidden="true" /><h2 id="event-notes-title">Event notes</h2></div><p>{concert.notes}</p></section> : null}
 
-        {concert.spotify_url ? <a className="detail-setlist" href={concert.spotify_url} target="_blank" rel="noreferrer"><Music2 aria-hidden="true" /><span><strong>Open setlist</strong><small>View the saved Spotify link</small></span></a> : <section className="detail-setlist detail-setlist-empty"><Music2 aria-hidden="true" /><span><strong>No setlist saved</strong><small>Add a Spotify setlist from Edit concert.</small></span></section>}
+        {milestones.length ? <section className="detail-milestones" aria-label="Archive milestones">{milestones.map((milestone) => <p key={milestone.label}><Star size={15} aria-hidden="true" />{milestone.label}</p>)}</section> : null}
+
+        {concert.setlist_url ? <a className="detail-setlist" href={concert.setlist_url} target="_blank" rel="noreferrer"><Music2 aria-hidden="true" /><span><strong>View setlist</strong><small>Open the saved concert setlist.</small></span></a> : null}
+        {concert.spotify_url ? <a className="detail-setlist" href={concert.spotify_url} target="_blank" rel="noreferrer"><Music2 aria-hidden="true" /><span><strong>Open playlist</strong><small>Play the saved Spotify setlist playlist.</small></span></a> : null}
+        {concert.status === 'Want to Go' ? <button className="detail-setlist" type="button" onClick={() => downloadConcertCalendar(concert)}><Plus aria-hidden="true" /><span><strong>Add to calendar</strong><small>Download this concert as an all-day calendar event.</small></span></button> : null}
       </div>
     </article>
   )
