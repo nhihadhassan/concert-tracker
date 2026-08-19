@@ -81,6 +81,14 @@ export interface ConcertSuggestion {
   image: string | null
   ticket_url: string | null
   setlist_url: string | null
+  // Ticketmaster-only enrichment; null for the other providers.
+  start_time: string | null
+  price_min: number | null
+  price_max: number | null
+  price_currency: string | null
+  spotify_url: string | null
+  event_status: string | null
+  venue_label: string | null
 }
 
 export type ConcertSuggestionMode = 'upcoming' | 'past'

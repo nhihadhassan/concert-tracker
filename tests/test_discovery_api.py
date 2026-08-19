@@ -1,11 +1,16 @@
 from backend.discovery_routes import (
     _artist_relevance,
     _gemini_suggestion,
+    _pick_attraction,
+    _resolve_attraction,
+    _ResolvedAttraction,
+    _search_ticketmaster,
     _seatgeek_suggestion,
     _setlistfm_suggestion,
     _tavily_suggestion,
     _ticketmaster_suggestion,
     _tour_name,
+    _venue_label,
     suggest_concerts,
 )
 from backend.settings import Settings
@@ -31,13 +36,80 @@ TICKETMASTER_EVENT = {
         {"url": "https://img/wide.jpg", "ratio": "16_9", "width": 2048},
         {"url": "https://img/tall.jpg", "ratio": "4_3", "width": 3000},
     ],
-    "dates": {"start": {"localDate": "2026-09-14"}},
+    "dates": {
+        "start": {"localDate": "2026-09-14", "localTime": "19:30:00"},
+        "status": {"code": "onsale"},
+    },
     "classifications": [{"genre": {"name": "Hip-Hop/Rap"}}],
+    "priceRanges": [{"type": "standard", "currency": "CAD", "min": 79.0, "max": 249.5}],
     "_embedded": {
-        "venues": [{"name": "Scotiabank Arena", "city": {"name": "Toronto"}}],
+        "venues": [
+            {
+                "name": "Scotiabank Arena",
+                "city": {"name": "Toronto"},
+                "state": {"stateCode": "ON"},
+                "location": {"latitude": "43.6435", "longitude": "-79.3791"},
+            }
+        ],
+        "attractions": [
+            {
+                "name": "Yeat",
+                "externalLinks": {"spotify": [{"url": "https://open.spotify.com/artist/abc"}]},
+            }
+        ],
+    },
+}
+
+# Same act, a Hamilton date -- inside the 50km search radius.
+TICKETMASTER_HAMILTON_EVENT = {
+    **TICKETMASTER_EVENT,
+    "dates": {
+        "start": {"localDate": "2026-09-20", "localTime": "20:00:00"},
+        "status": {"code": "onsale"},
+    },
+    "_embedded": {
+        "venues": [
+            {
+                "name": "FirstOntario Centre",
+                "city": {"name": "Hamilton"},
+                "location": {"latitude": "43.2560", "longitude": "-79.8711"},
+            }
+        ],
         "attractions": [{"name": "Yeat"}],
     },
 }
+
+# Same act, a Montreal date -- well outside the 50km search radius.
+TICKETMASTER_MONTREAL_EVENT = {
+    **TICKETMASTER_EVENT,
+    "dates": {
+        "start": {"localDate": "2026-09-25", "localTime": "20:00:00"},
+        "status": {"code": "onsale"},
+    },
+    "_embedded": {
+        "venues": [
+            {
+                "name": "Bell Centre",
+                "city": {"name": "Montreal"},
+                "location": {"latitude": "45.4961", "longitude": "-73.5693"},
+            }
+        ],
+        "attractions": [{"name": "Yeat"}],
+    },
+}
+
+# Trimmed from a real attractions.json page for "Coldplay": a tribute act
+# ranks first, the real band is further down but carries real inventory.
+ATTRACTIONS_PAGE = [
+    {"id": "K-trib", "name": "Ultimate Coldplay", "upcomingEvents": {"_total": 5}},
+    {
+        "id": "K8vZ917",
+        "name": "Coldplay",
+        "upcomingEvents": {"_total": 42},
+        "externalLinks": {"spotify": [{"url": "https://open.spotify.com/artist/coldplay"}]},
+        "classifications": [{"genre": {"name": "Rock"}}],
+    },
+]
 
 SEATGEEK_EVENT = {
     "title": "Yeat: The Bell Tour",
@@ -155,7 +227,171 @@ def test_events_missing_venue_or_date_are_skipped():
     assert _seatgeek_suggestion(sg_bad_date) is None
 
 
-def test_discovery_is_toronto_only_even_when_provider_returns_other_cities(monkeypatch):
+def test_ticketmaster_suggestion_carries_time_price_status_and_spotify():
+    suggestion = _ticketmaster_suggestion(TICKETMASTER_EVENT)
+    assert suggestion is not None
+    assert suggestion.start_time == "19:30"
+    assert suggestion.price_min == 79.0
+    assert suggestion.price_max == 249.5
+    assert suggestion.price_currency == "CAD"
+    assert suggestion.event_status == "onsale"
+    assert suggestion.spotify_url == "https://open.spotify.com/artist/abc"
+
+
+def test_ticketmaster_suggestion_without_price_ranges_leaves_price_null():
+    event = {k: v for k, v in TICKETMASTER_EVENT.items() if k != "priceRanges"}
+    suggestion = _ticketmaster_suggestion(event)
+    assert suggestion is not None
+    assert suggestion.price_min is None
+    assert suggestion.price_max is None
+    assert suggestion.price_currency is None
+
+
+def test_ticketmaster_suggestion_maps_cancelled_status():
+    event = {
+        **TICKETMASTER_EVENT,
+        "dates": {**TICKETMASTER_EVENT["dates"], "status": {"code": "cancelled"}},
+    }
+    suggestion = _ticketmaster_suggestion(event)
+    assert suggestion is not None
+    assert suggestion.event_status == "cancelled"
+
+
+def test_ticketmaster_suggestion_ignores_a_wrong_timezone():
+    # A Toronto venue has been observed reporting a "America/New_York" zone;
+    # localTime is already venue-local, so it must not be reinterpreted.
+    event = {
+        **TICKETMASTER_EVENT,
+        "dates": {**TICKETMASTER_EVENT["dates"], "timezone": "America/New_York"},
+    }
+    suggestion = _ticketmaster_suggestion(event)
+    assert suggestion is not None
+    assert suggestion.start_time == "19:30"
+
+
+def test_venue_label_appends_city_only_outside_toronto():
+    assert _venue_label("Scotiabank Arena", "Toronto") == "Scotiabank Arena"
+    assert _venue_label("Scotiabank Arena", None) == "Scotiabank Arena"
+    assert _venue_label("FirstOntario Centre", "Hamilton") == "FirstOntario Centre (Hamilton)"
+
+
+def test_suggestion_uses_resolved_attraction_name_when_event_omits_the_headliner():
+    # A search by attractionId can still return an event whose own embedded
+    # attractions list omits the headliner (festival/multi-bill listings).
+    event = {
+        **TICKETMASTER_EVENT,
+        "_embedded": {**TICKETMASTER_EVENT["_embedded"], "attractions": []},
+    }
+    attraction = _ResolvedAttraction(id="K8vZ917Q3M0", name="Yeat", spotify_url=None, genre=None)
+    suggestion = _ticketmaster_suggestion(event, "Yeat", attraction)
+    assert suggestion is not None
+    assert suggestion.artist == "Yeat"
+
+
+def test_attraction_pick_rejects_tribute_bands():
+    picked = _pick_attraction(ATTRACTIONS_PAGE, "Coldplay")
+    assert picked is not None
+    assert picked.id == "K8vZ917"
+    assert picked.name == "Coldplay"
+    assert picked.spotify_url == "https://open.spotify.com/artist/coldplay"
+    assert picked.genre == "Rock"
+
+
+def test_attraction_pick_returns_none_when_only_tributes_match():
+    assert _pick_attraction([ATTRACTIONS_PAGE[0]], "Coldplay") is None
+
+
+def test_attraction_pick_breaks_ties_on_upcoming_event_count():
+    candidates = [
+        {"id": "low", "name": "Coldplay", "upcomingEvents": {"_total": 0}},
+        {"id": "high", "name": "Coldplay", "upcomingEvents": {"_total": 42}},
+    ]
+    picked = _pick_attraction(candidates, "Coldplay")
+    assert picked is not None
+    assert picked.id == "high"
+
+
+def test_attraction_pick_tolerates_a_leading_article():
+    candidates = [{"id": "w1", "name": "The Weeknd", "upcomingEvents": {"_total": 10}}]
+    picked = _pick_attraction(candidates, "Weeknd")
+    assert picked is not None
+    assert picked.id == "w1"
+
+    # Negative control: article-tolerance must not become fuzzy matching.
+    tribute = [{"id": "w2", "name": "Weeknd Tribute Band", "upcomingEvents": {"_total": 3}}]
+    assert _pick_attraction(tribute, "Weeknd") is None
+
+
+def test_search_uses_attraction_id_when_resolved(monkeypatch):
+    import backend.discovery_routes as discovery
+
+    captured: dict = {}
+
+    def fake_fetch(url, params, headers=None, empty_on_404=False):
+        captured["params"] = params
+        return {"_embedded": {"events": [TICKETMASTER_EVENT]}}
+
+    monkeypatch.setattr(discovery, "_fetch", fake_fetch)
+    settings = Settings(
+        supabase_url="https://example.supabase.co",
+        supabase_publishable_key="key",
+        ticketmaster_api_key="ticket-key",
+    )
+    attraction = _ResolvedAttraction(id="K8vZ917Q3M0", name="Yeat", spotify_url=None, genre=None)
+
+    _search_ticketmaster(settings, "Yeat", attraction)
+
+    params = captured["params"]
+    assert params["attractionId"] == "K8vZ917Q3M0"
+    assert params["latlong"] == "43.6532,-79.3832"
+    assert params["radius"] == 50
+    assert params["unit"] == "km"
+    assert "keyword" not in params
+    assert "city" not in params
+
+
+def test_search_falls_back_to_keyword_when_no_attraction_matches(monkeypatch):
+    import backend.discovery_routes as discovery
+
+    captured: dict = {}
+
+    def fake_fetch(url, params, headers=None, empty_on_404=False):
+        captured["params"] = params
+        return {"_embedded": {"events": []}}
+
+    monkeypatch.setattr(discovery, "_fetch", fake_fetch)
+    settings = Settings(
+        supabase_url="https://example.supabase.co",
+        supabase_publishable_key="key",
+        ticketmaster_api_key="ticket-key",
+    )
+
+    _search_ticketmaster(settings, "Yeat", None)
+
+    assert captured["params"]["keyword"] == "Yeat"
+    assert "attractionId" not in captured["params"]
+
+
+def test_attraction_resolution_is_cached(monkeypatch):
+    import backend.discovery_routes as discovery
+
+    _resolve_attraction.cache_clear()
+    calls: list[dict] = []
+
+    def fake_fetch(url, params, headers=None, empty_on_404=False):
+        calls.append(params)
+        return {"_embedded": {"attractions": [ATTRACTIONS_PAGE[1]]}}
+
+    monkeypatch.setattr(discovery, "_fetch", fake_fetch)
+
+    first = _resolve_attraction("key-1", "Coldplay")
+    second = _resolve_attraction("key-1", "Coldplay")
+
+    assert first == second
+    assert len(calls) == 1
+
+
+def test_discovery_keeps_nearby_cities_and_drops_distant_ones(monkeypatch):
     import backend.discovery_routes as discovery
 
     settings = Settings(
@@ -164,26 +400,127 @@ def test_discovery_is_toronto_only_even_when_provider_returns_other_cities(monke
         ticketmaster_api_key="ticket-key",
     )
     monkeypatch.setattr(discovery, "get_settings", lambda: settings)
+    monkeypatch.setattr(discovery, "_resolve_attraction", lambda _key, _artist: None)
     monkeypatch.setattr(
         discovery,
         "_search_ticketmaster",
-        lambda _settings, _artist, city: [
+        lambda _settings, _artist, _attraction: [
             TICKETMASTER_EVENT,
-            {
-                **TICKETMASTER_EVENT,
-                "dates": {"start": {"localDate": "2026-10-01"}},
-                "_embedded": {
-                    "venues": [{"name": "Madison Square Garden", "city": {"name": "New York"}}],
-                    "attractions": [{"name": "Yeat"}],
-                },
-            },
+            TICKETMASTER_HAMILTON_EVENT,
+            TICKETMASTER_MONTREAL_EVENT,
         ],
     )
 
-    response = suggest_concerts(artist="Yeat", mode="upcoming", city="New York")
+    response = suggest_concerts(artist="Yeat", mode="upcoming")
 
-    assert response.results[0].city == "Toronto"
+    assert {r.city for r in response.results} == {"Toronto", "Hamilton"}
+    assert len(response.results) == 2
+
+
+def test_cancelled_shows_rank_below_live_shows(monkeypatch):
+    import backend.discovery_routes as discovery
+
+    settings = Settings(
+        supabase_url="https://example.supabase.co",
+        supabase_publishable_key="key",
+        ticketmaster_api_key="ticket-key",
+    )
+    monkeypatch.setattr(discovery, "get_settings", lambda: settings)
+    monkeypatch.setattr(discovery, "_resolve_attraction", lambda _key, _artist: None)
+
+    cancelled_earlier = {
+        **TICKETMASTER_EVENT,
+        "dates": {
+            "start": {"localDate": "2026-09-10", "localTime": "19:00:00"},
+            "status": {"code": "cancelled"},
+        },
+    }
+    live_later = {
+        **TICKETMASTER_EVENT,
+        "dates": {
+            "start": {"localDate": "2026-09-30", "localTime": "19:00:00"},
+            "status": {"code": "onsale"},
+        },
+    }
+    monkeypatch.setattr(
+        discovery,
+        "_search_ticketmaster",
+        lambda _settings, _artist, _attraction: [cancelled_earlier, live_later],
+    )
+
+    response = suggest_concerts(artist="Yeat", mode="upcoming")
+
+    assert [r.date for r in response.results] == ["2026-09-30", "2026-09-10"]
+
+
+def test_duplicate_listings_for_the_same_date_and_venue_are_deduped(monkeypatch):
+    import backend.discovery_routes as discovery
+
+    settings = Settings(
+        supabase_url="https://example.supabase.co",
+        supabase_publishable_key="key",
+        ticketmaster_api_key="ticket-key",
+    )
+    monkeypatch.setattr(discovery, "get_settings", lambda: settings)
+    monkeypatch.setattr(discovery, "_resolve_attraction", lambda _key, _artist: None)
+    monkeypatch.setattr(
+        discovery,
+        "_search_ticketmaster",
+        lambda _settings, _artist, _attraction: [TICKETMASTER_EVENT, TICKETMASTER_EVENT],
+    )
+
+    response = suggest_concerts(artist="Yeat", mode="upcoming")
+
     assert len(response.results) == 1
+
+
+def test_route_falls_back_to_keyword_search_and_still_filters_irrelevant_matches(monkeypatch):
+    import backend.discovery_routes as discovery
+
+    settings = Settings(
+        supabase_url="https://example.supabase.co",
+        supabase_publishable_key="key",
+        ticketmaster_api_key="ticket-key",
+    )
+    monkeypatch.setattr(discovery, "get_settings", lambda: settings)
+    monkeypatch.setattr(discovery, "_resolve_attraction", lambda _key, _artist: None)
+
+    # Mirrors a real keyword search matching a venue name rather than the
+    # artist: the attraction on the event is unrelated to the query.
+    noise_event = {
+        **TICKETMASTER_EVENT,
+        "dates": {"start": {"localDate": "2026-09-20", "localTime": "19:00:00"}},
+        "_embedded": {
+            **TICKETMASTER_EVENT["_embedded"],
+            "attractions": [{"name": "Phoebe Ryan"}],
+        },
+    }
+    monkeypatch.setattr(
+        discovery,
+        "_search_ticketmaster",
+        lambda _settings, _artist, _attraction: [noise_event, TICKETMASTER_EVENT],
+    )
+
+    response = suggest_concerts(artist="Yeat", mode="upcoming")
+
+    assert len(response.results) == 1
+    assert response.results[0].artist == "Yeat"
+
+
+def test_discovery_status_hides_past_mode_without_a_setlistfm_key(monkeypatch):
+    import backend.discovery_routes as discovery
+
+    settings = Settings(
+        supabase_url="https://example.supabase.co",
+        supabase_publishable_key="key",
+        ticketmaster_api_key="ticket-key",
+    )
+    monkeypatch.setattr(discovery, "get_settings", lambda: settings)
+
+    result = discovery.discovery_status()
+
+    assert result.upcoming is True
+    assert result.past is False
 
 
 def test_gemini_event_maps_to_suggestion():

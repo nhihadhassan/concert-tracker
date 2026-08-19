@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Check, Image, LoaderCircle, Search, Sparkles, X } from 'lucide-react'
+import { Check, ExternalLink, Image, LoaderCircle, Search, Sparkles, X } from 'lucide-react'
 import { AnimatePresence, m } from 'motion/react'
-import { searchArtwork, searchConcertSuggestions } from '../lib/api'
+import { fetchDiscoveryStatus, searchArtwork, searchConcertSuggestions } from '../lib/api'
 import { addGuests, parseGuests, serializeGuests } from '../lib/guests'
+import { formatPriceRange, formatShowTime, statusLabel, suggestionVenueValue } from '../lib/suggestions'
 import type {
   ArtworkOption,
   Concert,
@@ -10,6 +11,7 @@ import type {
   ConcertStatus,
   ConcertSuggestion,
   ConcertSuggestionMode,
+  DiscoveryStatus,
   MemberSummary,
   ReviewWrite,
 } from '../types'
@@ -58,6 +60,7 @@ export function AddConcertDialog({
   const [artworkResults, setArtworkResults] = useState<ArtworkOption[]>([])
   const [artworkLoading, setArtworkLoading] = useState(false)
   const [artworkError, setArtworkError] = useState('')
+  const [discovery, setDiscovery] = useState<DiscoveryStatus>({ upcoming: true, past: false })
   const [suggestQuery, setSuggestQuery] = useState('')
   const [suggestMode, setSuggestMode] = useState<ConcertSuggestionMode>('upcoming')
   const [suggestions, setSuggestions] = useState<ConcertSuggestion[]>([])
@@ -107,6 +110,18 @@ export function AddConcertDialog({
       if (artworkRequest.current === controller) setArtworkLoading(false)
     }
   }, [])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    fetchDiscoveryStatus(controller.signal)
+      .then((status) => setDiscovery(status))
+      .catch(() => {})
+    return () => controller.abort()
+  }, [])
+
+  useEffect(() => {
+    if (!discovery.past) setSuggestMode('upcoming')
+  }, [discovery.past])
 
   useEffect(() => {
     const dialog = dialogRef.current
@@ -161,11 +176,11 @@ export function AddConcertDialog({
       if (!response.configured) {
         setSuggestMessage(mode === 'past'
           ? 'Past-show search needs a setlist.fm key.'
-          : 'Upcoming-show search needs a ticket provider key. Try "Already played" to find shows you have been to.')
+          : `Upcoming-show search needs a ticket provider key.${discovery.past ? ' Try "Already played" to find shows you have been to.' : ''}`)
       } else if (!response.results.length) {
         setSuggestMessage(mode === 'past'
           ? `No past shows found for ${trimmed}.`
-          : `No upcoming Toronto dates found for ${trimmed}.`)
+          : `No upcoming shows found for ${trimmed} near Toronto.`)
       }
       setSuggestions(response.results)
     } catch (error) {
@@ -174,7 +189,7 @@ export function AddConcertDialog({
     } finally {
       if (!controller.signal.aborted) setSuggestLoading(false)
     }
-  }, [])
+  }, [discovery.past])
 
   // The form is uncontrolled, so prefill writes straight to the inputs and
   // leaves anything the suggestion does not know about untouched.
@@ -189,10 +204,22 @@ export function AddConcertDialog({
     setField('artist', suggestion.artist)
     setField('tour', suggestion.tour)
     setField('date', suggestion.date)
-    setField('venue', suggestion.venue)
+    setField('venue', suggestionVenueValue(suggestion))
     setField('genre', suggestion.genre)
     setField('setlistUrl', suggestion.setlist_url)
-    setField('status', suggestMode === 'past' ? 'Attended' : 'Want to Go')
+    setField('spotify', suggestion.spotify_url)
+    setField('price', suggestion.price_min !== null ? String(suggestion.price_min) : null)
+    setField(
+      'status',
+      suggestion.event_status === 'cancelled'
+        ? 'Cancelled'
+        : suggestMode === 'past' ? 'Attended' : 'Want to Go',
+    )
+    // The date onChange handler auto-picks a status based on past/future
+    // unless the user has touched Status directly; without marking it
+    // touched here, a later date edit would silently revert a prefilled
+    // Cancelled status back to "Want to Go".
+    statusTouched.current = true
     if (suggestion.image) setImageUrl(suggestion.image)
     setAppliedSuggestion(`${suggestion.date}|${suggestion.venue}`)
     // setlist.fm carries no artwork, so fall back to the iTunes lookup.
@@ -272,7 +299,7 @@ export function AddConcertDialog({
           <div className="suggest-box">
               <div className="suggest-head">
                 <span className="suggest-title">Search free show sources</span>
-                <div className="suggest-modes" role="group" aria-label="Show search mode">
+                {discovery.past ? <div className="suggest-modes" role="group" aria-label="Show search mode">
                   <button
                     type="button"
                     className={suggestMode === 'upcoming' ? 'active' : ''}
@@ -285,7 +312,7 @@ export function AddConcertDialog({
                     aria-pressed={suggestMode === 'past'}
                     onClick={() => { setSuggestMode('past'); setSuggestions([]); setSuggestMessage('') }}
                   >Past</button>
-                </div>
+                </div> : null}
               </div>
               <div className="suggest-search-row">
                 <label className="field field-wide">
@@ -296,7 +323,7 @@ export function AddConcertDialog({
                       type="search"
                       value={suggestQuery}
                       autoComplete="off"
-                      placeholder={suggestMode === 'past' ? 'Artist you saw' : 'Artist coming to Toronto'}
+                      placeholder={suggestMode === 'past' ? 'Artist you saw' : 'Artist playing near Toronto'}
                       onChange={(event) => setSuggestQuery(event.target.value)}
                       onKeyDown={(event) => {
                         if (event.key !== 'Enter') return
@@ -315,17 +342,33 @@ export function AddConcertDialog({
               {suggestions.length ? <ul className="suggest-results">{suggestions.map((suggestion) => {
                 const key = `${suggestion.date}|${suggestion.venue}`
                 const applied = appliedSuggestion === key
+                const badge = statusLabel(suggestion.event_status)
+                const extra = [
+                  formatShowTime(suggestion.start_time),
+                  formatPriceRange(suggestion.price_min, suggestion.price_max, suggestion.price_currency),
+                ].filter(Boolean).join(' · ')
                 return <li key={key}>
                   <button type="button" className={applied ? 'applied' : ''} aria-pressed={applied} onClick={() => applySuggestion(suggestion)}>
                     {suggestion.image
                       ? <img src={suggestion.image} alt="" loading="lazy" decoding="async" />
                       : <span className="suggest-art-fallback" aria-hidden="true" />}
                     <span className="suggest-meta">
-                      <strong>{suggestion.tour ?? suggestion.artist}</strong>
+                      <div className="suggest-title-row">
+                        <strong>{suggestion.tour ?? suggestion.artist}</strong>
+                        {badge ? <span className="suggest-status">{badge}</span> : null}
+                      </div>
                       <span>{suggestion.venue}{suggestion.city ? `, ${suggestion.city}` : ''}</span>
+                      {extra ? <span className="suggest-extra">{extra}</span> : null}
                     </span>
                     <span className="suggest-date">{suggestion.date}{applied ? <em><Check size={13} aria-hidden="true" />Filled in</em> : null}</span>
                   </button>
+                  {suggestion.ticket_url ? <a
+                    className="suggest-ticket"
+                    href={suggestion.ticket_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label={`Tickets for ${suggestion.tour ?? suggestion.artist}`}
+                  ><ExternalLink size={15} aria-hidden="true" /></a> : null}
                 </li>
               })}</ul> : null}
           </div>
@@ -467,7 +510,7 @@ export function AddConcertDialog({
               <AnimatePresence mode="wait" initial={false}>{imageUrl ? <m.img key={imageUrl} src={imageUrl} alt="Artwork preview" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} /> : <m.span key="empty-preview" initial={{ opacity: 0 }} animate={{ opacity: 1 }}><Image size={18} />No artwork selected</m.span>}</AnimatePresence>
             </div>
             <label className="field field-wide"><span>Concert setlist URL</span><input name="setlistUrl" type="url" defaultValue={concert?.setlist_url ?? ''} /></label>
-            <label className="field field-wide"><span>Spotify playlist URL</span><input name="spotify" type="url" defaultValue={concert?.spotify_url ?? ''} /></label>
+            <label className="field field-wide"><span>Spotify link</span><input name="spotify" type="url" placeholder="Playlist or artist page" defaultValue={concert?.spotify_url ?? ''} /></label>
             <label className="field field-wide"><span>Event notes</span><textarea name="notes" rows={3} defaultValue={concert?.notes ?? ''} /></label>
           </div>
           </fieldset>

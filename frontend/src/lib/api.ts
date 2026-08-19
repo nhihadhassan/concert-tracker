@@ -107,7 +107,9 @@ export const searchConcertSuggestions = (
   signal?: AbortSignal,
 ) =>
   apiRequest<ConcertSuggestionResponse>(
-    `/v1/discovery/concerts?artist=${encodeURIComponent(artist)}&mode=${mode}&city=Toronto`,
+    // The backend ignores `city` -- Ticketmaster search is a fixed radius
+    // around Toronto, and the other providers use Toronto directly.
+    `/v1/discovery/concerts?artist=${encodeURIComponent(artist)}&mode=${mode}`,
     { signal },
   )
 

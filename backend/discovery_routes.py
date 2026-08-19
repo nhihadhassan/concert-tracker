@@ -5,13 +5,16 @@ covers both:
 
 ``upcoming``
     Shows an artist is about to play, for logging something you plan to
-    attend. Ticketmaster and SeatGeek are preferred, with Gemini's grounded
-    Google Search as a temporary fallback when those keys are unavailable.
+    attend. Ticketmaster is the live provider (search radius: 50km around
+    Toronto, so Hamilton/Mississauga/Oshawa/Burlington shows are included);
+    SeatGeek and Gemini's grounded Google Search remain as fallbacks for
+    whenever those keys are configured instead.
 
 ``past``
     Shows an artist has already played, for backfilling a concert you attended
     but never logged. Served by setlist.fm, which is a setlist archive and so
-    carries essentially no future dates.
+    carries essentially no future dates. Ticketmaster cannot substitute here
+    -- its events endpoint does not index past events at all.
 
 Whichever provider answers, results share one ``ConcertSuggestion`` shape. With
 no key for the requested mode the endpoint reports ``configured=false`` so the
@@ -24,10 +27,12 @@ UI hides the feature rather than erroring.
 from __future__ import annotations
 
 import json
+import math
 import re
 import unicodedata
-from datetime import datetime
-from typing import Any, Optional
+from datetime import datetime, timezone
+from functools import lru_cache
+from typing import Any, NamedTuple, Optional
 
 import httpx
 from fastapi import APIRouter, HTTPException, Query, status
@@ -38,6 +43,7 @@ from backend.settings import Settings, SettingsError, get_settings
 router = APIRouter(prefix="/v1/discovery", tags=["discovery"])
 
 TICKETMASTER_EVENTS_URL = "https://app.ticketmaster.com/discovery/v2/events.json"
+TICKETMASTER_ATTRACTIONS_URL = "https://app.ticketmaster.com/discovery/v2/attractions.json"
 SEATGEEK_EVENTS_URL = "https://api.seatgeek.com/2/events"
 SETLISTFM_SEARCH_URL = "https://api.setlist.fm/rest/1.0/search/setlists"
 TAVILY_SEARCH_URL = "https://api.tavily.com/search"
@@ -47,6 +53,13 @@ GEMINI_GENERATE_URL = (
 MAX_SUGGESTIONS = 8
 PLACEHOLDER_GENRES = {"undefined", "other", "unknown"}
 TORONTO = "Toronto"
+TORONTO_LAT = 43.6532
+TORONTO_LON = -79.3832
+# How far out Ticketmaster is asked to search (catches Hamilton, Mississauga,
+# Oshawa, Burlington), plus slack for venue-coordinate rounding when the
+# result is re-checked locally.
+SEARCH_RADIUS_KM = 50
+DISTANCE_SLACK_KM = 10
 
 
 class ConcertSuggestion(BaseModel):
@@ -59,6 +72,18 @@ class ConcertSuggestion(BaseModel):
     image: Optional[str] = None
     ticket_url: Optional[str] = None
     setlist_url: Optional[str] = None
+    # Ticketmaster-only enrichment. Optional so the other providers' mappers
+    # (SeatGeek, setlist.fm, Tavily, Gemini) do not need to change.
+    start_time: Optional[str] = None
+    price_min: Optional[float] = None
+    price_max: Optional[float] = None
+    price_currency: Optional[str] = None
+    spotify_url: Optional[str] = None
+    event_status: Optional[str] = None
+    # What the form should write into the venue field: the bare venue name in
+    # Toronto, "Venue (City)" outside it, so out-of-town shows stay
+    # identifiable without a database column for city.
+    venue_label: Optional[str] = None
 
 
 class SuggestionResponse(BaseModel):
@@ -174,8 +199,192 @@ def _best_image(images: list[dict[str, Any]]) -> Optional[str]:
     return str(widest["url"])
 
 
+class _ResolvedAttraction(NamedTuple):
+    """A Ticketmaster attraction (artist record) picked for an exact-artist search."""
+
+    id: str
+    name: str
+    spotify_url: Optional[str]
+    genre: Optional[str]
+
+
+def _attraction_relevance(query: str, name: str) -> int:
+    """Score an attraction name against the query, tolerating a leading article.
+
+    Reuses ``_artist_relevance`` rather than reimplementing matching -- it
+    already rejects incidental fragments (e.g. "Ultimate Coldplay" scores 0
+    against "Coldplay"). The one gap it has is a leading article: "Weeknd"
+    scores 0 against "The Weeknd" even though that is exactly the artist the
+    user means. Retrying with "the " stripped from either side closes that
+    gap without weakening the original scorer, and scores one point lower so
+    an exact match still wins any tie.
+    """
+    score = _artist_relevance(query, name)
+    if score:
+        return score
+
+    def _strip_the(value: str) -> str:
+        return re.sub(r"^the\s+", "", value.strip(), flags=re.IGNORECASE)
+
+    retry_score = _artist_relevance(_strip_the(query), _strip_the(name))
+    return retry_score - 1 if retry_score else 0
+
+
+def _pick_attraction(
+    candidates: list[dict[str, Any]], query: str
+) -> Optional[_ResolvedAttraction]:
+    """Choose the best-matching attraction, rejecting tributes and one-offs.
+
+    Ticketmaster's own relevance ordering is not trustworthy here: searching
+    "Coldplay" can return "Ultimate Coldplay" (a tribute act) first, with the
+    real Coldplay further down or absent from a short page. Every candidate is
+    scored, zero-score candidates (tributes, unrelated acts) are dropped, and
+    ties are broken by upcoming-event count, since Ticketmaster carries
+    duplicate attraction records for one act and only the one with real
+    inventory returns events.
+    """
+    scored: list[tuple[int, int, int, dict[str, Any]]] = []
+    for index, candidate in enumerate(candidates):
+        name = str((candidate or {}).get("name") or "").strip()
+        if not name or not candidate.get("id"):
+            continue
+        score = _attraction_relevance(query, name)
+        if score <= 0:
+            continue
+        upcoming = int(((candidate.get("upcomingEvents") or {}).get("_total")) or 0)
+        scored.append((score, upcoming, index, candidate))
+    if not scored:
+        return None
+    scored.sort(key=lambda item: (-item[0], -item[1], item[2]))
+    winner = scored[0][3]
+    classifications = winner.get("classifications") or []
+    genre = None
+    if classifications:
+        genre = _clean_genre(((classifications[0] or {}).get("genre") or {}).get("name"))
+    spotify_links = ((winner.get("externalLinks") or {}).get("spotify")) or []
+    spotify_url = None
+    if spotify_links:
+        spotify_url = str((spotify_links[0] or {}).get("url") or "").strip() or None
+    return _ResolvedAttraction(
+        id=str(winner["id"]),
+        name=str(winner.get("name") or "").strip(),
+        spotify_url=spotify_url,
+        genre=genre,
+    )
+
+
+@lru_cache(maxsize=256)
+def _resolve_attraction(api_key: str, artist: str) -> Optional[_ResolvedAttraction]:
+    """Resolve an artist name to a stable Ticketmaster attraction id.
+
+    Cached per (key, artist) for the lifetime of the process -- attraction ids
+    are stable, so a warm serverless instance skips the extra round-trip on
+    repeat searches. Keyed on the raw api key string (not the Settings object)
+    so tests can clear the cache directly.
+    """
+    payload = _fetch(
+        TICKETMASTER_ATTRACTIONS_URL,
+        {
+            "apikey": api_key,
+            "keyword": artist,
+            "classificationName": "Music",
+            # The top-ranked result is not reliable (tribute acts can rank
+            # first), so fetch enough depth for `_pick_attraction` to find the
+            # real artist rather than trusting Ticketmaster's own ordering.
+            "size": 20,
+        },
+    )
+    candidates = (payload.get("_embedded") or {}).get("attractions") or []
+    return _pick_attraction(candidates, artist)
+
+
+def _price_range(event: dict[str, Any]) -> tuple[Optional[float], Optional[float], Optional[str]]:
+    """Read Ticketmaster's price range, preferring the standard price type.
+
+    ``priceRanges`` is absent on many events (not every listing has pricing
+    loaded yet), so returning ``(None, None, None)`` is the common case and
+    must not raise.
+    """
+    ranges = [r for r in (event.get("priceRanges") or []) if isinstance(r, dict)]
+    if not ranges:
+        return None, None, None
+    standard = [r for r in ranges if r.get("type") == "standard"]
+    pool = standard or ranges
+    mins = [r.get("min") for r in pool if isinstance(r.get("min"), (int, float))]
+    maxes = [r.get("max") for r in pool if isinstance(r.get("max"), (int, float))]
+    if not mins and not maxes:
+        return None, None, None
+    currency = str(pool[0].get("currency") or "").strip() or None
+    return (
+        float(min(mins)) if mins else None,
+        float(max(maxes)) if maxes else None,
+        currency,
+    )
+
+
+def _start_time(start: dict[str, Any]) -> Optional[str]:
+    """Pull the venue-local wall-clock start time, e.g. "19:30".
+
+    Deliberately ignores ``dates.timezone`` -- it has been observed wrong
+    (a Toronto venue reporting "America/New_York"), while ``localTime`` is
+    already the venue's own local clock and needs no conversion.
+    """
+    raw = str(start.get("localTime") or "").strip()
+    candidate = raw[:5]
+    if re.match(r"^\d{2}:\d{2}$", candidate):
+        return candidate
+    return None
+
+
+def _event_status(event: dict[str, Any]) -> Optional[str]:
+    """Ticketmaster's sale status, e.g. "onsale", "cancelled", "rescheduled".
+
+    Unrecognized codes are passed through as-is rather than coerced, so a new
+    Ticketmaster status degrades to an unfamiliar-but-harmless label instead
+    of being mapped incorrectly.
+    """
+    code = str(((event.get("dates") or {}).get("status") or {}).get("code") or "").strip().lower()
+    return code or None
+
+
+def _venue_label(venue_name: str, city: Optional[str]) -> str:
+    """What the form should write into the venue field.
+
+    Toronto venues are left exactly as they render today; venues outside
+    Toronto get the city appended in parentheses so out-of-town shows stay
+    identifiable without a database column for city. `ConcertCard` and
+    `concertInsights` already strip a trailing parenthetical, so this reads
+    and groups correctly with no other changes.
+    """
+    if not city or city.strip().casefold() == TORONTO.casefold():
+        return venue_name
+    return f"{venue_name} ({city.strip()})"
+
+
+def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    radius_km = 6371.0
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    d_phi = math.radians(lat2 - lat1)
+    d_lambda = math.radians(lon2 - lon1)
+    a = math.sin(d_phi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(d_lambda / 2) ** 2
+    return 2 * radius_km * math.asin(math.sqrt(a))
+
+
+def _venue_distance_km(venue: dict[str, Any]) -> Optional[float]:
+    """Distance from downtown Toronto, in km. Ticketmaster's lat/long are strings."""
+    location = venue.get("location") or {}
+    try:
+        lat = float(location["latitude"])
+        lon = float(location["longitude"])
+    except (KeyError, TypeError, ValueError):
+        return None
+    return _haversine_km(TORONTO_LAT, TORONTO_LON, lat, lon)
+
+
 def _ticketmaster_suggestion(
-    event: dict[str, Any], artist_query: Optional[str] = None
+    event: dict[str, Any],
+    artist_query: Optional[str] = None,
+    attraction: Optional[_ResolvedAttraction] = None,
 ) -> Optional[ConcertSuggestion]:
     embedded = event.get("_embedded") or {}
     venues = embedded.get("venues") or []
@@ -192,21 +401,55 @@ def _ticketmaster_suggestion(
     attractions = embedded.get("attractions") or []
     event_name = str(event.get("name") or "").strip()
     artist = _best_matching_artist(attractions, artist_query)
+    # A search by attractionId can still omit the headliner from the event's
+    # own embedded attractions (festival/multi-bill listings). Falling back to
+    # the artist we already resolved keeps a correct event from being dropped
+    # by the caller's relevance filter.
+    if not artist and attraction:
+        artist = attraction.name
 
     classifications = event.get("classifications") or []
     genre = None
     if classifications:
         genre = _clean_genre(((classifications[0] or {}).get("genre") or {}).get("name"))
+    if not genre and attraction:
+        genre = attraction.genre
+
+    spotify_url = None
+    matching_attraction = next(
+        (
+            a
+            for a in attractions
+            if str((a or {}).get("name") or "").strip().casefold() == artist.casefold()
+        ),
+        None,
+    )
+    if matching_attraction:
+        spotify_links = ((matching_attraction.get("externalLinks") or {}).get("spotify")) or []
+        if spotify_links:
+            spotify_url = str((spotify_links[0] or {}).get("url") or "").strip() or None
+    if not spotify_url and attraction:
+        spotify_url = attraction.spotify_url
+
+    city = str((venue.get("city") or {}).get("name") or "").strip() or None
+    price_min, price_max, price_currency = _price_range(event)
 
     return ConcertSuggestion(
         artist=artist or event_name,
         tour=_tour_name(event_name, artist),
         date=local_date,
         venue=venue_name,
-        city=str((venue.get("city") or {}).get("name") or "").strip() or None,
+        city=city,
         genre=genre,
         image=_best_image(event.get("images") or []),
         ticket_url=str(event.get("url") or "").strip() or None,
+        start_time=_start_time(start),
+        price_min=price_min,
+        price_max=price_max,
+        price_currency=price_currency,
+        spotify_url=spotify_url,
+        event_status=_event_status(event),
+        venue_label=_venue_label(venue_name, city),
     )
 
 
@@ -387,19 +630,33 @@ def _fetch(
         ) from exc
 
 
-def _search_ticketmaster(settings: Settings, artist: str, city: str) -> list[dict[str, Any]]:
-    payload = _fetch(
-        TICKETMASTER_EVENTS_URL,
-        {
-            "apikey": settings.ticketmaster_api_key,
-            "keyword": artist,
-            "city": city,
-            "countryCode": "CA",
-            "classificationName": "Music",
-            "sort": "date,asc",
-            "size": 24,
-        },
-    )
+def _search_ticketmaster(
+    settings: Settings, artist: str, attraction: Optional[_ResolvedAttraction]
+) -> list[dict[str, Any]]:
+    # A resolved attractionId is an exact-artist search and needs no keyword;
+    # otherwise fall back to keyword matching (which also matches venue
+    # names, e.g. "Drake" hitting "Drake Underground" -- the caller's
+    # relevance filter cleans that noise up same as it does today).
+    params: dict[str, Any] = {
+        "apikey": settings.ticketmaster_api_key,
+        "latlong": f"{TORONTO_LAT},{TORONTO_LON}",
+        "radius": SEARCH_RADIUS_KM,
+        "unit": "km",
+        "countryCode": "CA",
+        "classificationName": "Music",
+        "sort": "date,asc",
+        "size": 50,
+        # Anchored to today at UTC midnight rather than `now()`: Ticketmaster's
+        # own `dates.timezone` has been observed wrong, so a wall-clock cutoff
+        # avoids dropping a show that starts later today. The caller applies
+        # its own local-date guard as a second check.
+        "startDateTime": f"{datetime.now(timezone.utc).date().isoformat()}T00:00:00Z",
+    }
+    if attraction:
+        params["attractionId"] = attraction.id
+    else:
+        params["keyword"] = artist
+    payload = _fetch(TICKETMASTER_EVENTS_URL, params)
     return (payload.get("_embedded") or {}).get("events") or []
 
 
@@ -537,7 +794,8 @@ def suggest_concerts(
     artist: str = Query(min_length=1, max_length=120),
     mode: str = Query(default="upcoming", pattern="^(upcoming|past)$"),
     # Kept as an optional query parameter for backwards-compatible clients,
-    # but discovery is intentionally Toronto-only for this app.
+    # but the value is ignored: Ticketmaster search is a fixed radius around
+    # Toronto (see SEARCH_RADIUS_KM), and the other providers use TORONTO.
     city: Optional[str] = Query(default=None, max_length=80),
 ) -> SuggestionResponse:
     try:
@@ -548,42 +806,41 @@ def suggest_concerts(
         ) from exc
 
     artist_query = artist.strip()
-    # The tracker is for Toronto shows. Never let a provider's broader fallback
-    # results (or a caller-supplied city) leak other cities into the form.
-    city_query = TORONTO
+    attraction: Optional[_ResolvedAttraction] = None
 
     if mode == "past":
         if not settings.setlistfm_api_key:
             return SuggestionResponse(configured=False, results=[], provider=None)
         provider = "setlistfm"
-        events = _search_setlistfm(settings, artist_query, city_query)
+        events = _search_setlistfm(settings, artist_query, TORONTO)
         to_suggestion = _setlistfm_suggestion
     elif settings.ticketmaster_api_key:
         provider = "ticketmaster"
-        events = _search_ticketmaster(settings, artist_query, city_query)
+        attraction = _resolve_attraction(settings.ticketmaster_api_key, artist_query)
+        events = _search_ticketmaster(settings, artist_query, attraction)
 
         def to_suggestion(event):
-            return _ticketmaster_suggestion(event, artist_query)
+            return _ticketmaster_suggestion(event, artist_query, attraction)
     elif settings.seatgeek_client_id:
         provider = "seatgeek"
-        events = _search_seatgeek(settings, artist_query, city_query)
+        events = _search_seatgeek(settings, artist_query, TORONTO)
 
         def to_suggestion(event):
             return _seatgeek_suggestion(event, artist_query)
     elif settings.tavily_api_key:
         provider = "tavily"
-        events = _search_tavily(settings, artist_query, city_query)
+        events = _search_tavily(settings, artist_query, TORONTO)
 
         def to_suggestion(event):
             return _tavily_suggestion(event, artist_query)
     elif settings.gemini_api_key:
         provider = "gemini"
-        events = _search_gemini(settings, artist_query, city_query)
+        events = _search_gemini(settings, artist_query, TORONTO)
         to_suggestion = _gemini_suggestion
     else:
         return SuggestionResponse(configured=False, results=[], provider=None)
 
-    ranked: list[tuple[int, ConcertSuggestion]] = []
+    ranked: list[tuple[int, int, ConcertSuggestion]] = []
     seen: set[tuple[str, str]] = set()
     for event in events:
         suggestion = to_suggestion(event)
@@ -592,7 +849,16 @@ def suggest_concerts(
         relevance = _artist_relevance(artist_query, suggestion.artist)
         if relevance == 0:
             continue
-        if (suggestion.city or "").strip().casefold() != TORONTO.casefold():
+        if provider == "ticketmaster":
+            # Ticketmaster's own `radius` search already constrains results;
+            # this only drops rows whose coordinates round outside it after a
+            # local re-check. Rows with no coordinates are kept rather than
+            # dropped -- the API already filtered them by radius.
+            venue = ((event.get("_embedded") or {}).get("venues") or [{}])[0] or {}
+            distance = _venue_distance_km(venue)
+            if distance is not None and distance > SEARCH_RADIUS_KM + DISTANCE_SLACK_KM:
+                continue
+        elif (suggestion.city or "").strip().casefold() != TORONTO.casefold():
             continue
         if mode == "upcoming" and suggestion.date < datetime.now().date().isoformat():
             continue
@@ -600,8 +866,12 @@ def suggest_concerts(
         if key in seen:
             continue
         seen.add(key)
-        ranked.append((relevance, suggestion))
+        # Cancelled/offsale shows stay visible (mapped onto the app's own
+        # "Cancelled" status by the caller) but never crowd live shows out of
+        # the truncated result list.
+        status_rank = 1 if suggestion.event_status in {"cancelled", "offsale"} else 0
+        ranked.append((relevance, status_rank, suggestion))
 
-    ranked.sort(key=lambda item: (-item[0], item[1].date, item[1].artist.casefold()))
-    results = [suggestion for _, suggestion in ranked[:MAX_SUGGESTIONS]]
+    ranked.sort(key=lambda item: (-item[0], item[1], item[2].date, item[2].artist.casefold()))
+    results = [suggestion for _, _, suggestion in ranked[:MAX_SUGGESTIONS]]
     return SuggestionResponse(configured=True, results=results, provider=provider)
