@@ -2,6 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Check, ExternalLink, Image, LoaderCircle, Search, Sparkles, X } from 'lucide-react'
 import { AnimatePresence, m } from 'motion/react'
 import { fetchDiscoveryStatus, searchArtwork, searchConcertSuggestions } from '../lib/api'
+import { Combobox } from './Combobox'
+import { DatePicker } from './DatePicker'
+import { Dropdown, type DropdownOption } from './Dropdown'
 import { addGuests, parseGuests, serializeGuests } from '../lib/guests'
 import { formatPriceRange, formatShowTime, statusLabel, suggestionVenueValue } from '../lib/suggestions'
 import type {
@@ -38,6 +41,15 @@ const cleanArtistName = (value: string) => value
   .split(/\s+(?:ft\.?|feat\.?|x|&|,|\/)\s+/i)[0]
   .replace(/\s+/g, ' ')
   .trim()
+
+const STATUS_OPTIONS: DropdownOption[] = [
+  { value: 'Want to Go', label: 'Want to Go' },
+  { value: 'Attended', label: 'Attended' },
+  { value: 'Cancelled', label: 'Cancelled' },
+]
+
+const autoStatusForDate = (dateValue: string) =>
+  dateValue < new Date().toISOString().slice(0, 10) ? 'Attended' : 'Want to Go'
 
 export function AddConcertDialog({
   concert,
@@ -199,7 +211,12 @@ export function AddConcertDialog({
     const setField = (name: string, value: string | null) => {
       if (!value) return
       const field = form.elements.namedItem(name)
-      if (field instanceof HTMLInputElement || field instanceof HTMLSelectElement) field.value = value
+      if (field instanceof HTMLInputElement || field instanceof HTMLSelectElement) {
+        field.value = value
+        // Dropdown/DatePicker mirror a hidden native element and listen for this to stay in
+        // sync with their own displayed React state, since this direct write bypasses React.
+        field.dispatchEvent(new Event('input', { bubbles: true }))
+      }
     }
     setField('artist', suggestion.artist)
     setField('tour', suggestion.tour)
@@ -378,25 +395,24 @@ export function AddConcertDialog({
           <legend>Concert</legend>
           <p className="form-section-note">Start with the essentials. Archive matches appear as you type.</p>
           <div className="form-grid quick-event-grid">
-            <label className="field field-wide"><span>Artist</span><input name="artist" list="concert-artist-options" autoComplete="off" required defaultValue={concert?.artist} onBlur={(event) => {
+            <label className="field field-wide"><span>Artist</span><Combobox name="artist" suggestions={archiveSuggestions.artists} required defaultValue={concert?.artist} onBlur={(event) => {
               if (concert || artworkQuery.trim()) return
               const query = cleanArtistName(event.currentTarget.value)
               if (!query) return
               setArtworkQuery(query)
               void loadArtwork(query)
             }} /></label>
-            <label className="field"><span>Date</span><input name="date" type="date" required defaultValue={concert?.date} onChange={(event) => {
+            <label className="field"><span>Date</span><DatePicker name="date" required defaultValue={concert?.date} onDateChange={(value) => {
               if (concert || statusTouched.current) return
               const field = formRef.current?.elements.namedItem('status')
-              if (field instanceof HTMLSelectElement) field.value = event.currentTarget.value < new Date().toISOString().slice(0, 10) ? 'Attended' : 'Want to Go'
+              if (field instanceof HTMLSelectElement) {
+                field.value = autoStatusForDate(value)
+                field.dispatchEvent(new Event('input', { bubbles: true }))
+              }
             }} /></label>
-            <label className="field"><span>Status</span><select name="status" defaultValue={concert?.status ?? 'Want to Go'} onChange={() => { statusTouched.current = true }}><option>Want to Go</option><option>Attended</option><option>Cancelled</option></select></label>
-            <label className="field field-wide"><span>Venue</span><input name="venue" list="concert-venue-options" autoComplete="off" required defaultValue={concert?.venue} /></label>
+            <label className="field"><span>Status</span><Dropdown name="status" label="Status" defaultValue={concert?.status ?? 'Want to Go'} options={STATUS_OPTIONS} onChange={() => { statusTouched.current = true }} /></label>
+            <label className="field field-wide"><span>Venue</span><Combobox name="venue" suggestions={archiveSuggestions.venues} required defaultValue={concert?.venue} /></label>
           </div>
-          <datalist id="concert-artist-options">{archiveSuggestions.artists.map((value) => <option key={value} value={value} />)}</datalist>
-          <datalist id="concert-venue-options">{archiveSuggestions.venues.map((value) => <option key={value} value={value} />)}</datalist>
-          <datalist id="concert-genre-options">{archiveSuggestions.genres.map((value) => <option key={value} value={value} />)}</datalist>
-          <datalist id="concert-type-options">{archiveSuggestions.types.map((value) => <option key={value} value={value} />)}</datalist>
         </fieldset>
 
         <details className="form-disclosure" open={Boolean(concert)}>
@@ -405,8 +421,8 @@ export function AddConcertDialog({
             <label className="field field-wide"><span>Tour name</span><input name="tour" defaultValue={concert?.tour ?? ''} /></label>
             <label className="field"><span>Price</span><input name="price" type="number" min="0" step="0.01" defaultValue={concert?.price ?? ''} /></label>
             <label className="field"><span>Projected rating</span><input name="projected" type="number" min="0" max="10" step="0.1" defaultValue={concert?.projected ?? ''} /></label>
-            <label className="field"><span>Genre</span><input name="genre" list="concert-genre-options" autoComplete="off" defaultValue={concert?.genre ?? ''} /></label>
-            <label className="field"><span>Type</span><input name="type" list="concert-type-options" autoComplete="off" defaultValue={concert?.type ?? 'Concert'} /></label>
+            <label className="field"><span>Genre</span><Combobox name="genre" suggestions={archiveSuggestions.genres} defaultValue={concert?.genre ?? ''} /></label>
+            <label className="field"><span>Type</span><Combobox name="type" suggestions={archiveSuggestions.types} defaultValue={concert?.type ?? 'Concert'} /></label>
             <label className="field field-wide"><span>Seat</span><input name="seat" defaultValue={concert?.seat ?? ''} /></label>
           </div>
         </details>

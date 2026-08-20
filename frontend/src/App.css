@@ -7110,3 +7110,198 @@ a.detail-setlist:hover {
     padding-inline: 18px;
   }
 }
+
+/* Dropdown, Combobox, DatePicker -- premium replacements for native select/datalist/date
+   inputs. All values below reuse existing tokens/sizes (see .field input/select and
+   .export-menu-popover) rather than introducing new ones. */
+
+.dropdown,
+.combobox,
+.date-picker {
+  position: relative;
+  width: 100%;
+}
+
+.dropdown-trigger,
+.combobox-input,
+.date-picker-trigger {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 13px;
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  color: var(--text);
+  background: var(--surface);
+  font-size: 0.92rem;
+  font-weight: 450;
+  font-family: inherit;
+  text-align: left;
+}
+
+.dropdown-trigger,
+.date-picker-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.date-picker-trigger {
+  justify-content: flex-start;
+}
+
+.dropdown-trigger:hover,
+.date-picker-trigger:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-soft);
+}
+
+.dropdown-chevron {
+  flex: none;
+  color: var(--text-muted);
+  transition: transform 160ms ease-out;
+}
+
+.dropdown-chevron-open {
+  transform: rotate(180deg);
+}
+
+.dropdown-popover,
+.combobox-popover,
+.date-picker-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 50;
+  padding: 7px;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  background: var(--surface-raised);
+  box-shadow: var(--shadow);
+}
+
+.dropdown-popover,
+.combobox-popover {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  max-height: 260px;
+  margin: 0;
+  padding-inline: 7px;
+  list-style: none;
+  overflow-y: auto;
+}
+
+.dropdown-option,
+.combobox-option {
+  display: flex;
+  min-height: 38px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 0.88rem;
+}
+
+.dropdown-option:hover,
+.dropdown-option-highlight,
+.combobox-option:hover,
+.combobox-option-highlight {
+  background: var(--surface-soft);
+}
+
+.dropdown-option[aria-selected="true"] {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.date-picker-popover {
+  width: 300px;
+}
+
+.date-picker-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 4px 10px;
+}
+
+.date-picker-nav strong {
+  font-size: 0.88rem;
+  font-weight: 650;
+}
+
+.date-picker-weekdays {
+  display: grid;
+  margin-bottom: 4px;
+  grid-template-columns: repeat(7, 1fr);
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.date-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+}
+
+.date-picker-day {
+  display: grid;
+  aspect-ratio: 1;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  place-items: center;
+  color: var(--text);
+  background: transparent;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.date-picker-day:hover {
+  background: var(--surface-soft);
+}
+
+.date-picker-day-today {
+  border-color: var(--primary);
+}
+
+.date-picker-day-selected {
+  border-color: var(--primary);
+  color: #fff;
+  background: var(--primary);
+}
+
+.date-picker-today {
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-muted);
+  background: transparent;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.date-picker-today:hover {
+  color: var(--text);
+  background: var(--surface-soft);
+}
+
+.dropdown-trigger:focus-visible,
+.dropdown-option:focus-visible,
+.combobox-input:focus-visible,
+.combobox-option:focus-visible,
+.date-picker-trigger:focus-visible,
+.date-picker-day:focus-visible,
+.date-picker-today:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}

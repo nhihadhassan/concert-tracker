@@ -227,17 +227,21 @@ describe('Concert Tracker cloud shell', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add concert' }))
     expect(await screen.findByRole('heading', { name: 'Add concert' })).toBeInTheDocument()
     expect(screen.getByText('Artist, date, and venue are enough. Everything else can wait.')).toBeInTheDocument()
-    expect(screen.getByLabelText('Artist')).toHaveAttribute('list', 'concert-artist-options')
-    expect(screen.getByLabelText('Venue')).toHaveAttribute('list', 'concert-venue-options')
+    expect(screen.getByRole('combobox', { name: 'Artist' })).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Venue' })).toBeInTheDocument()
     expect(screen.getAllByText('Your review').length).toBeGreaterThan(0)
   })
 
   it('defaults a newly entered past concert to attended', async () => {
-    render(<Dashboard member={member} />)
+    const { container } = render(<Dashboard member={member} />)
     fireEvent.click(screen.getByRole('button', { name: 'Add concert' }))
     const dialog = await screen.findByRole('dialog')
-    fireEvent.change(within(dialog).getByLabelText('Date'), { target: { value: '2020-07-01' } })
-    expect(within(dialog).getByLabelText('Status')).toHaveValue('Attended')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Select date' }))
+    // Previous month's 1st is guaranteed to be in the past regardless of today's day-of-month.
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Previous month' }))
+    fireEvent.click(within(dialog).getByRole('gridcell', { name: '1' }))
+    const status = container.querySelector('select[name="status"]') as HTMLSelectElement
+    expect(status.value).toBe('Attended')
   })
 
   it('preloads and selects artwork while editing a concert', async () => {

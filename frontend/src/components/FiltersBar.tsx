@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { ChevronDown, Search, SlidersHorizontal } from 'lucide-react'
 import { AnimatePresence, m } from 'motion/react'
+import { Dropdown } from './Dropdown'
 import type { ConcertStatus } from '../types'
 
 interface FiltersBarProps {
@@ -40,28 +41,38 @@ export function FiltersBar(props: FiltersBarProps) {
         <m.div id="secondary-filters" className={`secondary-filters${expanded ? ' secondary-filters-open' : ''}`} initial={false} animate={{ opacity: 1 }}>
           <label className="field">
             <span>Status</span>
-            <select value={props.status} onChange={(event) => props.onStatusChange(event.target.value)}>
-              {statuses.map((status) => <option key={status || 'all'} value={status}>{status || 'All statuses'}</option>)}
-            </select>
+            <Dropdown
+              label="Status"
+              value={props.status}
+              onChange={props.onStatusChange}
+              options={statuses.map((status) => ({ value: status, label: status || 'All statuses' }))}
+            />
           </label>
 
           <label className="field">
             <span>Genre</span>
-            <select value={props.genre} onChange={(event) => props.onGenreChange(event.target.value)}>
-              <option value="">All genres</option>
-              {props.genres.map((genre) => <option key={genre}>{genre}</option>)}
-            </select>
+            <Dropdown
+              label="Genre"
+              value={props.genre}
+              onChange={props.onGenreChange}
+              options={[{ value: '', label: 'All genres' }, ...props.genres.map((genre) => ({ value: genre, label: genre }))]}
+            />
           </label>
 
           <label className="field">
             <span>Sort by</span>
-            <select value={props.sort} onChange={(event) => props.onSortChange(event.target.value)}>
-              <option value="date-desc">Date (newest first)</option>
-              <option value="date-asc">Date (oldest first)</option>
-              <option value="rating-desc">Rating (highest first)</option>
-              <option value="price-desc">Price (highest first)</option>
-              <option value="artist-asc">Artist (A-Z)</option>
-            </select>
+            <Dropdown
+              label="Sort by"
+              value={props.sort}
+              onChange={props.onSortChange}
+              options={[
+                { value: 'date-desc', label: 'Date (newest first)' },
+                { value: 'date-asc', label: 'Date (oldest first)' },
+                { value: 'rating-desc', label: 'Rating (highest first)' },
+                { value: 'price-desc', label: 'Price (highest first)' },
+                { value: 'artist-asc', label: 'Artist (A-Z)' },
+              ]}
+            />
           </label>
         </m.div>
       </AnimatePresence>
