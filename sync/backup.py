@@ -9,7 +9,7 @@ from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from sync.cloud import authenticate, fetch_library
+from sync.cloud import fetch_library
 from sync.config import atomic_write_text, backup_home, load_config, state_path
 from sync.storage import build_dataset, write_backup_artifacts
 
@@ -72,8 +72,7 @@ def run_backup(*, scheduled: bool, render_dir: Path | None = None) -> int:
 
     with exclusive_backup_lock():
         LOGGER.info("Starting %s backup", "scheduled" if scheduled else "manual")
-        session = authenticate(config)
-        library = fetch_library(config, session)
+        library = fetch_library(config)
         fetched_at = datetime.now(timezone.utc)
         dataset = build_dataset(
             library,

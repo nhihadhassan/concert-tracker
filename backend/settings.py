@@ -28,6 +28,8 @@ class Settings:
     seatgeek_client_id: str = ""
     seatgeek_client_secret: str = ""
     setlistfm_api_key: str = ""
+    data_provider: str = "supabase"
+    database_url: str = ""
 
     @property
     def rest_key(self) -> str:
@@ -77,6 +79,8 @@ class Settings:
             seatgeek_client_id=os.getenv("SEATGEEK_CLIENT_ID", "").strip(),
             seatgeek_client_secret=os.getenv("SEATGEEK_CLIENT_SECRET", "").strip(),
             setlistfm_api_key=os.getenv("SETLISTFM_API_KEY", "").strip(),
+            data_provider=os.getenv("DATA_PROVIDER", "supabase").strip().lower() or "supabase",
+            database_url=os.getenv("DATABASE_URL", "").strip(),
         )
 
 

@@ -17,7 +17,7 @@ from zipfile import ZipFile
 import httpx
 
 from sync.backup import read_state
-from sync.cloud import authenticate, fetch_library
+from sync.cloud import fetch_library
 from sync.config import atomic_write_text, load_config
 from sync.storage import TABLE_COLUMNS, build_dataset
 
@@ -121,8 +121,7 @@ def run_monitor(now: datetime | None = None) -> dict[str, Any]:
             )
         )
 
-    session = authenticate(config)
-    library = fetch_library(config, session)
+    library = fetch_library(config)
     dataset = build_dataset(
         library,
         fetched_at=captured_at,

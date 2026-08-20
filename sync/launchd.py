@@ -91,6 +91,29 @@ def main() -> None:
     install_parser.add_argument("--project-root", type=Path, default=Path.cwd())
     install_parser.add_argument("--supabase-url", required=True)
     install_parser.add_argument("--publishable-key", required=True)
+    install_parser.add_argument(
+        "--secret-key",
+        default="",
+        help="Supabase secret key. Used instead of the publishable key when set, "
+        "matching how the deployed backend reads (RLS-bypassing).",
+    )
+    install_parser.add_argument(
+        "--data-provider",
+        choices=["supabase", "neon"],
+        default="supabase",
+        help="Which backend to read from. See docs/DATA_PROVIDERS.md.",
+    )
+    install_parser.add_argument(
+        "--database-url",
+        default="",
+        help="Neon connection string. Required when --data-provider=neon.",
+    )
+    install_parser.add_argument(
+        "--public-user-id",
+        default="11111111-1111-4111-8111-111111111111",
+        help="The single configured app user; must match PUBLIC_USER_ID in the "
+        "deployed backend's environment.",
+    )
     install_parser.add_argument("--python-path", type=Path, default=Path(sys.executable))
     runtime = default_artifact_runtime()
     install_parser.add_argument("--node-path", type=Path, default=runtime / "node" / "bin" / "node")
@@ -108,6 +131,10 @@ def main() -> None:
             project_root=str(args.project_root.expanduser().resolve()),
             supabase_url=args.supabase_url.rstrip("/"),
             publishable_key=args.publishable_key,
+            supabase_secret_key=args.secret_key,
+            data_provider=args.data_provider,
+            database_url=args.database_url,
+            public_user_id=args.public_user_id,
             owner_email=OWNER_EMAIL,
             # Keep the virtual-environment entry path. Resolving its symlink would
             # bypass the venv and launch Apple's base Python without dependencies.

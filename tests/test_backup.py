@@ -1,35 +1,19 @@
 from __future__ import annotations
 
-import json
 import sqlite3
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-import httpx
 import pytest
 
 from sync.backup import backup_is_due
-from sync.cloud import authenticate
+from sync.cloud import _rest_client
 from sync.config import BackupConfig
-from sync.keychain import REFRESH_TOKEN_SERVICE, password_service
 from sync.launchd import LABEL, build_plist, configured_executable
 from sync.storage import build_dataset, prune_archives, verify_sqlite, write_sqlite_atomic
 
 OWNER_EMAIL = "owner@example.com"
 USER_ID = "11111111-1111-4111-8111-111111111111"
-
-
-class MemorySecrets:
-    def __init__(self, values: dict[str, str]) -> None:
-        self.values = values
-
-    def read(self, service: str) -> str:
-        if service not in self.values:
-            raise RuntimeError("missing secret")
-        return self.values[service]
-
-    def write(self, service: str, value: str) -> None:
-        self.values[service] = value
 
 
 def config(tmp_path: Path) -> BackupConfig:
@@ -204,58 +188,31 @@ def library_fixture() -> dict:
     }
 
 
-def test_refreshes_auth_and_rotates_keychain_token(tmp_path: Path) -> None:
-    secrets = MemorySecrets({REFRESH_TOKEN_SERVICE: "refresh-old"})
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        assert request.url.params["grant_type"] == "refresh_token"
-        return httpx.Response(
-            200,
-            json={
-                "access_token": "access-new",
-                "refresh_token": "refresh-new",
-                "user": {"id": USER_ID, "email": OWNER_EMAIL},
-            },
-        )
-
-    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
-        session = authenticate(config(tmp_path), client=client, secrets=secrets)
-
-    assert session.access_token == "access-new"
-    assert secrets.values[REFRESH_TOKEN_SERVICE] == "refresh-new"
+def test_rest_client_uses_supabase_secret_key_over_publishable_when_present(
+    tmp_path: Path,
+) -> None:
+    base = config(tmp_path)
+    with_secret = BackupConfig(**{**base.__dict__, "supabase_secret_key": "sb_secret_test"})
+    rest = _rest_client(with_secret)
+    assert rest.headers["Authorization"] == "Bearer sb_secret_test"
 
 
-def test_falls_back_to_keychain_password_when_refresh_fails(tmp_path: Path) -> None:
-    secrets = MemorySecrets(
-        {
-            REFRESH_TOKEN_SERVICE: "expired",
-            password_service(OWNER_EMAIL): "stored-password",
+def test_rest_client_falls_back_to_publishable_key_without_a_secret(tmp_path: Path) -> None:
+    rest = _rest_client(config(tmp_path))
+    assert rest.headers["Authorization"] == "Bearer sb_publishable_test"
+
+
+def test_rest_client_builds_a_neon_client_when_configured(tmp_path: Path) -> None:
+    base = config(tmp_path)
+    neon_config = BackupConfig(
+        **{
+            **base.__dict__,
+            "data_provider": "neon",
+            "database_url": "postgresql://user:pass@host/db",
         }
     )
-    grants: list[str] = []
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        grant = request.url.params["grant_type"]
-        grants.append(grant)
-        if grant == "refresh_token":
-            return httpx.Response(400, json={"error": "invalid_grant"})
-        payload = json.loads(request.content)
-        assert payload == {"email": OWNER_EMAIL, "password": "stored-password"}
-        return httpx.Response(
-            200,
-            json={
-                "access_token": "access-password",
-                "refresh_token": "refresh-password",
-                "user": {"id": USER_ID, "email": OWNER_EMAIL},
-            },
-        )
-
-    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
-        session = authenticate(config(tmp_path), client=client, secrets=secrets)
-
-    assert grants == ["refresh_token", "password"]
-    assert session.access_token == "access-password"
-    assert secrets.values[REFRESH_TOKEN_SERVICE] == "refresh-password"
+    rest = _rest_client(neon_config)
+    assert type(rest).__name__ == "NeonRestClient"
 
 
 def test_sqlite_backup_matches_snapshot_counts_and_checksums(tmp_path: Path) -> None:

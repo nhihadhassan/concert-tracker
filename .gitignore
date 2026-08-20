@@ -2,6 +2,7 @@
 .agents/
 .claude/
 .vercel/
+skills-lock.json
 
 # Private source data
 *.csv

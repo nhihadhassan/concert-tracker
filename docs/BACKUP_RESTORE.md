@@ -2,8 +2,9 @@
 
 ## Schedule And Authority
 
-Supabase remains authoritative. The Mac copies are read-only recovery artifacts and never write
-to cloud tables.
+Whichever database `DATA_PROVIDER` selects (Neon in production; see `docs/DATA_PROVIDERS.md`)
+remains authoritative. The Mac copies are read-only recovery artifacts and never write to cloud
+tables.
 
 The LaunchAgent label is `com.nhihad.concert-tracker-backup`. It runs at 2:00 AM in the Mac's
 local timezone, currently `America/Toronto`, and runs a catch-up check at login. Catch-up skips
@@ -17,7 +18,6 @@ when the last successful backup is less than 24 hours old.
 - Backup log: `data/logs/backup.log`
 - launchd logs: `data/logs/launchd.out.log` and `data/logs/launchd.err.log`
 - Local config: `~/Library/Application Support/Concert Tracker Backup/config.json`
-- Refresh token: macOS Keychain service `Concert Tracker Backup Refresh Token`
 
 The workbook contains Concerts, Attendees, Reviews, Rankings, Analytics, and Sync Metadata
 sheets. The metadata sheet records counts and deterministic checksums for the cloud snapshot.
@@ -43,18 +43,32 @@ only for the calendar or login trigger.
 
 ## Install Or Refresh
 
-The installer needs the public Supabase URL and publishable key, never the service-role key:
+There is no sign-in anymore -- the agent reads with the same single configured credential the
+deployed backend uses, matching whichever `DATA_PROVIDER` is active (see
+`docs/DATA_PROVIDERS.md`):
 
 ```bash
+# Supabase (default)
 .venv/bin/python -m sync.launchd install \
   --supabase-url "https://PROJECT_REF.supabase.co" \
   --publishable-key "sb_publishable_REPLACE_ME" \
+  --secret-key "sb_secret_REPLACE_ME" \
+  --python-path "$PWD/.venv/bin/python"
+
+# Neon
+.venv/bin/python -m sync.launchd install \
+  --supabase-url "https://PROJECT_REF.supabase.co" \
+  --publishable-key "sb_publishable_REPLACE_ME" \
+  --data-provider neon \
+  --database-url "postgresql://REPLACE_ME" \
   --python-path "$PWD/.venv/bin/python"
 ```
 
-The explicit virtual-environment path must remain unresolved so launchd uses installed Python
-dependencies. Installation writes the local config, reloads the LaunchAgent, and triggers the
-catch-up check.
+`--supabase-url`/`--publishable-key` stay required either way (kept for a clean fallback to
+Supabase without reinstalling), but only the credential matching `--data-provider` is actually
+used to read. The explicit virtual-environment path must remain unresolved so launchd uses
+installed Python dependencies. Installation writes the local config, reloads the LaunchAgent, and
+triggers the catch-up check.
 
 ## Validate A Recovery Copy
 
@@ -85,5 +99,4 @@ stale local copy from overwriting newer shared data.
 .venv/bin/python -m sync.launchd uninstall
 ```
 
-Uninstalling removes the LaunchAgent but preserves config, Keychain credentials, logs, and all
-recovery copies.
+Uninstalling removes the LaunchAgent but preserves config, logs, and all recovery copies.

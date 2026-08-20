@@ -135,4 +135,12 @@ def get_rest_client() -> SupabaseRestClient:
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=str(exc),
         ) from exc
+    if settings.data_provider == "neon":
+        # Imported lazily so the Supabase path never needs psycopg installed,
+        # and to keep this file a complete, standalone Supabase client -- the
+        # rollback path is "flip DATA_PROVIDER back and redeploy", not "revert
+        # a code change". See docs/DATA_PROVIDERS.md.
+        from backend.neon_rest import NeonRestClient
+
+        return NeonRestClient(settings.database_url, settings.public_user_id)
     return SupabaseRestClient(settings.supabase_url, settings.rest_key)

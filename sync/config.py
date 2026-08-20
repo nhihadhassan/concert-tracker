@@ -41,6 +41,13 @@ class BackupConfig:
     python_path: str
     node_path: str
     artifact_node_modules: str
+    # Which backend to read from -- "supabase" or "neon" -- and its
+    # credentials. Defaulted so existing persisted configs keep loading as
+    # Supabase-only. See docs/DATA_PROVIDERS.md.
+    data_provider: str = "supabase"
+    supabase_secret_key: str = ""
+    database_url: str = ""
+    public_user_id: str = "11111111-1111-4111-8111-111111111111"
     version: int = CONFIG_VERSION
 
     @property
@@ -70,6 +77,10 @@ class BackupConfig:
             raise ValueError("Supabase URL must use HTTPS")
         if not self.publishable_key:
             raise ValueError("Supabase publishable key is required")
+        if self.data_provider not in {"supabase", "neon"}:
+            raise ValueError(f"Unsupported data provider: {self.data_provider!r}")
+        if self.data_provider == "neon" and not self.database_url:
+            raise ValueError("database_url is required when data_provider is 'neon'")
         if self.owner_email.lower() != "owner@example.com":
             raise ValueError("The backup agent must authenticate as Nhihad")
         for label, value in (

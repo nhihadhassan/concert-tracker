@@ -21,7 +21,8 @@ The Stage 0 authorized export found 46 cloud concerts versus 45 in the fresh bro
 React + TypeScript
   -> FastAPI /api/v1
       -> Python rating and analytics domain
-      -> Supabase Postgres via the secret key (RLS bypassed)
+      -> DATA_PROVIDER-selected data client (Supabase secret key, RLS bypassed,
+         or a direct Neon Postgres connection -- see docs/DATA_PROVIDERS.md)
   -> IndexedDB snapshot and mutation outbox
   -> Interval and focus-based query refresh
 
@@ -173,9 +174,35 @@ read-only command and is prohibited from deploying, changing cloud data, merging
 rollback assets. Cleanup has no automatic path and remains gated until thirty elapsed days plus
 explicit approval.
 
+## Stage 10 Data Provider Boundary
+
+The `rachel-tracker` Supabase project's free-tier compute began intermittently timing out on
+writes (`Warp server error: Thread killed by timeout manager`, confirmed via Supabase's own
+logs -- not an application bug), and the project must stay free rather than upgrade. Production
+moved to Neon Postgres (provisioned through Vercel's marketplace, so the connection string lives
+in the same Vercel dashboard already used for everything else), while keeping Supabase fully
+intact as a rollback path.
+
+`backend/supabase_rest.py`'s `get_rest_client()` is the single flip point: it reads
+`DATA_PROVIDER` (`supabase`, the default, or `neon`) and constructs the matching client.
+`backend/neon_rest.py` implements the identical six-method surface
+(`request/select/insert/update/update_count/rpc`) against plain Postgres via `psycopg`, translating
+the same small PostgREST filter vocabulary the app already used, so every route module needed zero
+changes. `db/neon/schema.sql` is a hand port of the shared Supabase schema with RLS, `auth.users`
+foreign keys, and role grants stripped (all already inert in production, since the secret key
+bypasses RLS -- see Stage 8) and `auth.uid()`-based actor attribution replaced by the client
+filling `created_by`/`updated_by` with the configured `PUBLIC_USER_ID`, matching what `auth.uid()`
+already resolved to in practice. `scripts/neon_cutover.py` (adapted from the Stage 8 loader's
+checksum/rerun-is-a-no-op discipline) backed up, loaded, and verified full row-by-row parity across
+every table before cutover.
+
+Full details, the rollback procedure, and what was kept/dropped/reworked live in
+`docs/DATA_PROVIDERS.md`.
+
 ## Authority Boundaries
 
-- Supabase is authoritative after migration.
+- The database selected by `DATA_PROVIDER` (Neon in production; Supabase remains a configured
+  fallback) is authoritative.
 - FastAPI owns validation, calculations, analytics, and writes.
 - React renders server results and does not reproduce rating formulas.
 - IndexedDB supports temporary offline operation, not an independent source of truth.
