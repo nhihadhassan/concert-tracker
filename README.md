@@ -202,3 +202,38 @@ python3 scripts/stage0_baseline.py --browser-json /tmp/ct-browser-local.json
 ```
 
 Private raw backups are written under ignored `data/`. Safe comparison fixtures are written under `docs/baseline/`.
+
+## Deployment identity
+
+This is a two-person tracker, but no account is hardcoded. Configure your own:
+
+**Front end** — copy `config.example.js` to `config.js` (git-ignored) and fill it in:
+
+```js
+window.APP_CONFIG = {
+  ownerEmail:   'you@example.com',
+  partnerEmail: 'them@example.com',
+  ownerName:    'You',
+  partnerName:  'Them',
+  backupPin:    '1234',   // optional; empty disables the backup-screen gate
+};
+```
+
+Omit the file entirely and the app still runs — the login form accepts any address
+and Supabase Row Level Security rejects accounts that aren't authorised.
+
+**Back end / scripts** — set these in the environment:
+
+| Variable | Purpose |
+| --- | --- |
+| `PUBLIC_USER_EMAIL` | The owner account |
+| `PARTNER_USER_EMAIL` | The second account |
+| `PUBLIC_USER_DISPLAY_NAME` | Display name for the owner |
+
+**Database** — the RLS policies in `supabase/migrations/` ship with `owner@example.com`
+placeholders. Replace them with your own address before applying to a fresh project,
+or the policies will lock everyone out.
+
+> The client-side email list and the backup PIN are conveniences, not security
+> boundaries. RLS is what actually restricts access to the data.
+

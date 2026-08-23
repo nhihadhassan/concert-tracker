@@ -24,3 +24,6 @@ frontend/node_modules/
 .DS_Store
 Thumbs.db
 .env*
+
+# Local deployment identity (emails, PIN) -- never commit
+config.js

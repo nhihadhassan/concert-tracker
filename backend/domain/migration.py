@@ -16,8 +16,11 @@ from backend.domain.ratings import ReviewScores, calculate_rating, combine_final
 
 MIGRATION_NAMESPACE = UUID("5bc26156-b646-5d74-bbe5-3a42152a0472")
 RULE_VERSION_ONE_ID = str(uuid5(MIGRATION_NAMESPACE, "rating-rule:1"))
-NHIHAD_EMAIL = "owner@example.com"
-RACHEL_EMAIL = "partner@example.com"
+import os
+
+# Deployment identities come from the environment; see README.
+NHIHAD_EMAIL = os.getenv("PUBLIC_USER_EMAIL", "owner@example.com").lower()
+RACHEL_EMAIL = os.getenv("PARTNER_USER_EMAIL", "partner@example.com").lower()
 
 
 class MigrationValidationError(ValueError):

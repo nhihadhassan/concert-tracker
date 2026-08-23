@@ -81,8 +81,9 @@ class BackupConfig:
             raise ValueError(f"Unsupported data provider: {self.data_provider!r}")
         if self.data_provider == "neon" and not self.database_url:
             raise ValueError("database_url is required when data_provider is 'neon'")
-        if self.owner_email.lower() != "owner@example.com":
-            raise ValueError("The backup agent must authenticate as Nhihad")
+        expected_owner = os.getenv("PUBLIC_USER_EMAIL", "").strip().lower()
+        if expected_owner and self.owner_email.lower() != expected_owner:
+            raise ValueError("The backup agent must authenticate as the configured owner")
         for label, value in (
             ("project root", self.project_root),
             ("Python", self.python_path),

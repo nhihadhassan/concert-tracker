@@ -10,7 +10,7 @@ from pathlib import Path
 from sync.config import BackupConfig, atomic_write_text, save_config
 
 LABEL = "com.nhihad.concert-tracker-backup"
-OWNER_EMAIL = "owner@example.com"
+OWNER_EMAIL = os.getenv("PUBLIC_USER_EMAIL", "owner@example.com").lower()
 
 
 def launch_agents_dir() -> Path:

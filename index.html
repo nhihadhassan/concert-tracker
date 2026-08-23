@@ -16,6 +16,8 @@
   tailwind.config = { darkMode: 'class' };
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- Optional local deployment identity; see config.example.js. Safe to omit. -->
+<script src="config.js" onerror="void 0"></script>
 <style>
   :root { color-scheme: light dark; }
   html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
@@ -426,10 +428,19 @@ const SUPABASE_KEY = 'sb_publishable_HMICK42AzL2W_Tpb6VutDQ_HawfnbWM';
 const CLOUD_TABLE  = 'concert_tracker_concerts';
 const AUTH_REQUIRED = true; // require email magic-link login (RLS restricts data to the owner)
 const PRODUCTION_AUTH_REDIRECT = 'https://concert-tracker-sepia.vercel.app/';
-const OWNER_EMAIL = 'owner@example.com';
-const RACHEL_EMAIL = 'partner@example.com';
-const AUTHORIZED_EMAILS = new Set([OWNER_EMAIL, RACHEL_EMAIL]);
-const BACKUP_PIN = '';
+// ---- Deployment identity -------------------------------------------------
+// This is a two-person tracker. The accounts are NOT hardcoded: set them in a
+// local `config.js` (see config.example.js) which defines window.APP_CONFIG.
+// Nothing here is a security boundary -- Supabase RLS is. These values only
+// drive the client-side convenience gate and the "who added this" labels.
+const APP_CONFIG   = (typeof window !== 'undefined' && window.APP_CONFIG) || {};
+const OWNER_EMAIL  = cleanEmail(APP_CONFIG.ownerEmail);
+const RACHEL_EMAIL = cleanEmail(APP_CONFIG.partnerEmail);
+const OWNER_LABEL  = APP_CONFIG.ownerName   || 'Owner';
+const PARTNER_LABEL= APP_CONFIG.partnerName || 'Partner';
+// Empty set => no client-side allowlist; RLS decides who actually sees data.
+const AUTHORIZED_EMAILS = new Set([OWNER_EMAIL, RACHEL_EMAIL].filter(Boolean));
+const BACKUP_PIN = APP_CONFIG.backupPin || '';
 const PIN_SESSION_KEY = 'concertTracker.pinUnlocked';
 const sb = (window.supabase && SUPABASE_URL && SUPABASE_KEY)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
@@ -458,8 +469,9 @@ function normalizeConcert(c){
 function normalizeConcerts(rows){ return (rows || []).map(normalizeConcert); }
 function canSeeConcert(c){
   const email = cleanEmail(currentUserEmail);
-  if (!email || email === OWNER_EMAIL) return true;
-  if (email === RACHEL_EMAIL) return cleanEmail(c.ownerEmail) === RACHEL_EMAIL || !!c.rachelAttended;
+  if (!email) return true;
+  if (OWNER_EMAIL && email === OWNER_EMAIL) return true;
+  if (RACHEL_EMAIL && email === RACHEL_EMAIL) return cleanEmail(c.ownerEmail) === RACHEL_EMAIL || !!c.rachelAttended;
   return cleanEmail(c.ownerEmail) === email;
 }
 function getVisibleConcerts(){ return concerts.filter(canSeeConcert); }
@@ -563,9 +575,10 @@ function hideGate(){
   if(g){ g.hidden=true; g.style.display='none'; }
   $('#signOutBtn')?.removeAttribute('hidden');
 }
-function isPinUnlocked(){ try { return sessionStorage.getItem(PIN_SESSION_KEY) === 'true'; } catch(e){ return false; } }
+// With no PIN configured the offline-backup screen is not gated at all.
+function isPinUnlocked(){ if (!BACKUP_PIN) return true; try { return sessionStorage.getItem(PIN_SESSION_KEY) === 'true'; } catch(e){ return false; } }
 function unlockWithPin(pin){
-  if (pin !== BACKUP_PIN){
+  if (!BACKUP_PIN || pin !== BACKUP_PIN){
     setAuthMsg('Incorrect PIN.', 'err');
     return;
   }
@@ -578,7 +591,7 @@ function unlockWithPin(pin){
 async function sendMagicLink(email){
   if (!sb){ setAuthMsg('Cannot reach the server. Check your connection.', 'err'); return; }
   email = cleanEmail(email);
-  if (!AUTHORIZED_EMAILS.has(email)){
+  if (AUTHORIZED_EMAILS.size && !AUTHORIZED_EMAILS.has(email)){
     setAuthMsg('That email is not allowed for this tracker.', 'err');
     return;
   }
@@ -973,9 +986,9 @@ function getFiltered(){
 function venueShort(v){ return (v||'').replace(/\s*\(.*\)\s*$/, ''); }
 function ownerLabel(c){
   const email = cleanEmail(c.ownerEmail);
-  if (email === RACHEL_EMAIL) return 'Rachel';
-  if (email === OWNER_EMAIL) return 'Nhihad';
-  return email ? email.split('@')[0] : 'Nhihad';
+  if (RACHEL_EMAIL && email === RACHEL_EMAIL) return PARTNER_LABEL;
+  if (OWNER_EMAIL && email === OWNER_EMAIL) return OWNER_LABEL;
+  return email ? email.split('@')[0] : OWNER_LABEL;
 }
 
 function renderList(){

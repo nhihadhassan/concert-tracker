@@ -16,8 +16,8 @@ class Settings:
     supabase_publishable_key: str
     supabase_secret_key: str = ""
     public_user_id: UUID = UUID(DEFAULT_PUBLIC_USER_ID)
-    public_user_email: str = "owner@example.com"
-    public_user_display_name: str = "Nhihad"
+    public_user_email: str = ""
+    public_user_display_name: str = "Owner"
     spotify_client_id: str = ""
     spotify_client_secret: str = ""
     spotify_redirect_uri: str = ""
@@ -65,10 +65,10 @@ class Settings:
             supabase_publishable_key=publishable_key,
             supabase_secret_key=os.getenv("SUPABASE_SECRET_KEY", "").strip(),
             public_user_id=public_user_id,
-            public_user_email=os.getenv("PUBLIC_USER_EMAIL", "owner@example.com")
+            public_user_email=os.getenv("PUBLIC_USER_EMAIL", "")
             .strip()
             .lower(),
-            public_user_display_name=os.getenv("PUBLIC_USER_DISPLAY_NAME", "Nhihad").strip(),
+            public_user_display_name=os.getenv("PUBLIC_USER_DISPLAY_NAME", "Owner").strip(),
             spotify_client_id=os.getenv("SPOTIFY_CLIENT_ID", "").strip(),
             spotify_client_secret=os.getenv("SPOTIFY_CLIENT_SECRET", "").strip(),
             spotify_redirect_uri=os.getenv("SPOTIFY_REDIRECT_URI", "").strip(),
