@@ -237,3 +237,7 @@ or the policies will lock everyone out.
 > The client-side email list and the backup PIN are conveniences, not security
 > boundaries. RLS is what actually restricts access to the data.
 
+
+## Licence
+
+Released under the [MIT License](LICENSE).
