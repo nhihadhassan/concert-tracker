@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { CSSProperties, KeyboardEvent } from 'react'
+import type { CSSProperties, KeyboardEvent, MouseEvent } from 'react'
 import { ArrowLeft, BookOpenText, Disc3, ExternalLink, Pencil, Star } from 'lucide-react'
 import type { Album, AlbumReview, MemberSummary } from '../types'
 import { MarkdownReview } from './MarkdownReview'
@@ -8,7 +8,7 @@ interface AlbumJournalProps {
   album: Album
   currentUserId: string
   members: MemberSummary[]
-  onBack: () => void
+  onBack: (event: MouseEvent<HTMLAnchorElement>) => void
   onEdit: () => void
 }
 
@@ -67,9 +67,9 @@ export function AlbumJournal({
   return (
     <main className="album-journal" style={headerStyle}>
       <section className="album-journal-hero">
-        <button className="album-back-button" type="button" onClick={onBack}>
-          <ArrowLeft size={18} />Back to albums
-        </button>
+        <a className="album-back-button" href="/?view=albums" onClick={onBack}>
+          <ArrowLeft size={18} aria-hidden="true" />Back to albums
+        </a>
         <div className="album-journal-identity">
           <span className="album-journal-art">
             {album.image_url

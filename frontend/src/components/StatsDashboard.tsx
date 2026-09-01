@@ -296,7 +296,8 @@ export function StatsDashboard({ analytics, concerts, memberName, rankings, scop
       <div className="stats-shader" aria-hidden="true" />
       <header className="stats-page-head">
         <div>
-          <h2 id="stats-title" data-view-heading tabIndex={-1}>{scope === 'personal' ? `${memberName}'s stats` : 'Shared stats'}</h2>
+          <h1 id="stats-title" data-view-heading tabIndex={-1}>Concert Stats</h1>
+          <p>{scope === 'personal' ? `${memberName}'s personal archive` : 'Shared archive'}</p>
         </div>
         <div className="stats-scope" role="group" aria-label="Stats scope">
           <button type="button" className={scope === 'personal' ? 'active' : ''} aria-pressed={scope === 'personal'} onClick={() => onScopeChange('personal')}>Personal</button>

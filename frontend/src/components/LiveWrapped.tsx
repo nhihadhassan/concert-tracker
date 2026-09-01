@@ -134,10 +134,11 @@ export function LiveWrapped({ concerts, analytics, memberName }: LiveWrappedProp
       transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1] }}
     >
       <div className="wrapped-noise" aria-hidden="true" />
+      <h1 id="wrapped-title" className="sr-only" data-view-heading tabIndex={-1}>Live Recap</h1>
       <header className="wrapped-header">
         <div>
           <p className="wrapped-eyebrow"><Sparkles size={15} aria-hidden="true" /> Live-show rewind</p>
-          <h2 id="wrapped-title" data-view-heading tabIndex={-1}>{firstName(memberName)}, your year in the crowd.</h2>
+          <h2>{firstName(memberName)}, your year in the crowd.</h2>
           <p className="wrapped-range">{rangeLabel}</p>
         </div>
         <div className="wrapped-controls">

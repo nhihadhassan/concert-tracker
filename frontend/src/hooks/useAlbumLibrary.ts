@@ -5,10 +5,11 @@ const ALBUMS_KEY = ['album-library'] as const
 // Realtime needed a signed-in Supabase client; without one the shelf polls instead.
 const REFRESH_INTERVAL_MS = 60_000
 
-export function useAlbumLibrary() {
+export function useAlbumLibrary(enabled = true) {
   const query = useQuery({
     queryKey: ALBUMS_KEY,
     queryFn: () => fetchAlbums(),
+    enabled,
     refetchInterval: REFRESH_INTERVAL_MS,
     refetchOnWindowFocus: true,
   })
