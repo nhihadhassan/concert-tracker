@@ -523,7 +523,7 @@ export function AddConcertDialog({
             </div>
             <label className="field field-wide"><span>Artwork URL</span><input name="image" value={imageUrl} onChange={(event) => setImageUrl(event.target.value)} /></label>
             <div className="image-preview field-wide">
-              <AnimatePresence mode="wait" initial={false}>{imageUrl ? <m.img key={imageUrl} src={imageUrl} alt="Artwork preview" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} /> : <m.span key="empty-preview" initial={{ opacity: 0 }} animate={{ opacity: 1 }}><Image size={18} />No artwork selected</m.span>}</AnimatePresence>
+              <AnimatePresence mode="wait" initial={false}>{imageUrl ? <m.img key={imageUrl} src={imageUrl} alt={concert ? `${concert.artist} artwork preview` : 'Selected concert artwork preview'} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} /> : <m.span key="empty-preview" initial={{ opacity: 0 }} animate={{ opacity: 1 }}><Image size={18} />No artwork selected</m.span>}</AnimatePresence>
             </div>
             <label className="field field-wide"><span>Concert setlist URL</span><input name="setlistUrl" type="url" defaultValue={concert?.setlist_url ?? ''} /></label>
             <label className="field field-wide"><span>Spotify link</span><input name="spotify" type="url" placeholder="Playlist or artist page" defaultValue={concert?.spotify_url ?? ''} /></label>

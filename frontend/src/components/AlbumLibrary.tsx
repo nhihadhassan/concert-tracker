@@ -30,7 +30,7 @@ export function AlbumLibrary({
         <div>
           <span className="album-heading-icon" aria-hidden="true"><Disc3 size={21} /></span>
           <div>
-            <h1 data-view-heading tabIndex={-1}>Album journal</h1>
+            <h1 data-view-heading tabIndex={-1}>Album Journal</h1>
             <p>{albums.length ? `${reviewed} of ${albums.length} albums reviewed` : 'A shared shelf for records worth remembering.'}</p>
           </div>
         </div>

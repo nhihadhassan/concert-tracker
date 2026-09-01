@@ -185,11 +185,15 @@ describe('Concert Tracker cloud shell', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
     window.history.replaceState({}, '', '/')
+    document.head.querySelector('link[rel="canonical"]')?.remove()
+    document.head.querySelector('meta[name="robots"]')?.remove()
   })
 
   it('renders cloud totals and concert cards with a complete heading hierarchy', () => {
     render(<Dashboard member={member} />)
-    expect(screen.getByRole('heading', { name: "Nhihad's Concerts" })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: "Nhihad's Concerts, return to Concert Archive" })).toHaveAttribute('href', '/')
+    expect(screen.getByRole('heading', { name: 'Concert Archive', level: 1 })).toBeInTheDocument()
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
     expect(screen.getByText('Total concerts')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Kali Uchis' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Concert archive', level: 2 })).toBeInTheDocument()
@@ -225,7 +229,9 @@ describe('Concert Tracker cloud shell', () => {
   it('opens the functional add form', async () => {
     render(<Dashboard member={member} />)
     fireEvent.click(screen.getByRole('button', { name: 'Add concert' }))
-    expect(await screen.findByRole('heading', { name: 'Add concert' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { name: 'Add concert' }, { timeout: 5_000 }),
+    ).toBeInTheDocument()
     expect(screen.getByText('Artist, date, and venue are enough. Everything else can wait.')).toBeInTheDocument()
     expect(screen.getByRole('combobox', { name: 'Artist' })).toBeInTheDocument()
     expect(screen.getByRole('combobox', { name: 'Venue' })).toBeInTheDocument()
@@ -251,7 +257,7 @@ describe('Concert Tracker cloud shell', () => {
     const artworkOption = await screen.findByRole('button', { name: 'Use Sincerely artwork' })
     fireEvent.click(artworkOption)
     expect(artworkOption).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByRole('img', { name: 'Artwork preview' })).toHaveAttribute(
+    expect(screen.getByRole('img', { name: 'Kali Uchis artwork preview' })).toHaveAttribute(
       'src',
       'https://example.com/sincerely.jpg',
     )
@@ -260,13 +266,23 @@ describe('Concert Tracker cloud shell', () => {
   it('switches between concerts and stats with rankings inside stats', async () => {
     render(<Dashboard member={member} />)
     const navigation = screen.getAllByRole('navigation', { name: 'Primary navigation' })[0]
-    const concertsButton = within(navigation).getByRole('button', { name: 'Concerts' })
-    const statsButton = within(navigation).getByRole('button', { name: 'Stats' })
-    expect(concertsButton).toHaveAttribute('aria-current', 'page')
-    fireEvent.click(statsButton)
-    expect(statsButton).toHaveAttribute('aria-current', 'page')
-    expect(window.location.search).toBe('?view=stats&scope=personal')
-    expect(await screen.findByRole('heading', { name: "Nhihad's stats" })).toBeInTheDocument()
+    const concertsLink = within(navigation).getByRole('link', { name: 'Concerts' })
+    const statsLink = within(navigation).getByRole('link', { name: 'Stats' })
+    expect(concertsLink).toHaveAttribute('href', '/')
+    expect(statsLink).toHaveAttribute('href', '/?view=stats')
+    expect(concertsLink).toHaveAttribute('aria-current', 'page')
+    fireEvent.click(statsLink)
+    expect(statsLink).toHaveAttribute('aria-current', 'page')
+    expect(window.location.search).toBe('?view=stats')
+    expect(
+      await screen.findByRole(
+        'heading',
+        { name: 'Concert Stats', level: 1 },
+        { timeout: 5_000 },
+      ),
+    ).toBeInTheDocument()
+    expect(screen.getByText("Nhihad's personal archive")).toBeInTheDocument()
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
     expect(await screen.findByRole('heading', { name: 'Rankings' })).toBeInTheDocument()
   })
 
@@ -274,11 +290,13 @@ describe('Concert Tracker cloud shell', () => {
     window.history.replaceState({}, '', '/?view=wrapped')
     render(<Dashboard member={member} />)
     const navigation = screen.getAllByRole('navigation', { name: 'Primary navigation' })[0]
-    expect(within(navigation).getByRole('button', { name: 'Wrapped' })).toHaveAttribute(
+    expect(within(navigation).getByRole('link', { name: 'Wrapped' })).toHaveAttribute(
       'aria-current',
       'page',
     )
-    expect(await screen.findByRole('heading', { name: 'Nhihad, your year in the crowd.' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Live Recap', level: 1 })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Nhihad, your year in the crowd.', level: 2 })).toBeInTheDocument()
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
     expect(screen.getByText('Your main character moment')).toBeInTheDocument()
     expect(screen.getByRole('combobox', { name: 'Show me' })).toHaveValue('2025')
     expect(screen.getByRole('button', { name: 'Save recap card' })).toBeInTheDocument()
@@ -287,12 +305,12 @@ describe('Concert Tracker cloud shell', () => {
   it('opens the album journal and keeps track order separate from personal rank', async () => {
     render(<Dashboard member={member} />)
     const navigation = screen.getAllByRole('navigation', { name: 'Primary navigation' })[0]
-    fireEvent.click(within(navigation).getByRole('button', { name: 'Albums' }))
+    fireEvent.click(within(navigation).getByRole('link', { name: 'Albums' }))
     expect(window.location.search).toBe('?view=albums')
-    expect(await screen.findByRole('heading', { name: 'Album journal' })).toBeInTheDocument()
-    fireEvent.click(await screen.findByRole('button', { name: 'Open In Rainbows by Radiohead' }))
+    expect(await screen.findByRole('heading', { name: 'Album Journal', level: 1 })).toBeInTheDocument()
+    fireEvent.click(await screen.findByRole('button', { name: 'Open In Rainbows by Radiohead' }, { timeout: 5000 }))
     expect(window.location.search).toBe('?album=aaaaaaaa-1111-4111-8111-111111111111')
-    expect(await screen.findByRole('heading', { name: 'In Rainbows', level: 1 })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'In Rainbows', level: 1 }, { timeout: 5000 })).toBeInTheDocument()
     expect(screen.getByText('A patient, vivid record')).toBeInTheDocument()
     expect(screen.getByRole('table', { name: 'In Rainbows tracklist' })).toHaveTextContent('15 Step')
     expect(screen.getByRole('table', { name: 'In Rainbows tracklist' })).toHaveTextContent('Bodysnatchers')
@@ -317,7 +335,7 @@ describe('Concert Tracker cloud shell', () => {
     expect(await screen.findByRole('heading', { name: 'Kali Uchis', level: 1 })).toBeInTheDocument()
     expect(screen.getByText('Personal memory')).toBeInTheDocument()
     expect(screen.getByText('Shared event note')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Back to concerts' }))
+    fireEvent.click(screen.getByRole('link', { name: 'Back to concerts' }))
     expect(window.location.search).toBe('')
     expect(screen.getByRole('region', { name: 'Concert totals' })).toBeInTheDocument()
     await waitFor(() => expect(screen.getByRole('button', { name: 'View Kali Uchis details' })).toHaveFocus())
@@ -326,17 +344,18 @@ describe('Concert Tracker cloud shell', () => {
   it('honors a shared stats deep link and scope switching', async () => {
     window.history.replaceState({}, '', '/?view=stats&scope=shared')
     render(<Dashboard member={member} />)
-    expect(await screen.findByRole('heading', { name: 'Shared stats' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Concert Stats' })).toBeInTheDocument()
+    expect(screen.getByText('Shared archive')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Shared' })).toHaveAttribute('aria-pressed', 'true')
     fireEvent.click(screen.getByRole('button', { name: 'Personal' }))
-    expect(await screen.findByRole('heading', { name: "Nhihad's stats" })).toBeInTheDocument()
+    expect(await screen.findByText("Nhihad's personal archive")).toBeInTheDocument()
   })
 
   it('responds to popstate deep links and handles deleted concert URLs', async () => {
     render(<Dashboard member={member} />)
     window.history.pushState({}, '', '/?view=stats&scope=shared')
     fireEvent(window, new PopStateEvent('popstate'))
-    expect(await screen.findByRole('heading', { name: 'Shared stats' })).toBeInTheDocument()
+    expect(await screen.findByText('Shared archive')).toBeInTheDocument()
 
     window.history.pushState({}, '', '/?concert=deleted-concert')
     fireEvent(window, new PopStateEvent('popstate'))
@@ -347,7 +366,7 @@ describe('Concert Tracker cloud shell', () => {
     window.history.replaceState({}, '', '/lost-show')
     render(<Dashboard member={member} />)
     expect(screen.getByRole('heading', { name: 'This page missed the encore' })).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Back to concerts' }))
+    fireEvent.click(screen.getByRole('link', { name: 'Back to concerts' }))
     expect(window.location.pathname).toBe('/')
   })
 
@@ -391,9 +410,55 @@ describe('Concert Tracker cloud shell', () => {
   it('opens straight into the library with no sign-in step', async () => {
     vi.spyOn(api, 'apiRequest').mockResolvedValue(member)
     render(<App />)
-    expect(await screen.findByRole('heading', { name: "Nhihad's Concerts" })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Concert Archive' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: "Nhihad's Concerts, return to Concert Archive" })).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Sign in' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Sign out' })).not.toBeInTheDocument()
+  })
+
+  it('opens with an Encore-native shell while the session is loading', () => {
+    vi.spyOn(api, 'apiRequest').mockImplementation(() => new Promise(() => undefined))
+    const view = render(<App />)
+    expect(screen.getByRole('link', { name: "Nhihad's Concerts, return to Concert Archive" })).toHaveAttribute('href', '/')
+    expect(screen.getByRole('heading', { name: 'Opening Encore', level: 1 })).toBeInTheDocument()
+    expect(screen.getByRole('main', { name: 'Opening Encore' })).toHaveAttribute('aria-busy', 'true')
+    expect(view.container.querySelector('.auth-page, .auth-panel, .auth-skeleton')).not.toBeInTheDocument()
+    view.unmount()
+  })
+
+  it('updates titles, descriptions, and canonicals for detail views', async () => {
+    window.history.replaceState({}, '', '/?concert=33333333-3333-4333-8333-333333333333')
+    render(<Dashboard member={member} />)
+    await screen.findByRole('heading', { name: 'Kali Uchis', level: 1 })
+    expect(document.title).toBe('Kali Uchis at Scotiabank Arena | Encore')
+    expect(document.head.querySelector('meta[name="description"]')).toHaveAttribute('content', expect.stringContaining('Kali Uchis at Scotiabank Arena'))
+    expect(document.head.querySelector('link[rel="canonical"]')).toHaveAttribute('href', 'https://concert-tracker-sepia.vercel.app/?concert=33333333-3333-4333-8333-333333333333')
+    expect(document.head.querySelector('meta[property="og:title"]')).toHaveAttribute('content', document.title)
+    expect(document.head.querySelector('meta[name="twitter:title"]')).toHaveAttribute('content', document.title)
+  })
+
+  it('normalizes stats and album-edit canonicals', async () => {
+    window.history.replaceState({}, '', '/?view=stats&scope=shared')
+    const view = render(<Dashboard member={member} />)
+    await screen.findByText('Shared archive')
+    expect(document.head.querySelector('link[rel="canonical"]')).toHaveAttribute('href', 'https://concert-tracker-sepia.vercel.app/?view=stats')
+    expect(document.title).toBe('Concert Stats | Encore')
+
+    view.unmount()
+    window.history.replaceState({}, '', '/?album=aaaaaaaa-1111-4111-8111-111111111111&mode=edit')
+    render(<Dashboard member={member} />)
+    await screen.findByRole('heading', { name: 'In Rainbows', level: 1 })
+    expect(document.title).toBe('In Rainbows by Radiohead | Encore')
+    expect(document.head.querySelector('link[rel="canonical"]')).toHaveAttribute('href', 'https://concert-tracker-sepia.vercel.app/?album=aaaaaaaa-1111-4111-8111-111111111111')
+  })
+
+  it('removes canonicals and adds noindex for missing records', () => {
+    window.history.replaceState({}, '', '/?concert=deleted-concert')
+    render(<Dashboard member={member} />)
+    expect(screen.getByRole('heading', { name: 'Concert not found' })).toBeInTheDocument()
+    expect(document.title).toBe('Concert Not Found | Encore')
+    expect(document.head.querySelector('link[rel="canonical"]')).not.toBeInTheDocument()
+    expect(document.head.querySelector('meta[name="robots"]')).toHaveAttribute('content', 'noindex')
   })
 
   it('shows an error screen when the profile cannot be loaded', async () => {

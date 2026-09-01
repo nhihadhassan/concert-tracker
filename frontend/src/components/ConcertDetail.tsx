@@ -1,4 +1,5 @@
 import { Armchair, ArrowLeft, CalendarDays, Image, MapPin, Music2, Pencil, Plus, Star, Ticket, Trash2, Users, WalletCards } from 'lucide-react'
+import type { MouseEvent } from 'react'
 import { downloadConcertCalendar } from '../lib/exports'
 import type { Milestone } from '../lib/archiveInsights'
 import type { SessionMember } from '../session/useSession'
@@ -10,7 +11,7 @@ interface ConcertDetailProps {
   member: SessionMember
   milestones: Milestone[]
   onArtwork: (concert: Concert) => void
-  onBack: () => void
+  onBack: (event: MouseEvent<HTMLAnchorElement>) => void
   onDelete: (concert: Concert) => void
   onEdit: (concert: Concert) => void
 }
@@ -34,7 +35,7 @@ export function ConcertDetail({ concert, member, milestones, onArtwork, onBack, 
         {concert.image ? <img src={concert.image} alt={`${concert.artist} concert artwork`} decoding="async" /> : <span className="detail-art-fallback" aria-hidden="true"><Image size={54} /></span>}
         <span className="detail-hero-scrim" aria-hidden="true" />
         <div className="detail-top-actions">
-          <button className="detail-round-button" type="button" onClick={onBack} aria-label="Back to concerts"><ArrowLeft size={20} /></button>
+          <a className="detail-round-button" href="/" onClick={onBack} aria-label="Back to concerts"><ArrowLeft size={20} aria-hidden="true" /></a>
           <div><button className="detail-round-button" type="button" onClick={() => onArtwork(concert)} aria-label={`Choose artwork for ${concert.artist}`}><Image size={18} /></button><button className="detail-round-button" type="button" onClick={() => onEdit(concert)} aria-label={`Edit ${concert.artist}`}><Pencil size={18} /></button><button className="detail-round-button detail-delete" type="button" onClick={() => onDelete(concert)} aria-label={`Delete ${concert.artist}`}><Trash2 size={18} /></button></div>
         </div>
         <header className="detail-hero-copy">

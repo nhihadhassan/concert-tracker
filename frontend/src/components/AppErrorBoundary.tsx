@@ -23,8 +23,8 @@ export class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorB
   render() {
     if (!this.state.failed) return this.props.children
     return (
-      <main className="app auth-page theme-dark">
-        <section className="auth-panel app-error-panel" role="alert">
+      <main className="app status-page theme-dark">
+        <section className="status-panel app-error-panel" role="alert">
           <TriangleAlert size={28} aria-hidden="true" />
           <h1>Encore hit a bad note</h1>
           <p>Your concert data has not been changed. Reload the app to try this view again.</p>
