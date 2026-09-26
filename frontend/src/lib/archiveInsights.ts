@@ -31,13 +31,16 @@ export function buildMemoryLane(concerts: Concert[], now = new Date()): ArchiveM
   const exact = rows.filter((row) => row.date < today && dayOfYear(row.date) === dayOfYear(today))
   if (exact.length) {
     const concert = exact[exact.length - 1]
-    return { concert, kind: 'on_this_day', label: `On this day ${todayYear - Number(concert.date.slice(0, 4))} years ago` }
+    const yearsAgo = todayYear - Number(concert.date.slice(0, 4))
+    return { concert, kind: 'on_this_day', label: yearsAgo === 1 ? 'On this day last year' : `On this day ${yearsAgo} years ago` }
   }
   const currentWeek = weekKey(today).split('-')[1]
   const sameWeek = rows.filter((row) => row.date < today && weekKey(row.date).split('-')[1] === currentWeek)
   if (sameWeek.length) {
     const concert = sameWeek[sameWeek.length - 1]
-    return { concert, kind: 'this_week', label: `${todayYear - Number(concert.date.slice(0, 4))} years ago this week` }
+    const yearsAgo = todayYear - Number(concert.date.slice(0, 4))
+    const label = yearsAgo === 0 ? 'This week' : yearsAgo === 1 ? 'This week last year' : `${yearsAgo} years ago this week`
+    return { concert, kind: 'this_week', label }
   }
   const highlyRated = rows.filter((row) => (row.personal_rating ?? row.combined_rating ?? 0) >= 8.5)
   if (highlyRated.length) {

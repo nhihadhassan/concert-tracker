@@ -872,6 +872,17 @@ def suggest_concerts(
         status_rank = 1 if suggestion.event_status in {"cancelled", "offsale"} else 0
         ranked.append((relevance, status_rank, suggestion))
 
-    ranked.sort(key=lambda item: (-item[0], item[1], item[2].date, item[2].artist.casefold()))
+    # Put recent shows first in past mode before truncating the result list.
+    # Otherwise prolific artists can have only old concerts in the first page
+    # of suggestions, hiding the show the user is trying to log.
+    ranked.sort(
+        key=lambda item: (
+            -item[0],
+            item[1],
+            (-1 if mode == "past" else 1)
+            * datetime.fromisoformat(item[2].date).date().toordinal(),
+            item[2].artist.casefold(),
+        )
+    )
     results = [suggestion for _, _, suggestion in ranked[:MAX_SUGGESTIONS]]
     return SuggestionResponse(configured=True, results=results, provider=provider)
