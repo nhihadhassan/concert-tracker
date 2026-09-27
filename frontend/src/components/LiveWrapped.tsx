@@ -194,7 +194,7 @@ export function LiveWrapped({ concerts, memberName }: LiveWrappedProps) {
             <ul>
               <li><strong>{story.newArtists.length}</strong><span>{period === 'all' ? 'artists entered the archive' : `first-time ${story.newArtists.length === 1 ? 'artist' : 'artists'} this year`}{story.newArtists.length ? `, including ${story.newArtists.slice(0, 2).join(' and ')}` : ''}.</span></li>
               <li><strong>{story.longestMonthlyStreak}</strong><span>{story.longestMonthlyStreak === 1 ? 'active month' : 'months in your longest live streak'}.</span></li>
-              <li><strong>{story.closestRun ? `${story.closestRun.days}d` : '—'}</strong><span>{story.closestRun ? `between ${story.closestRun.first.artist} and ${story.closestRun.second.artist}, your tightest two-show run.` : 'Add another show to find your tightest run.'}</span></li>
+              <li><strong>{story.closestRun ? `${story.closestRun.days}d` : 'N/A'}</strong><span>{story.closestRun ? `between ${story.closestRun.first.artist} and ${story.closestRun.second.artist}, your tightest two-show run.` : 'Add another show to find your tightest run.'}</span></li>
               <li><strong>{story.weekendShare}%</strong><span>of these nights landed Friday through Sunday.</span></li>
             </ul>
           </section>

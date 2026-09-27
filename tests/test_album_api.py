@@ -90,6 +90,15 @@ def test_album_library_starts_empty() -> None:
 
 def test_spotify_album_search_returns_importable_results(monkeypatch) -> None:
     install_spotify_stubs(monkeypatch)
+    search_params: dict[str, Any] = {}
+
+    def spotify_get(client, token, path, params=None):
+        if path == "/search":
+            search_params.update(params or {})
+            return {"albums": {"items": [spotify_album()]}}
+        return spotify_album()
+
+    monkeypatch.setattr(album_routes, "_spotify_get", spotify_get)
     rest = InMemoryRest()
     client = client_for(rest)
     try:
@@ -98,6 +107,7 @@ def test_spotify_album_search_returns_importable_results(monkeypatch) -> None:
         clear_overrides()
 
     assert response.status_code == 200
+    assert search_params == {"q": "in rainbows", "type": "album", "limit": 10}
     assert response.json()["results"][0] == {
         "spotify_album_id": "spotify-album-1",
         "title": "In Rainbows",

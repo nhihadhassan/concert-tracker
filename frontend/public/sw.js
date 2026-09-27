@@ -1,4 +1,4 @@
-const CACHE_NAME = 'encore-shell-v1'
+const CACHE_NAME = 'encore-shell-v2'
 const SHELL = ['/', '/manifest.webmanifest', '/favicon.svg']
 
 self.addEventListener('install', (event) => {

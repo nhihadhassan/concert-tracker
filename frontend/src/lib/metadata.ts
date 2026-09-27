@@ -27,14 +27,14 @@ export function buildPageMetadata({ album, concert, missing = false, view }: Met
     canonical: null,
     description: 'The requested Encore page could not be found.',
     noindex: true,
-    title: 'Page Not Found | Encore',
+    title: 'Encore | Page Not Found',
   }
   if (view === 'detail') {
     if (missing) return {
       canonical: null,
       description: 'This concert is not available in the Encore archive.',
       noindex: true,
-      title: 'Concert Not Found | Encore',
+      title: 'Encore | Concert Not Found',
     }
     if (concert) {
       const venue = cleanVenue(concert.venue)
@@ -44,27 +44,27 @@ export function buildPageMetadata({ album, concert, missing = false, view }: Met
         title: `${concert.artist} at ${venue} | Encore`,
       }
     }
-    return { canonical: absoluteUrl(`/?concert=${encodeURIComponent(new URLSearchParams(location.search).get('concert') ?? '')}`), description: 'Open a saved concert memory in Encore.', title: 'Concert Memory | Encore' }
+    return { canonical: absoluteUrl(`/?concert=${encodeURIComponent(new URLSearchParams(location.search).get('concert') ?? '')}`), description: 'Open a saved concert memory in Encore.', title: 'Encore | Concert Memory' }
   }
   if (view === 'album-detail') {
     if (missing) return {
       canonical: null,
       description: 'This album is not available in the Encore journal.',
       noindex: true,
-      title: 'Album Not Found | Encore',
+      title: 'Encore | Album Not Found',
     }
     if (album) return {
       canonical: absoluteUrl(`/?album=${encodeURIComponent(album.id)}`),
       description: `Review, track notes, and rankings for ${album.title} by ${album.artist}.`,
       title: `${album.title} by ${album.artist} | Encore`,
     }
-    return { canonical: absoluteUrl(`/?album=${encodeURIComponent(new URLSearchParams(location.search).get('album') ?? '')}`), description: 'Open a saved album review in Encore.', title: 'Album Review | Encore' }
+    return { canonical: absoluteUrl(`/?album=${encodeURIComponent(new URLSearchParams(location.search).get('album') ?? '')}`), description: 'Open a saved album review in Encore.', title: 'Encore | Album Review' }
   }
-  if (view === 'stage') return { canonical: absoluteUrl('/'), description: 'Explore your concert archive, upcoming shows, and personal live recaps.', title: 'Concerts — Stage | Encore' }
-  if (view === 'albums') return { canonical: absoluteUrl('/?view=albums'), description: 'Browse a shared album journal with personal reviews, scores, and track notes.', title: 'Album Journal | Encore' }
-  if (view === 'stats') return { canonical: absoluteUrl('/?view=stats'), description: 'Explore concert attendance, ratings, venues, archive stories, and listening insights.', title: 'Concert Stats | Encore' }
-  if (view === 'wrapped') return { canonical: absoluteUrl('/?view=wrapped'), description: 'Revisit attended concerts through a personal live-music recap.', title: 'Live Recap | Encore' }
-  return { canonical: absoluteUrl('/?view=classic'), noindex: true, description: 'Encore turns a personal concert archive into memories, insights, and yearly live recaps.', title: "Nhihad's Concerts | Encore" }
+  if (view === 'stage') return { canonical: absoluteUrl('/'), description: 'Explore your concert archive, upcoming shows, and personal live recaps.', title: 'Encore | Concerts' }
+  if (view === 'albums') return { canonical: absoluteUrl('/?view=albums'), description: 'Browse a shared album journal with personal reviews, scores, and track notes.', title: 'Encore | Albums' }
+  if (view === 'stats') return { canonical: absoluteUrl('/?view=stats'), description: 'Explore concert attendance, ratings, venues, archive stories, and listening insights.', title: 'Encore | Stats' }
+  if (view === 'wrapped') return { canonical: absoluteUrl('/?view=wrapped'), description: 'Revisit attended concerts through a personal live-music recap.', title: 'Encore | Live Recap' }
+  return { canonical: absoluteUrl('/?view=classic'), noindex: true, description: 'Encore turns a personal concert archive into memories, insights, and yearly live recaps.', title: 'Encore | Concerts Classic' }
 }
 
 const setMeta = (selector: string, attribute: 'name' | 'property', key: string, content: string) => {

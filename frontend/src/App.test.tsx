@@ -541,7 +541,7 @@ describe('Concert Tracker cloud shell', () => {
     const view = render(<Dashboard member={member} />)
     await screen.findByText('Shared archive')
     expect(document.head.querySelector('link[rel="canonical"]')).toHaveAttribute('href', 'https://concert-tracker-sepia.vercel.app/?view=stats')
-    expect(document.title).toBe('Concert Stats | Encore')
+    expect(document.title).toBe('Encore | Stats')
 
     view.unmount()
     window.history.replaceState({}, '', '/?album=aaaaaaaa-1111-4111-8111-111111111111&mode=edit')
@@ -555,7 +555,7 @@ describe('Concert Tracker cloud shell', () => {
     window.history.replaceState({}, '', '/?concert=deleted-concert&view=classic')
     render(<Dashboard member={member} />)
     expect(screen.getByRole('heading', { name: 'Concert not found' })).toBeInTheDocument()
-    expect(document.title).toBe('Concert Not Found | Encore')
+    expect(document.title).toBe('Encore | Concert Not Found')
     expect(document.head.querySelector('link[rel="canonical"]')).not.toBeInTheDocument()
     expect(document.head.querySelector('meta[name="robots"]')).toHaveAttribute('content', 'noindex')
   })

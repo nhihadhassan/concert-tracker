@@ -254,7 +254,7 @@ def search_albums(
             client,
             token,
             "/search",
-            {"q": q.strip(), "type": "album", "limit": 12},
+            {"q": q.strip(), "type": "album", "limit": 10},
         )
     items = payload.get("albums", {}).get("items", [])
     return SpotifyAlbumSearchResponse(results=[_album_option(row) for row in items])
