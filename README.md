@@ -2,14 +2,32 @@
 
 A private shared concert tracker for logging, rating, and comparing upcoming and attended shows.
 
-The production application uses React, TypeScript, FastAPI, and Supabase. The legacy static
-dashboard and table remain available during the 30-day stabilization period.
+The application, branded **Encore**, uses React, TypeScript, and FastAPI with a configurable
+Postgres data provider. The legacy static dashboard and data remain rollback assets; see the
+stabilization runbook before any cleanup.
+
+## Concerts: Classic and Stage
+
+Classic remains the default Concerts page. **Stage** is a separate cinematic view of the same
+library, with a full-screen artist stage, moving lights and haze, floating flip ticket, glowing
+posters, concert ribbon, animated detail entrances, year atmospheres, and personal Replay.
+
+- [Classic](https://concert-tracker-sepia.vercel.app/)
+- [Stage](https://concert-tracker-sepia.vercel.app/?view=stage)
+
+The two designs are intentionally retained so the owner can choose a direction later. For
+interface changes, start with the [Stage design guide](docs/STAGE_DESIGN.md) and
+[agent instructions](AGENTS.md). Keep copy brief and factual; preserve mobile, keyboard, and
+reduced-motion behavior.
 
 ## Documentation
 
 - [Product](PRODUCT.md)
 - [Rating rules](RATING_RULES.md)
 - [Architecture](ARCHITECTURE.md)
+- [Stage design and motion guide](docs/STAGE_DESIGN.md)
+- [Agent instructions](AGENTS.md)
+- [Frontend development](frontend/README.md)
 - [Cost budget](COST_BUDGET.md)
 - [Stage 0 checkpoint](docs/checkpoints/STAGE_0.md)
 - [Stage 1 checkpoint](docs/checkpoints/STAGE_1.md)
@@ -30,7 +48,8 @@ dashboard and table remain available during the 30-day stabilization period.
 
 - React, Vite, and TypeScript
 - FastAPI on Vercel Functions
-- Supabase Postgres (no sign-in; the API holds the secret key)
+- Provider-selected Postgres (Neon or Supabase; see [data providers](docs/DATA_PROVIDERS.md))
+- CSS perspective and Motion for the optional Stage view, Record Room, and Wrapped
 - TanStack Query with IndexedDB snapshot/outbox support
 - Shared Spotify album shelf with private drafts and personal song rankings
 - Local atomic SQLite and Excel backups through macOS launchd
@@ -58,10 +77,18 @@ npm run build
 ```
 
 The application has no sign-in. Every request runs as the single identity described by
-`PUBLIC_USER_ID`, `PUBLIC_USER_EMAIL`, and `PUBLIC_USER_DISPLAY_NAME`, and the API reaches
-Supabase with `SUPABASE_SECRET_KEY`, which bypasses the RLS policies. Anyone who can reach a
+`PUBLIC_USER_ID`, `PUBLIC_USER_EMAIL`, and `PUBLIC_USER_DISPLAY_NAME`. The API accesses the
+configured database on that user's behalf; the Supabase provider uses `SUPABASE_SECRET_KEY`,
+which bypasses RLS, while the Neon provider uses a server-side connection. Anyone who can reach a
 deployment can therefore read and write the whole library, so treat the deployment URL itself
 as the only thing standing between the data and the public.
+
+## Historical rebuild checkpoints
+
+The numbered stages below describe the rebuild and migration history, not the Stage visual
+mode. Some checkpoint instructions describe superseded authentication or data arrangements;
+consult [Architecture](ARCHITECTURE.md) and [data providers](docs/DATA_PROVIDERS.md) for current
+boundaries before using them.
 
 ## Stage 2 Staging Setup
 

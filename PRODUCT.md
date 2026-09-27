@@ -2,7 +2,8 @@
 
 ## Register
 
-Product dashboard. Design serves repeated data entry, comparison, and browsing.
+Encore is a concert journal and dashboard. Classic serves repeated data entry, comparison,
+and browsing; Stage adds an optional expressive way to explore the same concert library.
 
 ## Users
 
@@ -14,11 +15,21 @@ Concert Tracker records upcoming, attended, and cancelled shows; preserves music
 
 ## Current Product
 
-The production application is a single `index.html` file hosted on Vercel. It embeds 45 seed concerts, stores browser changes in `localStorage`, and attempts authenticated synchronization to a Supabase JSON-blob table. A temporary PIN opens local-only mode.
+The application uses React and TypeScript, FastAPI domain rules and analytics, normalized
+Postgres data, IndexedDB offline support, and local recovery tooling. See
+[Architecture](ARCHITECTURE.md) for authority and provider boundaries. The original static
+dashboard is a legacy rollback asset, not the current implementation target.
 
-## Target Product
+## Approved Concerts Designs
 
-The staged rebuild will use React and TypeScript for the interface, FastAPI for domain rules and analytics, normalized Supabase tables for authoritative data, and a daily Mac backup to SQLite and Excel.
+- **Classic (`/`)** remains the default, with its existing concert workflows and featured ticket.
+- **Stage (`/?view=stage`)** is the cinematic alternative: a dominant artist stage, dimensional
+  flip ticket, glowing poster archive, moving concert strip, artwork-led detail entrance, changing
+  year atmosphere, and personal Replay with optional sound.
+
+The owner likes both and has deferred choosing a replacement. Preserve both until that decision
+is explicit. Both use the same library, filters, details, and editing flows. Stage's feature
+contract, visual rules, and future-agent guidance live in [the design guide](docs/STAGE_DESIGN.md).
 
 ## Product Principles
 
@@ -29,6 +40,10 @@ The staged rebuild will use React and TypeScript for the interface, FastAPI for 
 5. Keep routine workflows fast on desktop and mobile.
 6. Add motion to communicate state and concert energy, never to delay work.
 7. Remain within free infrastructure tiers until usage proves otherwise.
+8. Let artwork, typography, and motion create the atmosphere. Keep interface copy short,
+   concrete, and useful; omit decorative slogans and explanatory captions.
+9. Keep cinematic exploration optional. Preserve native scrolling, a shared motion toggle,
+   silent-by-default Replay, and immediate access to ordinary concert workflows.
 
 ## Accessibility
 
