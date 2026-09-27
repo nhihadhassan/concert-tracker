@@ -77,7 +77,9 @@ export function ConcertDetail({ concert, member, milestones, onArtwork, onClose,
             <span>{verifiedSetlist.tracks.length} songs</span>
             <a href={verifiedSetlist.sourceUrl} target="_blank" rel="noreferrer">Source <ExternalLink size={13} aria-hidden="true" /></a>
           </div>
-          <p className="detail-tracklist-caption">Set order is listed online; performance time codes were not provided.</p>
+          <p className="detail-tracklist-caption">{verifiedSetlist.isPartial
+            ? 'The online report marks this setlist as incomplete; only the songs listed there are shown.'
+            : 'Set order is listed online; song-by-song performance time codes were not provided.'}</p>
           <ol className="detail-tracklist-songs">
             {verifiedSetlist.tracks.map((track, index) => <li key={`${track.title}-${index}`}>
               <span className="detail-tracklist-number">{String(index + 1).padStart(2, '0')}</span>
