@@ -1,3 +1,5 @@
+import { useState } from 'react'
+import { RecordRoom } from './cinematic/RecordRoom'
 import { BookOpenText, Disc3, Plus, Search } from 'lucide-react'
 import type { Album } from '../types'
 
@@ -20,6 +22,13 @@ export function AlbumLibrary({
   onAdd,
   onOpen,
 }: AlbumLibraryProps) {
+  const [view, setView] = useState<'shelf' | 'grid'>(() => {
+    try { return sessionStorage.getItem('encore-album-view') === 'grid' ? 'grid' : 'shelf' } catch { return 'shelf' }
+  })
+  const changeView = (next: 'shelf' | 'grid') => {
+    setView(next)
+    try { sessionStorage.setItem('encore-album-view', next) } catch { /* Storage is optional. */ }
+  }
   const reviewed = albums.filter((album) =>
     album.reviews.some((review) => review.reviewer_user_id === currentUserId),
   ).length
@@ -31,7 +40,7 @@ export function AlbumLibrary({
           <span className="album-heading-icon" aria-hidden="true"><Disc3 size={21} /></span>
           <div>
             <h1 data-view-heading tabIndex={-1}>Album Journal</h1>
-            <p>{albums.length ? `${reviewed} of ${albums.length} albums reviewed` : 'A shared shelf for records worth remembering.'}</p>
+            <p>{albums.length ? `${reviewed} of ${albums.length} albums reviewed` : 'Add an album to get started.'}</p>
           </div>
         </div>
         <button className="button button-primary" type="button" onClick={onAdd}>
@@ -46,11 +55,18 @@ export function AlbumLibrary({
         </div>
       ) : null}
 
+      {albums.length && !loading ? <div className="album-view-switch" role="group" aria-label="Album view">
+        <button type="button" aria-pressed={view === 'shelf'} onClick={() => changeView('shelf')}>Record room</button>
+        <button type="button" aria-pressed={view === 'grid'} onClick={() => changeView('grid')}>Grid</button>
+      </div> : null}
+
       {loading ? (
         <section className="album-shelf album-shelf-loading" aria-label="Loading albums">
           {[0, 1, 2, 3].map((value) => <div className="album-skeleton" key={value}><span /><i /><i /></div>)}
         </section>
-      ) : albums.length ? (
+      ) : albums.length ? view === 'shelf' ? (
+        <RecordRoom albums={albums} onOpen={onOpen} />
+      ) : (
         <section className="album-shelf" aria-label="Albums">
           {albums.map((album) => {
             const review = album.reviews.find((row) => row.reviewer_user_id === currentUserId)

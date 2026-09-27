@@ -10,6 +10,7 @@ import { ConcertDetailOverlay } from './components/ConcertDetailOverlay'
 import { FiltersBar } from './components/FiltersBar'
 import { RankedSummary } from './components/RankedSummary'
 import { StatsStrip } from './components/StatsStrip'
+import { ConcertStage } from './components/cinematic/ConcertStage'
 import { MemoryLane } from './components/MemoryLane'
 import { useConcertLibrary } from './hooks/useConcertLibrary'
 import { useAlbumLibrary } from './hooks/useAlbumLibrary'
@@ -29,6 +30,7 @@ import type {
   Review,
 } from './types'
 import './App.css'
+import './components/cinematic/cinematic.css'
 
 const AlbumJournal = lazy(() => import('./components/AlbumJournal').then((module) => ({
   default: module.AlbumJournal,
@@ -199,6 +201,7 @@ export function Dashboard({ member }: DashboardProps) {
   const [notice, setNotice] = useState<{ message: string; celebratory: boolean } | null>(null)
   const noticeTimer = useRef<number | null>(null)
   const returnFocusConcertId = useRef<string | null>(null)
+  const concertOpener = useRef<HTMLElement | null>(null)
   const returnFocusAlbumId = useRef<string | null>(null)
   const previousRoute = useRef(route)
 
@@ -251,7 +254,8 @@ export function Dashboard({ member }: DashboardProps) {
     if (route.kind !== 'concerts') return
     const concertId = returnFocusConcertId.current
     window.requestAnimationFrame(() => {
-      const opener = concertId ? document.getElementById(`concert-open-${concertId}`) : null
+      const opener = concertOpener.current?.isConnected ? concertOpener.current : concertId ? document.getElementById(`concert-open-${concertId}`) : null
+      concertOpener.current = null
       if (opener) opener.focus({ preventScroll: true })
       else document.querySelector<HTMLElement>('[data-view-heading]')?.focus({ preventScroll: true })
       if (returnFocusConcertId.current === concertId) returnFocusConcertId.current = null
@@ -495,6 +499,7 @@ export function Dashboard({ member }: DashboardProps) {
   const personalScopedRankings = library.personal_analytics.rankings[member.user_id] ?? []
   const openConcert = (concert: Concert) => {
     returnFocusConcertId.current = concert.id
+    concertOpener.current = document.activeElement instanceof HTMLElement && document.activeElement !== document.body ? document.activeElement : null
     navigate({ kind: 'detail', concertId: concert.id }, false, { concertTracker: true, concertOverlay: true })
   }
   const openAlbum = (album: Album) => {
@@ -508,6 +513,7 @@ export function Dashboard({ member }: DashboardProps) {
       <div id="encore-main" tabIndex={-1}>
       {route.kind === 'concerts' || route.kind === 'detail' ? <main className="page-shell page-shell-feed">
         <h1 className="sr-only" data-view-heading tabIndex={-1}>Concert Archive</h1>
+        <ConcertStage concerts={personalConcerts} onOpen={openConcert} />
         <div className="dashboard-column">
           <StatsStrip concerts={library.concerts} />
           <MemoryLane memory={memory} onOpen={(concert) => openConcert(concert)} onRandom={() => {

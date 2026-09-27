@@ -295,9 +295,9 @@ describe('Concert Tracker cloud shell', () => {
       'page',
     )
     expect(await screen.findByRole('heading', { name: 'Live Recap', level: 1 })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Nhihad, your year in the crowd.', level: 2 })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Nhihad’s recap', level: 2 })).toBeInTheDocument()
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
-    expect(screen.getByText('Your main character moment')).toBeInTheDocument()
+    expect(screen.getByText('Highest rated show')).toBeInTheDocument()
     expect(screen.getByRole('combobox', { name: 'Show me' })).toHaveValue('2025')
     expect(screen.getByRole('button', { name: 'Save recap card' })).toBeInTheDocument()
   })

@@ -1,10 +1,11 @@
 import { useMemo, useState, type CSSProperties } from 'react'
-import { CalendarDays, ChevronDown, Clock3, Download, MapPin, Share2, Sparkles, Star, Ticket, Users } from 'lucide-react'
+import { ChevronDown, Download, MapPin, Share2, Sparkles, Star, Ticket, Users } from 'lucide-react'
 import { m, useReducedMotion } from 'motion/react'
 import type { Analytics, Concert } from '../types'
 import { buildConcertStory, type InsightPeriod } from '../lib/concertInsights'
 import { artworkSrcSet, resizeArtwork } from '../lib/artwork'
 import { downloadBlob } from '../lib/exports'
+import { WrappedFilm } from './cinematic/WrappedFilm'
 import { createRecapCard } from '../lib/recapCard'
 
 interface LiveWrappedProps {
@@ -38,7 +39,7 @@ const countBy = (rows: Concert[], getKey: (row: Concert) => string | null) => {
 
 const firstName = (name: string) => name.trim().split(/\s+/)[0] || name
 
-export function LiveWrapped({ concerts, analytics, memberName }: LiveWrappedProps) {
+export function LiveWrapped({ concerts, memberName }: LiveWrappedProps) {
   const reduceMotion = useReducedMotion()
   const years = useMemo(() => [...new Set(concerts.map((concert) => concert.date.slice(0, 4)))].sort((a, b) => Number(b) - Number(a)), [concerts])
   const latestAttendedYear = useMemo(() => concerts
@@ -48,18 +49,13 @@ export function LiveWrapped({ concerts, analytics, memberName }: LiveWrappedProp
   const [period, setPeriod] = useState<InsightPeriod>(latestAttendedYear)
   const [shareLabel, setShareLabel] = useState('Share recap')
   const [cardBusy, setCardBusy] = useState(false)
-  const selectedConcerts = useMemo(() => period === 'all'
-    ? concerts
-    : concerts.filter((concert) => concert.date.startsWith(String(period))), [concerts, period])
   const story = useMemo(() => buildConcertStory(concerts, period), [concerts, period])
   const attended = story.attended
-  const upcoming = selectedConcerts.filter((concert) => concert.status === 'Want to Go')
+
   const artistCounts = useMemo(() => countBy(attended, (concert) => concert.artist), [attended])
-  const genreCounts = useMemo(() => countBy(attended, (concert) => concert.genre), [attended])
   const venueCounts = useMemo(() => countBy(attended, (concert) => concert.venue.split('(')[0].trim()), [attended])
   const topShow = useMemo(() => [...attended].sort((left, right) => (right.personal_rating ?? -1) - (left.personal_rating ?? -1) || right.date.localeCompare(left.date))[0], [attended])
   const topArtist = artistCounts[0]
-  const topGenre = genreCounts[0]
   const topVenue = venueCounts[0]
   const firstShow = [...attended].sort((left, right) => left.date.localeCompare(right.date))[0]
   const lastShow = [...attended].sort((left, right) => right.date.localeCompare(left.date))[0]
@@ -137,8 +133,8 @@ export function LiveWrapped({ concerts, analytics, memberName }: LiveWrappedProp
       <h1 id="wrapped-title" className="sr-only" data-view-heading tabIndex={-1}>Live Recap</h1>
       <header className="wrapped-header">
         <div>
-          <p className="wrapped-eyebrow"><Sparkles size={15} aria-hidden="true" /> Live-show rewind</p>
-          <h2>{firstName(memberName)}, your year in the crowd.</h2>
+          <p className="wrapped-eyebrow"><Sparkles size={15} aria-hidden="true" /> Wrapped</p>
+          <h2>{firstName(memberName)}’s recap</h2>
           <p className="wrapped-range">{rangeLabel}</p>
         </div>
         <div className="wrapped-controls">
@@ -157,60 +153,44 @@ export function LiveWrapped({ concerts, analytics, memberName }: LiveWrappedProp
       {!attended.length ? (
         <section className="wrapped-empty" aria-live="polite">
           <Ticket size={24} aria-hidden="true" />
-          <h3>Your rewind starts at the first encore.</h3>
-          <p>Mark a concert as attended and this space will turn your archive into a story.</p>
+          <h3>No attended shows yet</h3>
+          <p>Mark a concert as attended to see your recap.</p>
         </section>
       ) : <>
-        <section className="wrapped-hero" aria-label="Live-show headline">
-          <div className="wrapped-hero-copy">
-            <span className="wrapped-kicker">The headline</span>
-            <strong>{attended.length}</strong>
-            <p>{attended.length === 1 ? 'night spent singing along' : 'nights spent singing along'}</p>
-            <span className="wrapped-caption">{upcoming.length ? `${upcoming.length} more on the horizon.` : 'Every one made the archive.'}</span>
-          </div>
-          <div className="wrapped-orbit" aria-hidden="true">
-            <span className="orbit-ring orbit-ring-one" />
-            <span className="orbit-ring orbit-ring-two" />
-            <span className="orbit-dot orbit-dot-one" />
-            <span className="orbit-dot orbit-dot-two" />
-            <span className="orbit-dot orbit-dot-three" />
-            <span className="orbit-centre">LIVE</span>
-          </div>
-          <div className="wrapped-hero-footer"><span><CalendarDays size={15} /> {analytics.total_concerts} records in the archive</span><span><Clock3 size={15} /> {topGenre?.[0] ?? 'A little bit of everything'}</span></div>
-        </section>
+        <WrappedFilm key={period} attended={attended} period={period} />
 
         <div className="wrapped-story-grid">
           <section className="wrapped-panel wrapped-top-show" aria-labelledby="top-show-title">
-            <div className="wrapped-panel-head"><span className="wrapped-kicker">Your main character moment</span><Star size={18} aria-hidden="true" /></div>
+            <div className="wrapped-panel-head"><span className="wrapped-kicker">{topShow?.personal_rating !== null ? 'Highest rated show' : 'Latest show'}</span><Star size={18} aria-hidden="true" /></div>
             <div className="wrapped-show-art">
               {topShow?.image ? <img src={resizeArtwork(topShow.image, 640)} srcSet={artworkSrcSet(topShow.image, [480, 640, 800])} sizes="(max-width: 720px) calc(100vw - 48px), 520px" alt="" decoding="async" /> : <span className="show-art-placeholder" aria-hidden="true"><Sparkles size={32} /></span>}
-              <span className="wrapped-rating">{topShow?.personal_rating ? `${topShow.personal_rating}/10` : 'Unrated'}</span>
+              <span className="wrapped-rating">{topShow?.personal_rating !== null && topShow?.personal_rating !== undefined ? `${topShow.personal_rating}/10` : 'Unrated'}</span>
             </div>
             <div className="wrapped-show-copy"><h3 id="top-show-title">{topShow?.artist}</h3><p>{topShow?.venue.split('(')[0].trim()} <span aria-hidden="true">·</span> {topShow ? formatDate(topShow.date) : ''}</p></div>
           </section>
 
           <section className="wrapped-panel wrapped-fingerprint" aria-labelledby="fingerprint-title">
-            <div className="wrapped-panel-head"><span className="wrapped-kicker">Your live fingerprint</span><Users size={18} aria-hidden="true" /></div>
-            <h3 id="fingerprint-title">You kept coming back to <em>{topArtist?.[0]}</em>.</h3>
+            <div className="wrapped-panel-head"><span className="wrapped-kicker">Most seen</span><Users size={18} aria-hidden="true" /></div>
+            <h3 id="fingerprint-title"><em>{topArtist?.[0]}</em></h3>
             <div className="wrapped-fingerprint-meta"><strong>{topArtist?.[1]}</strong><span>{topArtist?.[1] === 1 ? 'show' : 'shows'} by your most-seen artist</span></div>
             <div className="wrapped-bars">{artistCounts.slice(0, 4).map(([artist, count], index) => <div className="wrapped-bar-row" key={artist}><span>{artist}</span><div><i style={{ width: `${Math.max(12, count / (topArtist?.[1] ?? 1) * 100)}%` }} /></div><strong>{count}</strong><small>{index === 0 ? 'on repeat' : ''}</small></div>)}</div>
           </section>
 
           <section className="wrapped-panel wrapped-months" aria-labelledby="months-title">
-            <div className="wrapped-panel-head"><span className="wrapped-kicker">Crowd calendar</span><MapPin size={18} aria-hidden="true" /></div>
-            <h3 id="months-title">Your loudest stretch was <em>{monthLabels[monthlyCounts.indexOf(Math.max(...monthlyCounts))]}</em>.</h3>
+            <div className="wrapped-panel-head"><span className="wrapped-kicker">Shows by month</span><MapPin size={18} aria-hidden="true" /></div>
+            <h3 id="months-title">Busiest month: <em>{monthLabels[monthlyCounts.indexOf(Math.max(...monthlyCounts))]}</em></h3>
             <div className="wrapped-month-bars" aria-label="Shows by month">{monthlyCounts.map((count, index) => <div className="wrapped-month" key={monthLabels[index]}><span style={{ height: `${count ? Math.max(12, count / monthlyMax * 100) : 4}%` }} title={`${count} shows in ${monthLabels[index]}`} /><small>{monthLabels[index]}</small></div>)}</div>
           </section>
 
           <section className="wrapped-panel wrapped-facts" aria-label="Live-show facts">
-            <div className="wrapped-fact"><span>Favourite room</span><strong>{topVenue?.[0] ?? 'Still exploring'}</strong><small>{topVenue ? `${topVenue[1]} ${topVenue[1] === 1 ? 'visit' : 'visits'}` : 'Add a venue to see this'}</small></div>
+            <div className="wrapped-fact"><span>Most visited venue</span><strong>{topVenue?.[0] ?? 'Still exploring'}</strong><small>{topVenue ? `${topVenue[1]} ${topVenue[1] === 1 ? 'visit' : 'visits'}` : 'Add a venue to see this'}</small></div>
             <div className="wrapped-fact"><span>Average rating</span><strong>{averageRating ? `${averageRating.toFixed(1)}/10` : 'Not rated'}</strong><small>{averageRating ? 'across rated nights' : 'Rate a show to unlock this'}</small></div>
-            <div className="wrapped-fact"><span>Ticket story</span><strong>{attended.some((concert) => concert.price !== null) ? formatMoney(attended.reduce((total, concert) => total + (concert.price ?? 0), 0)) : 'Unpriced'}</strong><small>spent on attended shows</small></div>
+            <div className="wrapped-fact"><span>Tickets</span><strong>{attended.some((concert) => concert.price !== null) ? formatMoney(attended.reduce((total, concert) => total + (concert.price ?? 0), 0)) : 'Unpriced'}</strong><small>spent on attended shows</small></div>
           </section>
 
           <section className="wrapped-panel wrapped-insights" aria-labelledby="wrapped-insights-title">
-            <div className="wrapped-panel-head"><span className="wrapped-kicker">The story behind the numbers</span><Sparkles size={18} aria-hidden="true" /></div>
-            <h3 id="wrapped-insights-title">This was your live music pattern.</h3>
+            <div className="wrapped-panel-head"><span className="wrapped-kicker">Your archive</span><Sparkles size={18} aria-hidden="true" /></div>
+            <h3 id="wrapped-insights-title">At a glance</h3>
             <ul>
               <li><strong>{story.newArtists.length}</strong><span>{period === 'all' ? 'artists entered the archive' : `first-time ${story.newArtists.length === 1 ? 'artist' : 'artists'} this year`}{story.newArtists.length ? `, including ${story.newArtists.slice(0, 2).join(' and ')}` : ''}.</span></li>
               <li><strong>{story.longestMonthlyStreak}</strong><span>{story.longestMonthlyStreak === 1 ? 'active month' : 'months in your longest live streak'}.</span></li>
@@ -228,7 +208,7 @@ export function LiveWrapped({ concerts, analytics, memberName }: LiveWrappedProp
           </section>
         </div>
 
-        {artworkShows.length ? <section className="wrapped-artwork-strip" aria-label="Recent live-show memories"><div><span className="wrapped-kicker">The visual evidence</span><h3>Proof you were there.</h3></div><div className="wrapped-artwork-stack">{artworkShows.map((concert, index) => <img key={concert.id} src={resizeArtwork(concert.image ?? '', 160)} srcSet={artworkSrcSet(concert.image ?? '', [120, 160])} sizes="60px" alt={`${concert.artist} show memory`} style={{ '--stack-index': index } as CSSProperties} loading="lazy" decoding="async" />)}</div><button className="wrapped-copy-button" type="button" onClick={() => void shareSnapshot()}><Share2 size={15} aria-hidden="true" /> Share this recap</button></section> : null}
+        {artworkShows.length ? <section className="wrapped-artwork-strip" aria-label="Recent live-show memories"><div><span className="wrapped-kicker">Recent shows</span><h3>Your concerts</h3></div><div className="wrapped-artwork-stack">{artworkShows.map((concert, index) => <img key={concert.id} src={resizeArtwork(concert.image ?? '', 160)} srcSet={artworkSrcSet(concert.image ?? '', [120, 160])} sizes="60px" alt={`${concert.artist} show memory`} style={{ '--stack-index': index } as CSSProperties} loading="lazy" decoding="async" />)}</div><button className="wrapped-copy-button" type="button" onClick={() => void shareSnapshot()}><Share2 size={15} aria-hidden="true" /> Share this recap</button></section> : null}
       </>}
     </m.section>
   )
