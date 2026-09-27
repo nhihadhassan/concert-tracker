@@ -33,6 +33,7 @@ import type {
 } from './types'
 import './App.css'
 import './components/cinematic/cinematic.css'
+import './components/AppHeader.css'
 
 const StageConcerts = lazy(() => import('./components/stage/StageConcerts').then((module) => ({ default: module.StageConcerts })))
 
@@ -110,14 +111,14 @@ const readDashboardRoute = (): DashboardRoute => {
   const albumId = params.get('album')
   if (albumId) return { kind: 'album-detail', albumId, editing: params.get('mode') === 'edit' }
   const concertId = params.get('concert')
-  if (concertId) return { kind: 'detail', concertId, stage: params.get('view') === 'stage' }
+  if (concertId) return { kind: 'detail', concertId, stage: params.get('view') !== 'classic' }
   if (params.get('view') === 'stage') return { kind: 'stage' }
   if (params.get('view') === 'stats') {
     return { kind: 'stats', scope: params.get('scope') === 'shared' ? 'shared' : 'personal' }
   }
   if (params.get('view') === 'wrapped') return { kind: 'wrapped' }
   if (params.get('view') === 'albums') return { kind: 'albums' }
-  return { kind: 'concerts' }
+  return { kind: params.get('view') === 'classic' ? 'concerts' : 'stage' }
 }
 
 const routeUrl = (route: DashboardRoute) => {
@@ -129,9 +130,9 @@ const routeUrl = (route: DashboardRoute) => {
   }
   if (route.kind === 'detail') {
     params.set('concert', route.concertId)
-    if (route.stage) params.set('view', 'stage')
+    if (!route.stage) params.set('view', 'classic')
   }
-  if (route.kind === 'stage') params.set('view', 'stage')
+  if (route.kind === 'concerts') params.set('view', 'classic')
   if (route.kind === 'stats') {
     params.set('view', 'stats')
     if (route.scope === 'shared') params.set('scope', 'shared')
@@ -504,7 +505,7 @@ export function Dashboard({ member }: DashboardProps) {
   if (!library) {
     return <div className={darkMode ? 'app theme-dark' : 'app theme-light'}>
       <a className="skip-link" href="#encore-main">Skip to content</a>
-      <AppHeader activeView={activeView} darkMode={darkMode} loading memberName={member.display_name} pendingCount={cloud.pendingCount} syncState={cloud.syncState} onHome={(event) => navigateFromLink(event, { kind: 'concerts' })} onViewNavigate={(event, view) => navigateFromLink(event, view === 'stats' ? { kind: 'stats', scope: 'personal' } : view === 'wrapped' ? { kind: 'wrapped' } : view === 'albums' ? { kind: 'albums' } : { kind: 'concerts' })} />
+      <AppHeader activeView={activeView} darkMode={darkMode} loading memberName={member.display_name} pendingCount={cloud.pendingCount} syncState={cloud.syncState} onHome={(event) => navigateFromLink(event, { kind: 'stage' })} onViewNavigate={(event, view) => navigateFromLink(event, view === 'stats' ? { kind: 'stats', scope: 'personal' } : view === 'wrapped' ? { kind: 'wrapped' } : view === 'albums' ? { kind: 'albums' } : { kind: 'stage' })} />
       <div id="encore-main">
         <main className="page-shell page-shell-feed encore-loading-shell" aria-label="Loading concert library" aria-busy="true">
           <h1 className="sr-only">{loadingHeading}</h1>
@@ -546,14 +547,14 @@ export function Dashboard({ member }: DashboardProps) {
   return (
     <div className={darkMode ? 'app theme-dark' : 'app theme-light'}>
       <a className="skip-link" href="#encore-main">Skip to content</a>
-      <AppHeader activeView={activeView} addLabel={activeView === 'albums' ? 'Find album' : 'Add concert'} darkMode={darkMode} memberName={member.display_name} pendingCount={cloud.pendingCount} syncState={cloud.syncState} onAdd={activeView === 'albums' ? () => setAlbumDialogOpen(true) : openNew} onExportCalendar={exportCalendar} onExportCsv={() => void exportCsv()} onExportJson={exportJson} onHome={(event) => navigateFromLink(event, { kind: 'concerts' })} onRestoreBackup={() => setRestoreOpen(true)} onThemeToggle={toggleTheme} onViewNavigate={(event, view) => navigateFromLink(event, view === 'stats' ? { kind: 'stats', scope: 'personal' } : view === 'wrapped' ? { kind: 'wrapped' } : view === 'albums' ? { kind: 'albums' } : { kind: 'concerts' })} />
+      <AppHeader activeView={activeView} addLabel={activeView === 'albums' ? 'Find album' : 'Add concert'} darkMode={darkMode} memberName={member.display_name} pendingCount={cloud.pendingCount} syncState={cloud.syncState} onAdd={activeView === 'albums' ? () => setAlbumDialogOpen(true) : openNew} onExportCalendar={exportCalendar} onExportCsv={() => void exportCsv()} onExportJson={exportJson} onHome={(event) => navigateFromLink(event, { kind: 'stage' })} onRestoreBackup={() => setRestoreOpen(true)} onThemeToggle={toggleTheme} onViewNavigate={(event, view) => navigateFromLink(event, view === 'stats' ? { kind: 'stats', scope: 'personal' } : view === 'wrapped' ? { kind: 'wrapped' } : view === 'albums' ? { kind: 'albums' } : { kind: 'stage' })} />
       <div id="encore-main" tabIndex={-1}>
       {stageView ? <Suspense fallback={<FeatureViewLoading />}><StageConcerts concerts={filteredConcerts} allConcerts={library.concerts} personalConcerts={personalConcerts} onOpen={openConcert} onAdd={openNew} onClassic={(event) => navigateFromLink(event, { kind: 'concerts' })}>
         {cloud.error ? <div className="sync-error-banner" role="status">{cloud.error}<button type="button" onClick={() => void cloud.flushOutbox()}>Retry sync</button></div> : null}
         <FiltersBar genres={genres} genre={genre} search={search} sort={sort} status={status} onGenreChange={setGenre} onSearchChange={setSearch} onSortChange={setSort} onStatusChange={setStatus} />
       </StageConcerts></Suspense> : route.kind === 'concerts' || route.kind === 'detail' ? <main className="page-shell page-shell-feed">
         <h1 className="sr-only" data-view-heading tabIndex={-1}>Concert Archive</h1>
-        <a className="stage-view-link" href="/?view=stage" onClick={(event) => navigateFromLink(event, { kind: 'stage' })}>Try Stage view <span aria-hidden="true">↗</span></a>
+        <a className="stage-view-link" href="/" onClick={(event) => navigateFromLink(event, { kind: 'stage' })}>Stage view <span aria-hidden="true">↗</span></a>
         <ConcertStage concerts={personalConcerts} onOpen={openConcert} />
         <div className="dashboard-column">
           <StatsStrip concerts={library.concerts} />
@@ -568,7 +569,7 @@ export function Dashboard({ member }: DashboardProps) {
           {filteredConcerts.length ? <><h2 className="sr-only" id="concert-archive-title">Concert archive</h2><section className="concert-grid" aria-labelledby="concert-archive-title">{filteredConcerts.map((concert, index) => <ConcertCard key={concert.id} concert={concert} index={index} onArtwork={openArtwork} onDelete={(row) => void deleteConcert(row)} onEdit={(row) => { setEditing(row); setFormError(''); setDialogOpen(true) }} onOpen={openConcert} />)}</section></> : <section className="empty-state"><h2>{library.concerts.length ? 'No concerts match' : 'Add the first staging concert'}</h2><p>{library.concerts.length ? 'Clear a filter or try another artist or venue.' : 'The shared normalized library is empty and ready for testing.'}</p>{!library.concerts.length ? <button className="button button-primary" type="button" onClick={openNew}>Add concert</button> : null}</section>}
         </div>
         <div className="ranking-column"><RankedSummary personal={personalScopedRankings} /></div>
-      </main> : route.kind === 'albums' ? <Suspense fallback={<AlbumViewLoading />}><AlbumLibrary albums={albumCloud.albums} currentUserId={member.user_id} error={albumCloud.error} loading={albumCloud.loading} onAdd={() => setAlbumDialogOpen(true)} onOpen={openAlbum} /></Suspense> : route.kind === 'album-detail' ? selectedAlbum ? <Suspense fallback={<AlbumViewLoading />}>{route.editing ? <AlbumReviewStudio album={selectedAlbum} currentUserId={member.user_id} error={albumError} saving={albumSaving} onCancel={() => navigate({ kind: 'album-detail', albumId: selectedAlbum.id, editing: false }, true)} onSave={(review) => saveReview(selectedAlbum, review)} /> : <AlbumJournal album={selectedAlbum} currentUserId={member.user_id} members={library.members} onBack={(event) => navigateFromLink(event, { kind: 'albums' }, true)} onEdit={() => navigate({ kind: 'album-detail', albumId: selectedAlbum.id, editing: true })} />}</Suspense> : <main className="feature-shell"><section className="detail-not-found"><ArrowLeft size={22} aria-hidden="true" /><h1 data-view-heading tabIndex={-1}>Album not found</h1><p>This album may have been removed or is not available in the shared journal.</p><a className="button button-primary" href="/?view=albums" onClick={(event) => navigateFromLink(event, { kind: 'albums' }, true)}>Back to albums</a></section></main> : route.kind === 'stats' ? <main className="feature-shell"><Suspense fallback={<FeatureViewLoading />}><StatsDashboard analytics={route.scope === 'personal' ? library.personal_analytics : library.analytics} concerts={route.scope === 'personal' ? personalConcerts : library.concerts} memberName={member.display_name} rankings={route.scope === 'personal' ? personalScopedRankings : combinedRankings} scope={route.scope} onEditConcert={(row) => { setEditing(row); setFormError(''); setDialogOpen(true) }} onScopeChange={(scope) => navigate({ kind: 'stats', scope }, true)} /></Suspense></main> : route.kind === 'wrapped' ? <main className="feature-shell"><Suspense fallback={<FeatureViewLoading />}><LiveWrapped concerts={personalConcerts} analytics={library.personal_analytics} memberName={member.display_name} /></Suspense></main> : route.kind === 'not-found' ? <main className="feature-shell"><section className="detail-not-found"><span className="not-found-code">404</span><h1 data-view-heading tabIndex={-1}>This page missed the encore</h1><p>The link may be old, but your concert archive is still here.</p><a className="button button-primary" href="/" onClick={(event) => navigateFromLink(event, { kind: 'concerts' }, true)}>Back to concerts</a></section></main> : null}
+      </main> : route.kind === 'albums' ? <Suspense fallback={<AlbumViewLoading />}><AlbumLibrary albums={albumCloud.albums} currentUserId={member.user_id} error={albumCloud.error} loading={albumCloud.loading} onAdd={() => setAlbumDialogOpen(true)} onOpen={openAlbum} /></Suspense> : route.kind === 'album-detail' ? selectedAlbum ? <Suspense fallback={<AlbumViewLoading />}>{route.editing ? <AlbumReviewStudio album={selectedAlbum} currentUserId={member.user_id} error={albumError} saving={albumSaving} onCancel={() => navigate({ kind: 'album-detail', albumId: selectedAlbum.id, editing: false }, true)} onSave={(review) => saveReview(selectedAlbum, review)} /> : <AlbumJournal album={selectedAlbum} currentUserId={member.user_id} members={library.members} onBack={(event) => navigateFromLink(event, { kind: 'albums' }, true)} onEdit={() => navigate({ kind: 'album-detail', albumId: selectedAlbum.id, editing: true })} />}</Suspense> : <main className="feature-shell"><section className="detail-not-found"><ArrowLeft size={22} aria-hidden="true" /><h1 data-view-heading tabIndex={-1}>Album not found</h1><p>This album may have been removed or is not available in the shared journal.</p><a className="button button-primary" href="/?view=albums" onClick={(event) => navigateFromLink(event, { kind: 'albums' }, true)}>Back to albums</a></section></main> : route.kind === 'stats' ? <main className="feature-shell"><Suspense fallback={<FeatureViewLoading />}><StatsDashboard analytics={route.scope === 'personal' ? library.personal_analytics : library.analytics} concerts={route.scope === 'personal' ? personalConcerts : library.concerts} memberName={member.display_name} rankings={route.scope === 'personal' ? personalScopedRankings : combinedRankings} scope={route.scope} onEditConcert={(row) => { setEditing(row); setFormError(''); setDialogOpen(true) }} onScopeChange={(scope) => navigate({ kind: 'stats', scope }, true)} /></Suspense></main> : route.kind === 'wrapped' ? <main className="feature-shell"><Suspense fallback={<FeatureViewLoading />}><LiveWrapped concerts={personalConcerts} analytics={library.personal_analytics} memberName={member.display_name} /></Suspense></main> : route.kind === 'not-found' ? <main className="feature-shell"><section className="detail-not-found"><span className="not-found-code">404</span><h1 data-view-heading tabIndex={-1}>This page missed the encore</h1><p>The link may be old, but your concert archive is still here.</p><a className="button button-primary" href="/" onClick={(event) => navigateFromLink(event, { kind: 'stage' }, true)}>Back to concerts</a></section></main> : null}
       {stageView ? concertOverlay : <AnimatePresence onExitComplete={restoreConcertFocus}>{concertOverlay}</AnimatePresence>}
       </div>
       {dialogOpen ? <Suspense fallback={null}><AddConcertDialog concert={editing} concerts={library.concerts} currentUserId={member.user_id} error={formError} members={library.members} open saving={saving} onClose={() => { setDialogOpen(false); setEditing(null) }} onSave={saveConcert} /></Suspense> : null}

@@ -365,11 +365,10 @@ export function StageConcerts({
       style={{ '--stage-accent': palettes[palette] } as CSSProperties}
     >
       <div className="stage-toolbar">
-        <a href="/" onClick={onClassic}>
+        <a href="/?view=classic" onClick={onClassic}>
           <ArrowLeft size={15} />
           Classic view
         </a>
-        <span>Concerts / Stage</span>
         <MotionToggle />
       </div>
       <StageHero concert={featured} onOpen={onOpen} onAdd={onAdd} />
@@ -425,7 +424,7 @@ export function StageConcerts({
           </span>
           {filtered.length ? (
             <div className="stage-posters">
-              {filtered.map((concert, index) => (
+              {filtered.map((concert) => (
                 <div className="stage-poster" key={concert.id}>
                   {concert.image ? (
                     <img
@@ -463,14 +462,13 @@ export function StageConcerts({
                           </span>
                         )}
                         <span className="stage-poster-shade" />
-                        <span className="stage-poster-index" aria-hidden="true">
-                          {String(index + 1).padStart(2, '0')} /
-                        </span>
-                        <span className="stage-poster-rating">
-                          {concert.personal_rating != null
-                            ? `${concert.personal_rating} / 10`
-                            : concert.status}
-                        </span>
+                        {concert.personal_rating != null ? (
+                          <span className="stage-poster-rating" aria-label={`Rating: ${concert.personal_rating}`}>
+                            {concert.personal_rating}
+                          </span>
+                        ) : (
+                          <span className="stage-poster-status">{concert.status}</span>
+                        )}
                         <strong className="stage-poster-title">
                           {concert.artist}
                         </strong>

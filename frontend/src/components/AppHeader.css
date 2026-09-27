@@ -1,0 +1,169 @@
+@font-face {
+  font-family: Stage Condensed;
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+  src: url('./stage/fonts/barlow-condensed-black.ttf') format('truetype');
+}
+
+/* Shared masthead: Stage's warm ink and condensed wordmark across every view. */
+.app .encore-header {
+  --text: #f5eee7;
+  --text-muted: #bcb0b7;
+  --text-subtle: #bcb0b7;
+  --surface: #17141a;
+  --surface-soft: #262029;
+  --border: #ffffff24;
+  --border-strong: #ffffff38;
+  --focus: #ffc79c;
+  color-scheme: dark;
+  color: var(--text);
+  background: #0e0c11;
+  border-bottom: 1px solid #ffb38b30;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+.app .encore-header .header-inner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 24px;
+  width: calc(100% - 10vw);
+  max-width: 1600px;
+  min-height: 88px;
+  padding: 12px 0;
+}
+.encore-header .header-status {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  font: 10px var(--font-data);
+}
+.encore-header .header-member { color: #bcb0b7; }
+.app .encore-header .sync-label { color: #b3cbbb; }
+.app .encore-header .sync-error,
+.app .encore-header .sync-conflict { color: #ff9d9d; }
+.app .encore-header .sync-pending,
+.app .encore-header .sync-offline { color: #ffd291; }
+.app .encore-header .brand-lockup {
+  justify-content: center;
+  gap: 11px;
+  margin: 0;
+  color: #ff966f;
+}
+.app .encore-header .brand-title {
+  overflow: visible;
+  font: 900 43px / 1 'Stage Condensed', 'Arial Narrow', sans-serif;
+  letter-spacing: 0.025em;
+  color: #f5eee7;
+}
+.encore-header .brand-period { color: #ff966f; }
+.encore-header .encore-symbol { flex: 0 0 auto; }
+.app .encore-header .header-actions {
+  display: flex;
+  justify-self: end;
+  width: auto;
+  gap: 7px;
+}
+.app .encore-header .button {
+  border-radius: 3px;
+  min-height: 40px;
+  padding: 0 12px;
+  color: #f5eee7;
+  background: transparent;
+  border-color: #ffffff26;
+  box-shadow: none;
+  font-size: 12px;
+}
+.app .encore-header .button:hover { background: #ffffff0d; border-color: #ffb38b66; }
+.app .encore-header .button-primary { background: #f0dfd1; color: #21141a; border-color: #f0dfd1; }
+.app .encore-header .button-primary:hover { background: #ffcca6; color: #21141a; }
+.app .encore-header .button-icon { width: 40px; padding: 0; }
+.app .encore-header .button-icon .button-label { display: none; }
+.app .encore-header .export-menu-popover {
+  background: #17141a;
+  color: #f5eee7;
+  border-color: #ffffff30;
+  box-shadow: 0 16px 40px #0009;
+  left: auto;
+  right: 0;
+}
+.app .encore-header .export-menu-popover button { color: #f5eee7; }
+.app .encore-header .export-menu-popover button:hover { background: #ffffff0d; }
+.app .encore-header .export-menu-popover small { color: #bcb0b7; }
+.app .encore-header .encore-navigation {
+  position: static;
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  gap: 28px;
+  border: 0;
+  border-top: 1px solid #ffffff0d;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+.app .encore-header .encore-navigation a {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 0;
+  color: #bcb0b7;
+  background: transparent;
+  box-shadow: none;
+  font-size: 12px;
+  font-weight: 600;
+}
+.app .encore-header .encore-navigation a:hover,
+.app .encore-header .encore-navigation a.active { color: #ffe0c9; background: transparent; }
+.encore-header .encore-navigation a.active::after {
+  content: '';
+  position: absolute;
+  inset: auto 12px -1px;
+  height: 2px;
+  background: #ff966f;
+  box-shadow: 0 -3px 12px #ff966f44;
+}
+@media (max-width: 1050px) {
+  .app .encore-header .header-inner { width: calc(100% - 40px); gap: 12px; }
+  .encore-header .header-status { flex-direction: column; align-items: flex-start; gap: 5px; }
+  .app .encore-header .button { padding: 0 9px; }
+  .app .encore-header .header-actions .button-icon { padding: 0; }
+}
+@media (max-width: 760px) {
+  .app .encore-header .header-inner {
+    position: relative;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px 8px;
+    padding: 14px 0 10px;
+    width: calc(100% - 32px);
+  }
+  .app .encore-header .brand-lockup { grid-column: 1 / -1; grid-row: 1; }
+  .app .encore-header .brand-title { font-size: 36px; }
+  .encore-header .encore-symbol { width: 21px; height: 26px; }
+  .app .encore-header .header-status { grid-row: 2; font-size: 9px; }
+  .app .encore-header .header-actions { grid-row: 2; gap: 5px; }
+  .app .encore-header .header-actions .button { min-height: 40px; }
+  .app .encore-header .header-actions .button span { display: inline; }
+  .app .encore-header .header-actions .button-icon .button-label { display: none; }
+  .app .encore-header .header-actions .export-menu { width: auto; position: static; }
+  .app .encore-header .export-menu-popover { top: calc(100% + 4px); right: 0; left: auto; }
+  .app .encore-header .encore-navigation { gap: 0; }
+  .app .encore-header .encore-navigation a { flex: 1; padding: 0 6px; font-size: 11px; gap: 5px; }
+  .app .encore-header .encore-navigation svg { width: 14px; }
+}
+@media (max-width: 380px) {
+  .app .encore-header .header-inner { width: calc(100% - 24px); }
+  .app .encore-header .header-actions .button { padding: 0 8px; font-size: 11px; gap: 4px; }
+  .app .encore-header .header-actions .button-icon { width: 36px; padding: 0; }
+  .encore-header .header-member { display: none; }
+}

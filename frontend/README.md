@@ -22,9 +22,11 @@ before interface or motion changes.
 
 | Route | Surface |
 | --- | --- |
-| `/` | Classic Concerts, still the default |
-| `/?view=stage` | Alternate cinematic Concerts page |
-| `/?concert=<id>` | Classic concert detail |
+| `/` | Stage Concerts, the default |
+| `/?view=stage` | Compatible Stage alias |
+| `/?view=classic` | Classic Concerts |
+| `/?concert=<id>` | Stage concert detail |
+| `/?concert=<id>&view=classic` | Classic concert detail |
 | `/?concert=<id>&view=stage` | Stage concert detail |
 | `/?view=albums` | Album library / Record Room |
 | `/?view=stats` | Concert statistics |

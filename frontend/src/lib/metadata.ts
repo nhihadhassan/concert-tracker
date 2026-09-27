@@ -60,11 +60,11 @@ export function buildPageMetadata({ album, concert, missing = false, view }: Met
     }
     return { canonical: absoluteUrl(`/?album=${encodeURIComponent(new URLSearchParams(location.search).get('album') ?? '')}`), description: 'Open a saved album review in Encore.', title: 'Album Review | Encore' }
   }
-  if (view === 'stage') return { canonical: absoluteUrl('/?view=stage'), description: 'Explore your concert archive with an alternate cinematic stage view.', noindex: true, title: 'Concerts — Stage | Encore' }
+  if (view === 'stage') return { canonical: absoluteUrl('/'), description: 'Explore your concert archive, upcoming shows, and personal live recaps.', title: 'Concerts — Stage | Encore' }
   if (view === 'albums') return { canonical: absoluteUrl('/?view=albums'), description: 'Browse a shared album journal with personal reviews, scores, and track notes.', title: 'Album Journal | Encore' }
   if (view === 'stats') return { canonical: absoluteUrl('/?view=stats'), description: 'Explore concert attendance, ratings, venues, archive stories, and listening insights.', title: 'Concert Stats | Encore' }
   if (view === 'wrapped') return { canonical: absoluteUrl('/?view=wrapped'), description: 'Revisit attended concerts through a personal live-music recap.', title: 'Live Recap | Encore' }
-  return { canonical: absoluteUrl('/'), description: 'Encore turns a personal concert archive into memories, insights, and yearly live recaps.', title: "Nhihad's Concerts | Encore" }
+  return { canonical: absoluteUrl('/?view=classic'), noindex: true, description: 'Encore turns a personal concert archive into memories, insights, and yearly live recaps.', title: "Nhihad's Concerts | Encore" }
 }
 
 const setMeta = (selector: string, attribute: 'name' | 'property', key: string, content: string) => {

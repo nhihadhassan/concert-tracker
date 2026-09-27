@@ -1,18 +1,19 @@
 # Encore Stage design guide
 
-Stage is the approved cinematic alternative to the Classic Concerts page. This guide records
+Stage is the approved default Concerts page, with Classic retained as an alternative. This guide records
 the design implemented in September 2026 and the constraints for extending it. Component code
 is the authority for exact current values; update this guide when the design intentionally changes.
 
 ## Product decision
 
-The user likes both designs and wants to choose between them later. Keep Classic as the default
-at `/`, with Stage at `/?view=stage` and a visible path between them. Both render the same library
-and use the same concert workflows. Stage is not a fork of the data or a replacement dashboard.
+The user selected Stage as the default after trying both designs. `/`, the logo, and the
+Concerts tab open Stage. Keep `/?view=stage` working as a compatible alias and retain Classic
+at `/?view=classic`. Both render the same library and use the same concert workflows.
 
-Stage details use `/?concert=<id>&view=stage`; closing returns to Stage. Classic detail links
-remain `/?concert=<id>`. Keep direct loads, browser back/forward, and modified link clicks working.
-Stage currently has its own title/canonical and `noindex` metadata; that is not access control.
+Stage details use `/?concert=<id>`; existing `&view=stage` links also work. Classic details
+include `&view=classic`. Closing returns to the originating view. Keep direct loads, browser
+back/forward, and modified link clicks working. Stage's canonical is `/`; Classic has its own
+canonical and `noindex` metadata. Metadata is not access control.
 
 The numbered **Stage 0–10 migration phases** elsewhere in the documentation are unrelated to
 this visual mode. Early standalone HTML concepts are references, not application source.
@@ -30,7 +31,8 @@ bold motion and lighting over a modest rearrangement of ordinary dashboard cards
 | Text | Warm cream (`#f5eee7`), readable muted text, visible warm focus rings. Effects stay behind information. |
 | Colour | Default hot orange (`#ff7149`); year palettes also use violet, teal, gold, and rose. Poster glow comes from that poster's artwork. |
 | Depth | Layer blurred artwork, gradients, haze, light beams, typography, and a cream ticket. Use perspective and restrained spring tilt for depth. |
-| Archive | Large 4:5 posters; three columns on desktop and two on small screens. Artist, rating/status, date, and venue stay readable. |
+| Header | Centered Encore wordmark with a simple E symbol; centered navigation beneath. Near-black canvas, cream text, warm active underline, compact actions. The shared header keeps these colours in either app theme. |
+| Archive | Large 4:5 posters; three columns on desktop and two on small screens. No decorative numbering. Ratings are standalone condensed numerals (e.g. 10 or 9.7) with a short accent underline and no denominator or badge box. Unrated shows retain a separate status label. |
 | Restraint | Concentrate drama in the stage, artwork, and transitions. Keep filters, editing, and navigation predictable. Avoid adding decorative cards, badges, or captions everywhere. |
 
 The current dimensional treatment uses CSS perspective and Motion springs. It does not require
@@ -98,7 +100,8 @@ Paths below are relative to the repository root.
 | `frontend/src/components/stage/StageReplay.tsx` | Native fullscreen dialog, playback/manual navigation, opt-in audio and cleanup. |
 | `frontend/src/components/stage/stage.css` | Stage tokens, composition, responsive rules, effects, scoped detail theme, and reduced-motion overrides. |
 | `frontend/src/components/stage/stageDate.ts` | Display date-only values without shifting the concert date across time zones. |
-| `frontend/src/components/stage/fonts/` | Bundled display font and its OFL license. |
+| `frontend/src/components/AppHeader.tsx` and `frontend/src/components/AppHeader.css` | Shared centered header, navigation, actions, and bundled display-font declaration. |
+| `frontend/src/components/stage/fonts/` | Shared display font and its OFL license. |
 | `frontend/src/lib/stageTransition.ts` | Feature-detected native artwork transition and cleanup of temporary transition names. |
 | `frontend/src/components/ConcertDetail.tsx` and `ConcertDetailOverlay.tsx` | Shared detail UI with an optional cinematic presentation; preserve Classic defaults. |
 | `frontend/src/hooks/useCinematicMotion.ts` | Shared reduced-motion, pause, visibility, and scene state. |
@@ -113,10 +116,10 @@ keep their established behavior when changing the shared motion provider.
 
 ## Implementation details that must survive refactors
 
-- Stage stays lazy-loaded and its CSS stays scoped to `.stage-page`, `.stage-replay`,
+- Stage content stays lazy-loaded and its CSS stays scoped to `.stage-page`, `.stage-replay`,
   `.concert-detail-overlay-stage`, or the temporary root transition attribute. Preserve the
   scoped detail overrides that defeat Classic light-theme rules.
-- Import the display font through Stage CSS so Vite emits it under `/assets/`. Keep its license.
+- Import the display font through the shared header CSS so Vite emits it under `/assets/`. Keep its license.
   Arbitrary `/fonts/` files are rejected by the current Vercel route allowlist; a local font load
   alone does not prove a production load works.
 - Use `resizeArtwork` / `artworkSrcSet`, lazy-load archive imagery, and retain missing-image
@@ -136,7 +139,8 @@ keep their established behavior when changing the shared motion provider.
 Run the frontend commands in [frontend/README.md](../frontend/README.md). Then browser-check
 the changed interactions; a successful build alone cannot establish the look or behavior.
 
-1. Compare `/` and `/?view=stage`. Classic remains the default and both navigation links work.
+1. Check `/` and `/?view=stage` render Stage; `/?view=classic` renders Classic. Logo and Concerts
+   links always return to Stage. Check centered header alignment and its menus on desktop/mobile.
 2. At desktop size, verify hero composition, ticket tilt/flip, poster hover/focus, and ribbon
    pause/click behavior, including the repeated portion of the strip.
 3. Open a show from a poster, the ticket, and the ribbon. Check close, Escape, focus return,

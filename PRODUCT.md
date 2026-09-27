@@ -2,8 +2,8 @@
 
 ## Register
 
-Encore is a concert journal and dashboard. Classic serves repeated data entry, comparison,
-and browsing; Stage adds an optional expressive way to explore the same concert library.
+Encore is a concert journal and dashboard. Stage is the default concert browsing experience; Classic remains available for the same
+data entry, comparison, and library workflows.
 
 ## Users
 
@@ -22,13 +22,13 @@ dashboard is a legacy rollback asset, not the current implementation target.
 
 ## Approved Concerts Designs
 
-- **Classic (`/`)** remains the default, with its existing concert workflows and featured ticket.
-- **Stage (`/?view=stage`)** is the cinematic alternative: a dominant artist stage, dimensional
+- **Classic (`/?view=classic`)** remains available, with its existing workflows and featured ticket.
+- **Stage (`/`, also `/?view=stage`)** is the default: a dominant artist stage, dimensional
   flip ticket, glowing poster archive, moving concert strip, artwork-led detail entrance, changing
   year atmosphere, and personal Replay with optional sound.
 
-The owner likes both and has deferred choosing a replacement. Preserve both until that decision
-is explicit. Both use the same library, filters, details, and editing flows. Stage's feature
+The owner selected Stage as the default for the site, logo, and Concerts navigation. Preserve
+Classic as an accessible alternative. Both use the same library, filters, details, and editing flows. Stage's feature
 contract, visual rules, and future-agent guidance live in [the design guide](docs/STAGE_DESIGN.md).
 
 ## Product Principles

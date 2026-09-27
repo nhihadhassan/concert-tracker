@@ -7,9 +7,9 @@ Encore is the user-facing name of Concert Tracker. Read [PRODUCT.md](PRODUCT.md)
 
 - For interface or motion work, read [docs/STAGE_DESIGN.md](docs/STAGE_DESIGN.md) first.
   It records the approved Stage design, implementation map, and acceptance checks.
-- Keep **Classic** at `/` and **Stage** at `/?view=stage`. The user likes both and has
-  deliberately deferred choosing a replacement. Do not make Stage the default or remove Classic
-  unless requested.
+- **Stage is now the default** at `/`, including logo and Concerts navigation. Keep
+  `/?view=stage` as a compatible alias and **Classic** accessible at `/?view=classic`.
+  The user selected Stage as the default; do not revert that decision or remove Classic.
 - Stage should feel like a live show: dominant artwork, oversized condensed type, moving light,
   haze, dimensional tickets, and responsive posters. Preserve that boldness when extending it.
 - Keep copy short and factual. Avoid decorative captions, generic inspirational language, and

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type MouseEvent } from 'react'
-import { BarChart3, CalendarPlus, Cloud, Disc3, Download, FileJson, FileUp, ListMusic, Mic2, Moon, Plus, RefreshCw, Sparkles, Sun, Table2, TriangleAlert, WifiOff } from 'lucide-react'
+import { BarChart3, CalendarPlus, Cloud, Disc3, Download, FileJson, FileUp, ListMusic, Moon, Plus, RefreshCw, Sparkles, Sun, Table2, TriangleAlert, WifiOff } from 'lucide-react'
 import { AnimatePresence, m } from 'motion/react'
 import type { SyncState } from '../types'
 
@@ -76,16 +76,19 @@ export function AppHeader(props: AppHeaderProps) {
     }
   }, [exportOpen])
   return <>
-    <header className="app-header">
+    <header className="app-header encore-header">
       <div className="header-inner">
-        <a className="brand-lockup" href="/" onClick={props.onHome} aria-label="Nhihad's Concerts, return to Concert Archive">
-          <span className="brand-mark" aria-hidden="true"><Mic2 size={22} strokeWidth={2.3} /></span>
-          <div className="brand-copy">
-            <span className="brand-title">Nhihad's Concerts</span>
-            <p>{props.memberName ? <>{props.memberName} <span aria-hidden="true">·</span> </> : null}<AnimatePresence mode="popLayout" initial={false}><m.span key={`${props.syncState}-${sync.label}`} className={`sync-label sync-${props.syncState ?? 'loading'}`} initial={{ opacity: 0, y: 3 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -3 }}><SyncIcon size={13} aria-hidden="true" />{sync.label}</m.span></AnimatePresence></p>
-          </div>
+        <div className="header-status">
+          {props.memberName ? <span className="header-member">{props.memberName}</span> : null}
+          <AnimatePresence mode="popLayout" initial={false}><m.span key={`${props.syncState}-${sync.label}`} className={`sync-label sync-${props.syncState ?? 'loading'}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}><SyncIcon size={13} aria-hidden="true" />{sync.label}</m.span></AnimatePresence>
+        </div>
+        <a className="brand-lockup" href="/" onClick={props.onHome} aria-label="Encore, return to Concerts">
+          <svg className="encore-symbol" width="26" height="32" viewBox="0 0 26 32" fill="none" aria-hidden="true">
+            <path d="M3 5H23M3 16H18M3 27H23" stroke="currentColor" strokeWidth="5" />
+            <path d="M3 5V27" stroke="currentColor" strokeWidth="5" />
+          </svg>
+          <span className="brand-title">ENCORE<span className="brand-period">.</span></span>
         </a>
-        <PrimaryNavigation className="primary-nav-desktop" activeView={props.activeView} onViewNavigate={props.onViewNavigate} />
         {props.loading ? <div className="header-actions header-actions-loading" aria-hidden="true"><span className="skeleton" /><span className="skeleton" /></div> : <div className="header-actions">
           <button className="button button-secondary button-icon" type="button" onClick={props.onThemeToggle} title={props.darkMode ? 'Use light theme' : 'Use dark theme'}>
             {props.darkMode ? <Sun size={18} aria-hidden="true" /> : <Moon size={18} aria-hidden="true" />}<span className="button-label">{props.darkMode ? 'Light' : 'Dark'}</span>
@@ -102,7 +105,7 @@ export function AppHeader(props: AppHeaderProps) {
           <button className="button button-primary" type="button" onClick={props.onAdd}><Plus size={18} aria-hidden="true" /><span>{props.addLabel}</span></button>
         </div>}
       </div>
+      <PrimaryNavigation className="encore-navigation" activeView={props.activeView} onViewNavigate={props.onViewNavigate} />
     </header>
-    <PrimaryNavigation className="primary-nav-mobile" activeView={props.activeView} onViewNavigate={props.onViewNavigate} />
   </>
 }

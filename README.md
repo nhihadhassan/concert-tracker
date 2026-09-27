@@ -8,14 +8,14 @@ stabilization runbook before any cleanup.
 
 ## Concerts: Classic and Stage
 
-Classic remains the default Concerts page. **Stage** is a separate cinematic view of the same
+**Stage** is the default Concerts page. Classic remains an alternative view of the same
 library, with a full-screen artist stage, moving lights and haze, floating flip ticket, glowing
 posters, concert ribbon, animated detail entrances, year atmospheres, and personal Replay.
 
-- [Classic](https://concert-tracker-sepia.vercel.app/)
-- [Stage](https://concert-tracker-sepia.vercel.app/?view=stage)
+- [Classic](https://concert-tracker-sepia.vercel.app/?view=classic)
+- [Stage](https://concert-tracker-sepia.vercel.app/)
 
-The two designs are intentionally retained so the owner can choose a direction later. For
+The logo and Concerts tab open Stage; `/?view=stage` remains a supported alias. For
 interface changes, start with the [Stage design guide](docs/STAGE_DESIGN.md) and
 [agent instructions](AGENTS.md). Keep copy brief and factual; preserve mobile, keyboard, and
 reduced-motion behavior.
@@ -49,7 +49,7 @@ reduced-motion behavior.
 - React, Vite, and TypeScript
 - FastAPI on Vercel Functions
 - Provider-selected Postgres (Neon or Supabase; see [data providers](docs/DATA_PROVIDERS.md))
-- CSS perspective and Motion for the optional Stage view, Record Room, and Wrapped
+- CSS perspective and Motion for Stage, Record Room, and Wrapped
 - TanStack Query with IndexedDB snapshot/outbox support
 - Shared Spotify album shelf with private drafts and personal song rankings
 - Local atomic SQLite and Excel backups through macOS launchd

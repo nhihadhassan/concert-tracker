@@ -9,15 +9,16 @@ architecture evolved; their descriptions of intermediate states are historical.
 
 ### Concerts presentation
 
-Classic (`/`) and the optional Stage view (`/?view=stage`) share the same library and mutation
+Default Stage (`/`, with `/?view=stage` as an alias) and Classic (`/?view=classic`) share the same library and mutation
 flows. `frontend/src/App.tsx` retains the lightweight query-string router and lazy-loads
-`components/stage/StageConcerts.tsx`. Stage details keep `view=stage` alongside the concert ID
+`components/stage/StageConcerts.tsx`. Stage details use the concert ID alone; Classic details add `view=classic`
 and render the shared `ConcertDetail`/`ConcertDetailOverlay` with a cinematic presentation.
 
-Stage owns scoped CSS, its bundled display font, ticket/poster effects, year selection, and
+Stage owns scoped CSS, ticket/poster effects, year selection, and
 Replay. Shared motion state comes from `useCinematicMotion`; native artwork transitions are
 feature-detected in `lib/stageTransition.ts`. No new API, rating implementation, or persisted
-concert model is introduced. Classic remains the default.
+concert model is introduced. Stage is the default. The shared centered header owns the bundled
+display-font declaration and navigation back to Stage.
 
 For the design contract, source map, fallbacks, and browser acceptance checks, read
 [Stage design guide](docs/STAGE_DESIGN.md). “Stage view” is distinct from the numbered migration
