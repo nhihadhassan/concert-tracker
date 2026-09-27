@@ -251,16 +251,16 @@ export function Dashboard({ member }: DashboardProps) {
     navigate({ kind: 'concerts' }, true)
   }, [navigate])
   const restoreConcertFocus = useCallback(() => {
-    if (route.kind !== 'concerts') return
     const concertId = returnFocusConcertId.current
     window.requestAnimationFrame(() => {
+      if (previousRoute.current.kind !== 'concerts') return
       const opener = concertOpener.current?.isConnected ? concertOpener.current : concertId ? document.getElementById(`concert-open-${concertId}`) : null
       concertOpener.current = null
       if (opener) opener.focus({ preventScroll: true })
       else document.querySelector<HTMLElement>('[data-view-heading]')?.focus({ preventScroll: true })
       if (returnFocusConcertId.current === concertId) returnFocusConcertId.current = null
     })
-  }, [route])
+  }, [])
 
   const navigateFromLink = useCallback((event: MouseEvent<HTMLAnchorElement>, nextRoute: DashboardRoute, replace = false) => {
     if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.currentTarget.target) return

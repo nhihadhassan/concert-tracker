@@ -344,6 +344,17 @@ describe('Concert Tracker cloud shell', () => {
     await waitFor(() => expect(opener).toHaveFocus())
   })
 
+  it('returns focus to the featured concert button after closing details', async () => {
+    render(<Dashboard member={member} />)
+    const opener = screen.getByRole('button', { name: 'View concert' })
+    opener.focus()
+    fireEvent.click(opener)
+    const close = await screen.findByRole('button', { name: 'Close concert details' })
+    fireEvent.click(close)
+    await waitFor(() => expect(window.location.search).toBe(''))
+    await waitFor(() => expect(opener).toHaveFocus())
+  })
+
   it('reopens and closes concert details through browser history', async () => {
     render(<Dashboard member={member} />)
     fireEvent.click(screen.getByRole('button', { name: 'View Kali Uchis details' }))
