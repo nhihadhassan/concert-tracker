@@ -330,15 +330,34 @@ describe('Concert Tracker cloud shell', () => {
 
   it('opens a concert detail and restores focus when returning to concerts', async () => {
     render(<Dashboard member={member} />)
-    fireEvent.click(screen.getByRole('button', { name: 'View Kali Uchis details' }))
+    const opener = screen.getByRole('button', { name: 'View Kali Uchis details' })
+    fireEvent.click(opener)
     expect(window.location.search).toBe('?concert=33333333-3333-4333-8333-333333333333')
-    expect(await screen.findByRole('heading', { name: 'Kali Uchis', level: 1 })).toBeInTheDocument()
-    expect(screen.getByText('Personal memory')).toBeInTheDocument()
-    expect(screen.getByText('Shared event note')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('link', { name: 'Back to concerts' }))
-    expect(window.location.search).toBe('')
+    const dialog = await screen.findByRole('dialog', { name: 'Kali Uchis' })
+    expect(within(dialog).getByRole('heading', { name: 'Kali Uchis', level: 1 })).toBeInTheDocument()
+    expect(within(dialog).getByText('Personal memory')).toBeInTheDocument()
+    expect(within(dialog).getByText('Shared event note')).toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'Concert totals' })).toBeInTheDocument()
-    await waitFor(() => expect(screen.getByRole('button', { name: 'View Kali Uchis details' })).toHaveFocus())
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Close concert details' }))
+    await waitFor(() => expect(window.location.search).toBe(''))
+    expect(screen.getByRole('region', { name: 'Concert totals' })).toBeInTheDocument()
+    await waitFor(() => expect(opener).toHaveFocus())
+  })
+
+  it('reopens and closes concert details through browser history', async () => {
+    render(<Dashboard member={member} />)
+    fireEvent.click(screen.getByRole('button', { name: 'View Kali Uchis details' }))
+    await screen.findByRole('dialog', { name: 'Kali Uchis' })
+
+    window.history.back()
+    fireEvent(window, new PopStateEvent('popstate'))
+    await waitFor(() => expect(window.location.search).toBe(''))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+
+    window.history.forward()
+    fireEvent(window, new PopStateEvent('popstate'))
+    await waitFor(() => expect(window.location.search).toContain('concert='))
+    expect(await screen.findByRole('dialog', { name: 'Kali Uchis' })).toBeInTheDocument()
   })
 
   it('honors a shared stats deep link and scope switching', async () => {
@@ -360,6 +379,7 @@ describe('Concert Tracker cloud shell', () => {
     window.history.pushState({}, '', '/?concert=deleted-concert')
     fireEvent(window, new PopStateEvent('popstate'))
     expect(screen.getByRole('heading', { name: 'Concert not found' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Concert totals' })).toBeInTheDocument()
   })
 
   it('shows a branded not-found view for unknown paths', () => {
@@ -377,11 +397,11 @@ describe('Concert Tracker cloud shell', () => {
     window.history.replaceState({}, '', `/?concert=${row.id}`)
 
     const view = render(<Dashboard member={member} />)
-    await screen.findByRole('heading', { name: 'Kali Uchis' })
+    const dialog = await screen.findByRole('dialog', { name: 'Kali Uchis' })
     expect(screen.queryByText('Not rated yet')).not.toBeInTheDocument()
-    expect(screen.queryByRole('img', { name: 'Kali Uchis concert artwork' })).not.toBeInTheDocument()
-    expect(screen.queryByText('No personal memory recorded yet.')).not.toBeInTheDocument()
-    expect(screen.queryByText('No shared event notes recorded.')).not.toBeInTheDocument()
+    expect(within(dialog).queryByRole('img', { name: 'Kali Uchis concert artwork' })).not.toBeInTheDocument()
+    expect(within(dialog).queryByText('No personal memory recorded yet.')).not.toBeInTheDocument()
+    expect(within(dialog).queryByText('No shared event notes recorded.')).not.toBeInTheDocument()
 
     view.unmount()
     Object.assign(row, original)

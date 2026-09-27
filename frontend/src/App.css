@@ -1922,6 +1922,7 @@
   .concert-dialog::backdrop {
     animation: none;
   }
+
 }
 
 /* Album journal */
@@ -5007,6 +5008,76 @@
 
 .detail-not-found .button {
   margin-top: 10px;
+}
+
+.concert-detail-overlay {
+  position: fixed;
+  inset: 0;
+  width: min(1020px, calc(100vw - 48px));
+  max-width: none;
+  max-height: calc(100dvh - 48px);
+  margin: auto;
+  padding: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--border-strong);
+  border-radius: 24px;
+  color: var(--text);
+  background: var(--bg);
+  box-shadow: 0 32px 100px rgba(0, 0, 0, 0.46);
+  scrollbar-gutter: stable;
+}
+
+.concert-detail-overlay::backdrop {
+  background: rgba(4, 8, 18, 0.64);
+  backdrop-filter: blur(3px);
+  animation: concert-detail-backdrop-in 180ms ease-out both;
+}
+
+@keyframes concert-detail-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.concert-detail-overlay .detail-page {
+  max-width: none;
+  margin: 0;
+}
+
+.concert-detail-overlay .detail-hero {
+  border: 0;
+  border-radius: 22px 22px 0 0;
+  box-shadow: none;
+}
+
+.concert-detail-overlay .concert-detail-close {
+  cursor: pointer;
+}
+
+.concert-detail-overlay .concert-detail-close:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+
+@media (max-width: 720px) {
+  .concert-detail-overlay {
+    inset: auto 0 0;
+    width: 100vw;
+    height: 94dvh;
+    max-height: 96dvh;
+    margin: 0 auto;
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: 22px 22px 0 0;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .concert-detail-overlay::backdrop {
+    animation: none;
+  }
 }
 
 .detail-page {

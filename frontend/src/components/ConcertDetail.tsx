@@ -1,5 +1,5 @@
-import { Armchair, ArrowLeft, CalendarDays, Image, MapPin, Music2, Pencil, Plus, Star, Ticket, Trash2, Users, WalletCards } from 'lucide-react'
-import type { MouseEvent } from 'react'
+import { Armchair, CalendarDays, Image, MapPin, Music2, Pencil, Plus, Star, Ticket, Trash2, Users, WalletCards, X } from 'lucide-react'
+import { m, useReducedMotion } from 'motion/react'
 import { downloadConcertCalendar } from '../lib/exports'
 import type { Milestone } from '../lib/archiveInsights'
 import type { SessionMember } from '../session/useSession'
@@ -11,7 +11,7 @@ interface ConcertDetailProps {
   member: SessionMember
   milestones: Milestone[]
   onArtwork: (concert: Concert) => void
-  onBack: (event: MouseEvent<HTMLAnchorElement>) => void
+  onClose: () => void
   onDelete: (concert: Concert) => void
   onEdit: (concert: Concert) => void
 }
@@ -19,7 +19,8 @@ interface ConcertDetailProps {
 const formatDate = (value: string) => new Intl.DateTimeFormat('en-CA', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }).format(new Date(`${value}T12:00:00`))
 const formatMoney = (value: number) => new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(value)
 
-export function ConcertDetail({ concert, member, milestones, onArtwork, onBack, onDelete, onEdit }: ConcertDetailProps) {
+export function ConcertDetail({ concert, member, milestones, onArtwork, onClose, onDelete, onEdit }: ConcertDetailProps) {
+  const reduceMotion = useReducedMotion()
   const personalReview = concert.reviews.find((review) => review.reviewer_user_id === member.user_id)
   const attendees = concert.attendees.filter((attendee) => attendee.attendance_status !== 'Did Not Attend')
   const scores = [
@@ -32,10 +33,10 @@ export function ConcertDetail({ concert, member, milestones, onArtwork, onBack, 
   return (
     <article className="detail-page" aria-labelledby="detail-title">
       <section className={`detail-hero${concert.image ? '' : ' detail-hero-empty'}`}>
-        {concert.image ? <img src={concert.image} alt={`${concert.artist} concert artwork`} decoding="async" /> : <span className="detail-art-fallback" aria-hidden="true"><Image size={54} /></span>}
+        {concert.image ? <m.img layoutId={reduceMotion ? undefined : `concert-art-${concert.id}`} src={concert.image} alt={`${concert.artist} concert artwork`} decoding="async" /> : <span className="detail-art-fallback" aria-hidden="true"><Image size={54} /></span>}
         <span className="detail-hero-scrim" aria-hidden="true" />
         <div className="detail-top-actions">
-          <a className="detail-round-button" href="/" onClick={onBack} aria-label="Back to concerts"><ArrowLeft size={20} aria-hidden="true" /></a>
+          <button className="detail-round-button concert-detail-close" type="button" onClick={onClose} aria-label="Close concert details" autoFocus><X size={20} aria-hidden="true" /></button>
           <div><button className="detail-round-button" type="button" onClick={() => onArtwork(concert)} aria-label={`Choose artwork for ${concert.artist}`}><Image size={18} /></button><button className="detail-round-button" type="button" onClick={() => onEdit(concert)} aria-label={`Edit ${concert.artist}`}><Pencil size={18} /></button><button className="detail-round-button detail-delete" type="button" onClick={() => onDelete(concert)} aria-label={`Delete ${concert.artist}`}><Trash2 size={18} /></button></div>
         </div>
         <header className="detail-hero-copy">
