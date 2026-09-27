@@ -17,6 +17,8 @@ import { useAlbumLibrary } from './hooks/useAlbumLibrary'
 import { downloadCsv, saveAlbumReview } from './lib/api'
 import { downloadJsonBackup, downloadUpcomingCalendar } from './lib/exports'
 import { buildMemoryLane, buildMilestones } from './lib/archiveInsights'
+import { useCinematicMotion } from './hooks/useCinematicMotion'
+import { stageTransition } from './lib/stageTransition'
 import { buildPageMetadata, usePageMetadata } from './lib/metadata'
 import type {
   Album,
@@ -31,6 +33,8 @@ import type {
 } from './types'
 import './App.css'
 import './components/cinematic/cinematic.css'
+
+const StageConcerts = lazy(() => import('./components/stage/StageConcerts').then((module) => ({ default: module.StageConcerts })))
 
 const AlbumJournal = lazy(() => import('./components/AlbumJournal').then((module) => ({
   default: module.AlbumJournal,
@@ -92,11 +96,12 @@ const sortConcerts = (rows: Concert[], sort: string) => [...rows].sort((left, ri
 
 type DashboardRoute =
   | { kind: 'concerts' }
+  | { kind: 'stage' }
   | { kind: 'albums' }
   | { kind: 'album-detail'; albumId: string; editing: boolean }
   | { kind: 'stats'; scope: 'personal' | 'shared' }
   | { kind: 'wrapped' }
-  | { kind: 'detail'; concertId: string }
+  | { kind: 'detail'; concertId: string; stage?: boolean }
   | { kind: 'not-found' }
 
 const readDashboardRoute = (): DashboardRoute => {
@@ -105,7 +110,8 @@ const readDashboardRoute = (): DashboardRoute => {
   const albumId = params.get('album')
   if (albumId) return { kind: 'album-detail', albumId, editing: params.get('mode') === 'edit' }
   const concertId = params.get('concert')
-  if (concertId) return { kind: 'detail', concertId }
+  if (concertId) return { kind: 'detail', concertId, stage: params.get('view') === 'stage' }
+  if (params.get('view') === 'stage') return { kind: 'stage' }
   if (params.get('view') === 'stats') {
     return { kind: 'stats', scope: params.get('scope') === 'shared' ? 'shared' : 'personal' }
   }
@@ -121,7 +127,11 @@ const routeUrl = (route: DashboardRoute) => {
     params.set('album', route.albumId)
     if (route.editing) params.set('mode', 'edit')
   }
-  if (route.kind === 'detail') params.set('concert', route.concertId)
+  if (route.kind === 'detail') {
+    params.set('concert', route.concertId)
+    if (route.stage) params.set('view', 'stage')
+  }
+  if (route.kind === 'stage') params.set('view', 'stage')
   if (route.kind === 'stats') {
     params.set('view', 'stats')
     if (route.scope === 'shared') params.set('scope', 'shared')
@@ -173,6 +183,8 @@ interface DashboardProps {
 export function Dashboard({ member }: DashboardProps) {
   const cloud = useConcertLibrary()
   const [route, setRoute] = useState<DashboardRoute>(readDashboardRoute)
+  const stageView = route.kind === 'stage' || (route.kind === 'detail' && Boolean(route.stage))
+  const { disabled: stageMotionDisabled } = useCinematicMotion()
   const activeView = route.kind === 'stats'
     ? 'stats'
     : route.kind === 'wrapped'
@@ -204,22 +216,30 @@ export function Dashboard({ member }: DashboardProps) {
   const concertOpener = useRef<HTMLElement | null>(null)
   const returnFocusAlbumId = useRef<string | null>(null)
   const previousRoute = useRef(route)
+  const stageSourceArt = useRef<HTMLImageElement | null>(null)
 
   useEffect(() => () => {
     if (noticeTimer.current !== null) window.clearTimeout(noticeTimer.current)
   }, [])
 
   useEffect(() => {
-    const onPopState = () => setRoute(readDashboardRoute())
+    const onPopState = () => {
+      const next = readDashboardRoute()
+      const previous = previousRoute.current
+      const closingStage = previous.kind === 'detail' && previous.stage && next.kind === 'stage'
+      const openingStage = next.kind === 'detail' && next.stage
+      if (closingStage || openingStage) stageTransition(() => setRoute(next), stageMotionDisabled, openingStage ? stageSourceArt.current : null, closingStage ? stageSourceArt.current : null)
+      else setRoute(next)
+    }
     window.addEventListener('popstate', onPopState)
     return () => window.removeEventListener('popstate', onPopState)
-  }, [])
+  }, [stageMotionDisabled])
 
   useEffect(() => {
     const previous = previousRoute.current
     previousRoute.current = route
     const concertOverlayTransition = route.kind === 'detail'
-      || (previous.kind === 'detail' && route.kind === 'concerts')
+      || (previous.kind === 'detail' && (route.kind === 'concerts' || route.kind === 'stage'))
     if (concertOverlayTransition) return
 
     window.scrollTo({ top: 0, behavior: 'auto' })
@@ -248,12 +268,13 @@ export function Dashboard({ member }: DashboardProps) {
       window.history.back()
       return
     }
-    navigate({ kind: 'concerts' }, true)
-  }, [navigate])
+    if (stageView) stageTransition(() => navigate({ kind: 'stage' }, true), stageMotionDisabled, null, stageSourceArt.current)
+    else navigate({ kind: 'concerts' }, true)
+  }, [navigate, stageView, stageMotionDisabled])
   const restoreConcertFocus = useCallback(() => {
     const concertId = returnFocusConcertId.current
     window.requestAnimationFrame(() => {
-      if (previousRoute.current.kind !== 'concerts') return
+      if (previousRoute.current.kind !== 'concerts' && previousRoute.current.kind !== 'stage') return
       const opener = concertOpener.current?.isConnected ? concertOpener.current : concertId ? document.getElementById(`concert-open-${concertId}`) : null
       concertOpener.current = null
       if (opener) opener.focus({ preventScroll: true })
@@ -261,6 +282,10 @@ export function Dashboard({ member }: DashboardProps) {
       if (returnFocusConcertId.current === concertId) returnFocusConcertId.current = null
     })
   }, [])
+
+  useEffect(() => {
+    if (route.kind === 'stage' && (returnFocusConcertId.current || document.activeElement === document.body)) restoreConcertFocus()
+  }, [route, restoreConcertFocus])
 
   const navigateFromLink = useCallback((event: MouseEvent<HTMLAnchorElement>, nextRoute: DashboardRoute, replace = false) => {
     if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.currentTarget.target) return
@@ -500,19 +525,35 @@ export function Dashboard({ member }: DashboardProps) {
   const openConcert = (concert: Concert) => {
     returnFocusConcertId.current = concert.id
     concertOpener.current = document.activeElement instanceof HTMLElement && document.activeElement !== document.body ? document.activeElement : null
-    navigate({ kind: 'detail', concertId: concert.id }, false, { concertTracker: true, concertOverlay: true })
+    const show = () => navigate({ kind: 'detail', concertId: concert.id, stage: stageView }, false, { concertTracker: true, concertOverlay: true })
+    if (stageView) {
+      const opener = concertOpener.current
+      const featuredArt = document.querySelector<HTMLImageElement>('[data-stage-featured-art]')
+      stageSourceArt.current = opener?.querySelector<HTMLImageElement>('img') ?? (featuredArt?.dataset.concertId === concert.id ? featuredArt : document.getElementById(`stage-open-${concert.id}`)?.querySelector<HTMLImageElement>('img') ?? null)
+      const requestedFrom = route
+      void import('./components/ConcertDetail').then(() => {
+        if (previousRoute.current === requestedFrom) stageTransition(show, stageMotionDisabled, stageSourceArt.current)
+      }).catch(() => { if (previousRoute.current === requestedFrom) show() })
+    } else show()
   }
   const openAlbum = (album: Album) => {
     returnFocusAlbumId.current = album.id
     navigate({ kind: 'album-detail', albumId: album.id, editing: false })
   }
+  const concertOverlay = route.kind === 'detail' ? <ConcertDetailOverlay key={route.concertId} onClose={closeConcertOverlay} cinematic={stageView}>
+    {selectedConcert ? <Suspense fallback={<FeatureViewLoading />}><ConcertDetail cinematic={stageView} concert={selectedConcert} member={member} milestones={milestones.get(selectedConcert.id) ?? []} onArtwork={openArtwork} onClose={closeConcertOverlay} onEdit={(row) => { setEditing(row); setFormError(''); setDialogOpen(true) }} onDelete={(row) => { void deleteConcert(row).then((deleted) => { if (deleted) navigate({ kind: stageView ? 'stage' : 'concerts' }, true) }) }} /></Suspense> : <section className="detail-not-found"><ArrowLeft size={22} aria-hidden="true" /><h1 id="detail-title" tabIndex={-1}>Concert not found</h1><p>This concert may have been deleted or is not available in your library.</p><button className="button button-primary" type="button" onClick={closeConcertOverlay}>Back to concerts</button></section>}
+  </ConcertDetailOverlay> : null
   return (
     <div className={darkMode ? 'app theme-dark' : 'app theme-light'}>
       <a className="skip-link" href="#encore-main">Skip to content</a>
       <AppHeader activeView={activeView} addLabel={activeView === 'albums' ? 'Find album' : 'Add concert'} darkMode={darkMode} memberName={member.display_name} pendingCount={cloud.pendingCount} syncState={cloud.syncState} onAdd={activeView === 'albums' ? () => setAlbumDialogOpen(true) : openNew} onExportCalendar={exportCalendar} onExportCsv={() => void exportCsv()} onExportJson={exportJson} onHome={(event) => navigateFromLink(event, { kind: 'concerts' })} onRestoreBackup={() => setRestoreOpen(true)} onThemeToggle={toggleTheme} onViewNavigate={(event, view) => navigateFromLink(event, view === 'stats' ? { kind: 'stats', scope: 'personal' } : view === 'wrapped' ? { kind: 'wrapped' } : view === 'albums' ? { kind: 'albums' } : { kind: 'concerts' })} />
       <div id="encore-main" tabIndex={-1}>
-      {route.kind === 'concerts' || route.kind === 'detail' ? <main className="page-shell page-shell-feed">
+      {stageView ? <Suspense fallback={<FeatureViewLoading />}><StageConcerts concerts={filteredConcerts} allConcerts={library.concerts} personalConcerts={personalConcerts} onOpen={openConcert} onAdd={openNew} onClassic={(event) => navigateFromLink(event, { kind: 'concerts' })}>
+        {cloud.error ? <div className="sync-error-banner" role="status">{cloud.error}<button type="button" onClick={() => void cloud.flushOutbox()}>Retry sync</button></div> : null}
+        <FiltersBar genres={genres} genre={genre} search={search} sort={sort} status={status} onGenreChange={setGenre} onSearchChange={setSearch} onSortChange={setSort} onStatusChange={setStatus} />
+      </StageConcerts></Suspense> : route.kind === 'concerts' || route.kind === 'detail' ? <main className="page-shell page-shell-feed">
         <h1 className="sr-only" data-view-heading tabIndex={-1}>Concert Archive</h1>
+        <a className="stage-view-link" href="/?view=stage" onClick={(event) => navigateFromLink(event, { kind: 'stage' })}>Try Stage view <span aria-hidden="true">↗</span></a>
         <ConcertStage concerts={personalConcerts} onOpen={openConcert} />
         <div className="dashboard-column">
           <StatsStrip concerts={library.concerts} />
@@ -528,11 +569,7 @@ export function Dashboard({ member }: DashboardProps) {
         </div>
         <div className="ranking-column"><RankedSummary personal={personalScopedRankings} /></div>
       </main> : route.kind === 'albums' ? <Suspense fallback={<AlbumViewLoading />}><AlbumLibrary albums={albumCloud.albums} currentUserId={member.user_id} error={albumCloud.error} loading={albumCloud.loading} onAdd={() => setAlbumDialogOpen(true)} onOpen={openAlbum} /></Suspense> : route.kind === 'album-detail' ? selectedAlbum ? <Suspense fallback={<AlbumViewLoading />}>{route.editing ? <AlbumReviewStudio album={selectedAlbum} currentUserId={member.user_id} error={albumError} saving={albumSaving} onCancel={() => navigate({ kind: 'album-detail', albumId: selectedAlbum.id, editing: false }, true)} onSave={(review) => saveReview(selectedAlbum, review)} /> : <AlbumJournal album={selectedAlbum} currentUserId={member.user_id} members={library.members} onBack={(event) => navigateFromLink(event, { kind: 'albums' }, true)} onEdit={() => navigate({ kind: 'album-detail', albumId: selectedAlbum.id, editing: true })} />}</Suspense> : <main className="feature-shell"><section className="detail-not-found"><ArrowLeft size={22} aria-hidden="true" /><h1 data-view-heading tabIndex={-1}>Album not found</h1><p>This album may have been removed or is not available in the shared journal.</p><a className="button button-primary" href="/?view=albums" onClick={(event) => navigateFromLink(event, { kind: 'albums' }, true)}>Back to albums</a></section></main> : route.kind === 'stats' ? <main className="feature-shell"><Suspense fallback={<FeatureViewLoading />}><StatsDashboard analytics={route.scope === 'personal' ? library.personal_analytics : library.analytics} concerts={route.scope === 'personal' ? personalConcerts : library.concerts} memberName={member.display_name} rankings={route.scope === 'personal' ? personalScopedRankings : combinedRankings} scope={route.scope} onEditConcert={(row) => { setEditing(row); setFormError(''); setDialogOpen(true) }} onScopeChange={(scope) => navigate({ kind: 'stats', scope }, true)} /></Suspense></main> : route.kind === 'wrapped' ? <main className="feature-shell"><Suspense fallback={<FeatureViewLoading />}><LiveWrapped concerts={personalConcerts} analytics={library.personal_analytics} memberName={member.display_name} /></Suspense></main> : route.kind === 'not-found' ? <main className="feature-shell"><section className="detail-not-found"><span className="not-found-code">404</span><h1 data-view-heading tabIndex={-1}>This page missed the encore</h1><p>The link may be old, but your concert archive is still here.</p><a className="button button-primary" href="/" onClick={(event) => navigateFromLink(event, { kind: 'concerts' }, true)}>Back to concerts</a></section></main> : null}
-      <AnimatePresence onExitComplete={restoreConcertFocus}>
-        {route.kind === 'detail' ? <ConcertDetailOverlay key={route.concertId} onClose={closeConcertOverlay}>
-          {selectedConcert ? <Suspense fallback={<FeatureViewLoading />}><ConcertDetail concert={selectedConcert} member={member} milestones={milestones.get(selectedConcert.id) ?? []} onArtwork={openArtwork} onClose={closeConcertOverlay} onEdit={(row) => { setEditing(row); setFormError(''); setDialogOpen(true) }} onDelete={(row) => { void deleteConcert(row).then((deleted) => { if (deleted) navigate({ kind: 'concerts' }, true) }) }} /></Suspense> : <section className="detail-not-found"><ArrowLeft size={22} aria-hidden="true" /><h1 id="detail-title" tabIndex={-1}>Concert not found</h1><p>This concert may have been deleted or is not available in your library.</p><button className="button button-primary" type="button" onClick={closeConcertOverlay}>Back to concerts</button></section>}
-        </ConcertDetailOverlay> : null}
-      </AnimatePresence>
+      {stageView ? concertOverlay : <AnimatePresence onExitComplete={restoreConcertFocus}>{concertOverlay}</AnimatePresence>}
       </div>
       {dialogOpen ? <Suspense fallback={null}><AddConcertDialog concert={editing} concerts={library.concerts} currentUserId={member.user_id} error={formError} members={library.members} open saving={saving} onClose={() => { setDialogOpen(false); setEditing(null) }} onSave={saveConcert} /></Suspense> : null}
       {albumDialogOpen ? <Suspense fallback={null}><AlbumImportDialog open onClose={() => setAlbumDialogOpen(false)} onImported={(albumId, message) => void importedAlbum(albumId, message)} /></Suspense> : null}

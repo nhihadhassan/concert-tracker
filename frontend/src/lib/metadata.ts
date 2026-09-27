@@ -3,7 +3,7 @@ import type { Album, Concert } from '../types'
 
 const SITE_URL = 'https://concert-tracker-sepia.vercel.app'
 
-export type MetadataView = 'concerts' | 'albums' | 'album-detail' | 'stats' | 'wrapped' | 'detail' | 'not-found'
+export type MetadataView = 'concerts' | 'stage' | 'albums' | 'album-detail' | 'stats' | 'wrapped' | 'detail' | 'not-found'
 
 interface MetadataInput {
   album?: Album | null
@@ -60,6 +60,7 @@ export function buildPageMetadata({ album, concert, missing = false, view }: Met
     }
     return { canonical: absoluteUrl(`/?album=${encodeURIComponent(new URLSearchParams(location.search).get('album') ?? '')}`), description: 'Open a saved album review in Encore.', title: 'Album Review | Encore' }
   }
+  if (view === 'stage') return { canonical: absoluteUrl('/?view=stage'), description: 'Explore your concert archive with an alternate cinematic stage view.', noindex: true, title: 'Concerts — Stage | Encore' }
   if (view === 'albums') return { canonical: absoluteUrl('/?view=albums'), description: 'Browse a shared album journal with personal reviews, scores, and track notes.', title: 'Album Journal | Encore' }
   if (view === 'stats') return { canonical: absoluteUrl('/?view=stats'), description: 'Explore concert attendance, ratings, venues, archive stories, and listening insights.', title: 'Concert Stats | Encore' }
   if (view === 'wrapped') return { canonical: absoluteUrl('/?view=wrapped'), description: 'Revisit attended concerts through a personal live-music recap.', title: 'Live Recap | Encore' }

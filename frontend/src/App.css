@@ -7839,3 +7839,7 @@ a.detail-setlist:hover {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
+
+/* Alternate design entry point; Classic remains the default. */
+.stage-view-link { grid-column: 1 / -1; justify-self: end; color: var(--text-muted); font-size: .75rem; text-decoration: none; padding: 8px 0; }
+.stage-view-link:hover { color: var(--text); }

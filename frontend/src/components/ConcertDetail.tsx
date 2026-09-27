@@ -1,5 +1,6 @@
 import { Armchair, CalendarDays, ExternalLink, Image, MapPin, Music2, Pencil, Plus, Star, Ticket, Trash2, Users, WalletCards, X } from 'lucide-react'
 import { m, useReducedMotion } from 'motion/react'
+import { useCinematicMotion } from '../hooks/useCinematicMotion'
 import { downloadConcertCalendar } from '../lib/exports'
 import { spotifySearchUrl, verifiedSetlistsByConcertId } from '../lib/verifiedSetlists'
 import type { Milestone } from '../lib/archiveInsights'
@@ -8,6 +9,7 @@ import { parseGuests } from '../lib/guests'
 import type { Concert } from '../types'
 
 interface ConcertDetailProps {
+  cinematic?: boolean
   concert: Concert
   member: SessionMember
   milestones: Milestone[]
@@ -20,8 +22,10 @@ interface ConcertDetailProps {
 const formatDate = (value: string) => new Intl.DateTimeFormat('en-CA', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }).format(new Date(`${value}T12:00:00`))
 const formatMoney = (value: number) => new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(value)
 
-export function ConcertDetail({ concert, member, milestones, onArtwork, onClose, onDelete, onEdit }: ConcertDetailProps) {
-  const reduceMotion = useReducedMotion()
+export function ConcertDetail({ cinematic = false, concert, member, milestones, onArtwork, onClose, onDelete, onEdit }: ConcertDetailProps) {
+  const reduced = useReducedMotion()
+  const { disabled } = useCinematicMotion()
+  const reduceMotion = reduced || (cinematic && disabled)
   const personalReview = concert.reviews.find((review) => review.reviewer_user_id === member.user_id)
   const attendees = concert.attendees.filter((attendee) => attendee.attendance_status !== 'Did Not Attend')
   const verifiedSetlist = verifiedSetlistsByConcertId[concert.id]
@@ -35,7 +39,7 @@ export function ConcertDetail({ concert, member, milestones, onArtwork, onClose,
   return (
     <article className="detail-page" aria-labelledby="detail-title">
       <section className={`detail-hero${concert.image ? '' : ' detail-hero-empty'}`}>
-        {concert.image ? <m.img layoutId={reduceMotion ? undefined : `concert-art-${concert.id}`} src={concert.image} alt={`${concert.artist} concert artwork`} decoding="async" /> : <span className="detail-art-fallback" aria-hidden="true"><Image size={54} /></span>}
+        {concert.image ? <m.img style={cinematic ? { viewTransitionName: 'stage-artwork' } : undefined} layoutId={reduceMotion || cinematic ? undefined : `concert-art-${concert.id}`} src={concert.image} alt={`${concert.artist} concert artwork`} decoding="async" /> : <span className="detail-art-fallback" aria-hidden="true"><Image size={54} /></span>}
         <span className="detail-hero-scrim" aria-hidden="true" />
         <button className="detail-round-button concert-detail-close" type="button" onClick={onClose} aria-label="Close concert details" autoFocus><X size={20} aria-hidden="true" /></button>
       </section>
