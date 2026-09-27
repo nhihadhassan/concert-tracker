@@ -1,6 +1,7 @@
-import { Armchair, CalendarDays, Image, MapPin, Music2, Pencil, Plus, Star, Ticket, Trash2, Users, WalletCards, X } from 'lucide-react'
+import { Armchair, CalendarDays, ExternalLink, Image, MapPin, Music2, Pencil, Plus, Star, Ticket, Trash2, Users, WalletCards, X } from 'lucide-react'
 import { m, useReducedMotion } from 'motion/react'
 import { downloadConcertCalendar } from '../lib/exports'
+import { spotifySearchUrl, verifiedSetlistsByConcertId } from '../lib/verifiedSetlists'
 import type { Milestone } from '../lib/archiveInsights'
 import type { SessionMember } from '../session/useSession'
 import { parseGuests } from '../lib/guests'
@@ -23,6 +24,7 @@ export function ConcertDetail({ concert, member, milestones, onArtwork, onClose,
   const reduceMotion = useReducedMotion()
   const personalReview = concert.reviews.find((review) => review.reviewer_user_id === member.user_id)
   const attendees = concert.attendees.filter((attendee) => attendee.attendance_status !== 'Did Not Attend')
+  const verifiedSetlist = verifiedSetlistsByConcertId[concert.id]
   const scores = [
     ['Enjoyment', personalReview?.enjoyment_score],
     ['Stage', personalReview?.stage_score],
@@ -67,6 +69,28 @@ export function ConcertDetail({ concert, member, milestones, onArtwork, onClose,
           {concert.price !== null ? <div><WalletCards aria-hidden="true" /><span>Price</span><strong>{formatMoney(concert.price)}</strong></div> : null}
           <div><Ticket aria-hidden="true" /><span>Type</span><strong>{concert.type}</strong></div>
         </section>
+
+        {verifiedSetlist ? <section className="detail-tracklist" aria-labelledby="detail-tracklist-title">
+          <div className="detail-section-heading detail-tracklist-heading">
+            <Music2 aria-hidden="true" />
+            <h2 id="detail-tracklist-title">Setlist</h2>
+            <span>{verifiedSetlist.tracks.length} songs</span>
+            <a href={verifiedSetlist.sourceUrl} target="_blank" rel="noreferrer">Source <ExternalLink size={13} aria-hidden="true" /></a>
+          </div>
+          <p className="detail-tracklist-caption">Set order is listed online; performance time codes were not provided.</p>
+          <ol className="detail-tracklist-songs">
+            {verifiedSetlist.tracks.map((track, index) => <li key={`${track.title}-${index}`}>
+              <span className="detail-tracklist-number">{String(index + 1).padStart(2, '0')}</span>
+              <div className="detail-tracklist-song">
+                {track.segment ? <span className="detail-tracklist-segment">{track.segment}</span> : null}
+                <strong>{track.title}</strong>
+                {track.note ? <small>{track.note}</small> : null}
+              </div>
+              {track.timecode ? <time className="detail-tracklist-time">{track.timecode}</time> : null}
+              <a className="detail-tracklist-spotify" href={spotifySearchUrl(track)} target="_blank" rel="noreferrer">Spotify <ExternalLink size={12} aria-hidden="true" /></a>
+            </li>)}
+          </ol>
+        </section> : null}
 
         {personalReview?.notes ? <section className="detail-notes" aria-labelledby="memory-title">
           <div className="detail-section-heading"><Star aria-hidden="true" /><h2 id="memory-title">Your memory</h2><button type="button" onClick={() => onEdit(concert)}><Pencil size={15} />Edit review</button></div>

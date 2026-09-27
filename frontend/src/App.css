@@ -1819,6 +1819,120 @@
   }
 }
 
+.concert-detail-overlay .detail-tracklist {
+  grid-column: 1 / -1;
+  min-width: 0;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.concert-detail-overlay .detail-tracklist-heading > span {
+  margin-left: auto;
+  color: var(--text-subtle);
+  font-size: 0.72rem;
+}
+
+.concert-detail-overlay .detail-tracklist-heading > a,
+.concert-detail-overlay .detail-tracklist-spotify {
+  display: inline-flex;
+  min-height: 30px;
+  padding: 0 7px;
+  border-radius: 7px;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.concert-detail-overlay .detail-tracklist-heading > a:hover,
+.concert-detail-overlay .detail-tracklist-spotify:hover {
+  color: #62fae3;
+  background: var(--surface-soft);
+}
+
+.concert-detail-overlay .detail-tracklist-caption {
+  margin: 6px 0 10px;
+  color: var(--text-subtle);
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+
+.concert-detail-overlay .detail-tracklist-songs {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.concert-detail-overlay .detail-tracklist-songs > li {
+  display: grid;
+  min-width: 0;
+  min-height: 42px;
+  grid-template-columns: 28px minmax(0, 1fr) auto auto;
+  padding: 5px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+  align-items: center;
+  gap: 8px;
+}
+
+.concert-detail-overlay .detail-tracklist-songs > li:last-child {
+  border-bottom: 0;
+}
+
+.concert-detail-overlay .detail-tracklist-number,
+.concert-detail-overlay .detail-tracklist-time {
+  color: var(--text-subtle);
+  font-family: var(--font-data);
+  font-size: 0.68rem;
+}
+
+.concert-detail-overlay .detail-tracklist-song {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.concert-detail-overlay .detail-tracklist-song strong {
+  overflow: hidden;
+  font-size: 0.76rem;
+  text-overflow: ellipsis;
+}
+
+.concert-detail-overlay .detail-tracklist-song small,
+.concert-detail-overlay .detail-tracklist-segment {
+  color: var(--text-subtle);
+  font-size: 0.65rem;
+}
+
+.concert-detail-overlay .detail-tracklist-segment {
+  color: #ffafd3;
+  font-weight: 700;
+}
+
+.concert-detail-overlay .detail-tracklist-spotify {
+  min-height: 28px;
+}
+
+@media (max-width: 720px) {
+  .concert-detail-overlay .detail-tracklist-heading {
+    flex-wrap: wrap;
+  }
+
+  .concert-detail-overlay .detail-tracklist-heading > span {
+    margin-left: auto;
+  }
+
+  .concert-detail-overlay .detail-tracklist-songs > li {
+    grid-template-columns: 26px minmax(0, 1fr) auto;
+    gap: 6px;
+  }
+
+  .concert-detail-overlay .detail-tracklist-time {
+    display: none;
+  }
+}
+
 @media (max-width: 480px) {
   .brand-title {
     font-size: 1.05rem;
