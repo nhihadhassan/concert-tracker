@@ -35,16 +35,18 @@ export function ConcertDetail({ concert, member, milestones, onArtwork, onClose,
       <section className={`detail-hero${concert.image ? '' : ' detail-hero-empty'}`}>
         {concert.image ? <m.img layoutId={reduceMotion ? undefined : `concert-art-${concert.id}`} src={concert.image} alt={`${concert.artist} concert artwork`} decoding="async" /> : <span className="detail-art-fallback" aria-hidden="true"><Image size={54} /></span>}
         <span className="detail-hero-scrim" aria-hidden="true" />
-        <div className="detail-top-actions">
-          <button className="detail-round-button concert-detail-close" type="button" onClick={onClose} aria-label="Close concert details" autoFocus><X size={20} aria-hidden="true" /></button>
-          <div><button className="detail-round-button" type="button" onClick={() => onArtwork(concert)} aria-label={`Choose artwork for ${concert.artist}`}><Image size={18} /></button><button className="detail-round-button" type="button" onClick={() => onEdit(concert)} aria-label={`Edit ${concert.artist}`}><Pencil size={18} /></button><button className="detail-round-button detail-delete" type="button" onClick={() => onDelete(concert)} aria-label={`Delete ${concert.artist}`}><Trash2 size={18} /></button></div>
-        </div>
-        <header className="detail-hero-copy">
+        <button className="detail-round-button concert-detail-close" type="button" onClick={onClose} aria-label="Close concert details" autoFocus><X size={20} aria-hidden="true" /></button>
+      </section>
+
+      <div className="detail-panel">
+        <header className="detail-heading">
+          <div className="detail-top-actions">
+            <div><button className="detail-round-button" type="button" onClick={() => onArtwork(concert)} aria-label={`Choose artwork for ${concert.artist}`}><Image size={18} /></button><button className="detail-round-button" type="button" onClick={() => onEdit(concert)} aria-label={`Edit ${concert.artist}`}><Pencil size={18} /></button><button className="detail-round-button detail-delete" type="button" onClick={() => onDelete(concert)} aria-label={`Delete ${concert.artist}`}><Trash2 size={18} /></button></div>
+          </div>
           <div className="detail-tags">{concert.genre ? <span className="genre-chip">#{concert.genre.replaceAll(' ', '')}</span> : null}<span className={`status-chip status-${concert.status.toLowerCase().replaceAll(' ', '-')}`}>{concert.status}</span>{concert.pending ? <span className="chip pending-chip">Pending sync</span> : null}</div>
           <h1 id="detail-title" data-view-heading tabIndex={-1}>{concert.artist}</h1>
           {concert.tour ? <p>{concert.tour}</p> : null}
         </header>
-      </section>
 
       <div className="detail-content">
         {concert.personal_rating !== null || concert.combined_rating !== null || scores.some(([, score]) => score !== null) ? <section className="detail-rating" aria-labelledby="detail-rating-title">
@@ -78,6 +80,7 @@ export function ConcertDetail({ concert, member, milestones, onArtwork, onClose,
         {concert.setlist_url ? <a className="detail-setlist" href={concert.setlist_url} target="_blank" rel="noreferrer"><Music2 aria-hidden="true" /><span><strong>View setlist</strong><small>Open the saved concert setlist.</small></span></a> : null}
         {concert.spotify_url ? <a className="detail-setlist" href={concert.spotify_url} target="_blank" rel="noreferrer"><Music2 aria-hidden="true" /><span><strong>Open playlist</strong><small>Play the saved Spotify setlist playlist.</small></span></a> : null}
         {concert.status === 'Want to Go' ? <button className="detail-setlist" type="button" onClick={() => downloadConcertCalendar(concert)}><Plus aria-hidden="true" /><span><strong>Add to calendar</strong><small>Download this concert as an all-day calendar event.</small></span></button> : null}
+      </div>
       </div>
     </article>
   )

@@ -5080,6 +5080,296 @@
   }
 }
 
+/* Concert detail overlay: artwork-led, editorial layout with clear breathing room. */
+.concert-detail-overlay {
+  width: min(1160px, calc(100vw - 48px));
+  padding: 9px;
+}
+
+.concert-detail-overlay .detail-page {
+  display: grid;
+  min-height: min(780px, calc(100dvh - 66px));
+  grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
+  align-items: stretch;
+  gap: 0;
+}
+
+.concert-detail-overlay .detail-hero {
+  position: sticky;
+  top: 0;
+  height: min(780px, calc(100dvh - 66px));
+  min-height: 0;
+  border-radius: 16px;
+  background: var(--surface);
+}
+
+.concert-detail-overlay .detail-hero-scrim {
+  background: linear-gradient(180deg, rgba(6, 14, 32, 0.25), transparent 30%, rgba(6, 14, 32, 0.14));
+}
+
+.concert-detail-overlay .concert-detail-close {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 3;
+  width: 40px;
+  height: 40px;
+}
+
+.concert-detail-overlay .detail-panel {
+  min-width: 0;
+  padding: 18px 28px 24px;
+}
+
+.concert-detail-overlay .detail-heading {
+  padding: 0 0 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.concert-detail-overlay .detail-top-actions {
+  position: static;
+  justify-content: flex-end;
+  margin: -2px -4px 13px 0;
+}
+
+.concert-detail-overlay .detail-top-actions > div {
+  gap: 5px;
+}
+
+.concert-detail-overlay .detail-top-actions .detail-round-button {
+  width: 38px;
+  height: 38px;
+  border-color: transparent;
+  color: var(--text-muted);
+  background: transparent;
+  backdrop-filter: none;
+}
+
+.concert-detail-overlay .detail-top-actions .detail-round-button:hover {
+  color: var(--text);
+  background: var(--surface-soft);
+  transform: none;
+}
+
+.concert-detail-overlay .detail-heading .detail-tags {
+  margin-bottom: 10px;
+}
+
+.concert-detail-overlay .detail-heading h1 {
+  max-width: 20ch;
+  color: var(--text);
+  font-size: clamp(2rem, 4vw, 2.8rem);
+}
+
+.concert-detail-overlay .detail-heading > p {
+  margin-top: 7px;
+  color: var(--text-muted);
+  font-family: var(--font-display);
+  font-size: 1.12rem;
+}
+
+.concert-detail-overlay .detail-content {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 22px;
+  margin: 0;
+  transform: none;
+}
+
+.concert-detail-overlay .detail-rating,
+.concert-detail-overlay .detail-people,
+.concert-detail-overlay .detail-facts,
+.concert-detail-overlay .detail-notes,
+.concert-detail-overlay .detail-setlist {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.concert-detail-overlay .detail-rating {
+  grid-column: span 1;
+  display: grid;
+  grid-template-columns: 1fr;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--border);
+  gap: 12px;
+}
+
+.concert-detail-overlay .detail-rating-primary > strong {
+  margin-left: auto;
+  font-size: 1.8rem;
+}
+
+.concert-detail-overlay .detail-rating-combined {
+  justify-content: flex-start;
+}
+
+.concert-detail-overlay .detail-scores {
+  padding-top: 13px;
+}
+
+.concert-detail-overlay .detail-people {
+  grid-column: span 1;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.concert-detail-overlay .detail-section-heading {
+  min-height: 28px;
+}
+
+.concert-detail-overlay .detail-section-heading > svg {
+  width: 18px;
+  height: 18px;
+}
+
+.concert-detail-overlay .detail-section-heading h2 {
+  font-size: 0.86rem;
+}
+
+.concert-detail-overlay .people-list {
+  margin-top: 12px;
+  gap: 7px;
+}
+
+.concert-detail-overlay .people-list > span {
+  min-height: 34px;
+  padding-right: 8px;
+  border-color: var(--border);
+  background: var(--surface-soft);
+  font-size: 0.72rem;
+}
+
+.concert-detail-overlay .people-list b {
+  width: 24px;
+  height: 24px;
+}
+
+.concert-detail-overlay .detail-facts {
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(0, 1fr);
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  gap: 0;
+}
+
+.concert-detail-overlay .detail-facts > div,
+.concert-detail-overlay .detail-facts > div:first-child,
+.concert-detail-overlay .detail-facts > div:last-child {
+  display: grid;
+  grid-template-columns: 20px minmax(60px, 82px) minmax(0, 1fr);
+  padding: 9px 0;
+  border: 0;
+  align-items: center;
+  gap: 10px;
+}
+
+.concert-detail-overlay .detail-facts svg {
+  width: 17px;
+  height: 17px;
+  margin: 0;
+}
+
+.concert-detail-overlay .detail-facts span,
+.concert-detail-overlay .detail-facts strong {
+  font-size: 0.76rem;
+}
+
+.concert-detail-overlay .detail-facts strong {
+  overflow-wrap: anywhere;
+}
+
+.concert-detail-overlay .detail-notes {
+  grid-column: 1 / -1;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.concert-detail-overlay .detail-notes > p {
+  max-width: 68ch;
+  margin-top: 11px;
+  font-size: 0.91rem;
+  line-height: 1.7;
+}
+
+.concert-detail-overlay .detail-notes .detail-section-heading > svg {
+  color: #44e2cd;
+}
+
+.concert-detail-overlay .detail-event-notes .detail-section-heading > svg {
+  color: #ffafd3;
+}
+
+.concert-detail-overlay .detail-setlist {
+  grid-column: 1 / -1;
+  min-height: 66px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.concert-detail-overlay .detail-setlist > svg {
+  width: 34px;
+  height: 34px;
+  padding: 8px;
+}
+
+@media (max-width: 720px) {
+  .concert-detail-overlay {
+    width: 100vw;
+    padding: 8px 8px 0;
+  }
+
+  .concert-detail-overlay .detail-page {
+    min-height: 0;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .concert-detail-overlay .detail-hero {
+    position: relative;
+    top: auto;
+    height: min(34dvh, 310px);
+    min-height: 230px;
+    border-radius: 16px;
+  }
+
+  .concert-detail-overlay .detail-panel {
+    padding: 18px 14px 26px;
+  }
+
+  .concert-detail-overlay .detail-content {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .concert-detail-overlay .detail-rating,
+  .concert-detail-overlay .detail-people,
+  .concert-detail-overlay .detail-facts,
+  .concert-detail-overlay .detail-notes,
+  .concert-detail-overlay .detail-setlist {
+    grid-column: 1 / -1;
+  }
+
+  .concert-detail-overlay .detail-rating {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .concert-detail-overlay .detail-rating-primary,
+  .concert-detail-overlay .detail-rating-combined {
+    align-items: center;
+  }
+
+  .concert-detail-overlay .detail-scores {
+    grid-column: 1 / -1;
+  }
+
+  .concert-detail-overlay .detail-facts > div,
+  .concert-detail-overlay .detail-facts > div:first-child,
+  .concert-detail-overlay .detail-facts > div:last-child {
+    grid-template-columns: 20px minmax(56px, 72px) minmax(0, 1fr);
+    gap: 8px;
+  }
+}
+
 .detail-page {
   max-width: 1080px;
   margin: 0 auto;
