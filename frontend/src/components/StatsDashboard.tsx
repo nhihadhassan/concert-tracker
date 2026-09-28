@@ -400,6 +400,13 @@ export function StatsDashboard({ analytics, concerts, memberName, rankings, scop
             {!orderedRankings.length ? <p className="stats-inline-empty">No rated concerts in this scope yet.</p> : null}
           </section>
         </div>
+        <section className="stats-panel stats-lyrics" aria-labelledby="lyrics-title">
+          <div className="stats-panel-head"><h2 id="lyrics-title"><Quote aria-hidden="true" />Today's lyric breakdowns</h2><span>via Genius</span></div>
+          <div className="lyric-card-grid">
+            <LyricCard state={recentLyric} subject={lyricSubjects.recent} />
+            {lyricSubjects.concert ? <LyricCard state={concertLyric} subject={lyricSubjects.concert} /> : null}
+          </div>
+        </section>
         <div className="stats-rankings-layout">
         <section className="stats-panel stats-rankings" aria-labelledby="rankings-title">
           <div className="stats-panel-head"><h2 id="rankings-title">Rankings</h2><span>{orderedRankings.length} rated shows · Highest first</span></div>
@@ -458,16 +465,6 @@ export function StatsDashboard({ analytics, concerts, memberName, rankings, scop
                 </>}
             </section>
           ) : null}
-
-          {(
-            <section className="stats-panel stats-lyrics" aria-labelledby="lyrics-title">
-              <div className="stats-panel-head"><h3 id="lyrics-title"><Quote aria-hidden="true" />Today's lyric breakdowns</h3><span>via Genius</span></div>
-              <div className="lyric-card-grid">
-                <LyricCard state={recentLyric} subject={lyricSubjects.recent} />
-                {lyricSubjects.concert ? <LyricCard state={concertLyric} subject={lyricSubjects.concert} /> : null}
-              </div>
-            </section>
-          )}
 
           <section className="stats-panel stats-spotify" aria-labelledby="spotify-title">
             <div className="stats-panel-head">
