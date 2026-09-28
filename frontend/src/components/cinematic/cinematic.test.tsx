@@ -220,18 +220,20 @@ describe('Cinematic library interactions', () => {
     expect(
       within(film).getByRole('button', { name: 'Previous chapter' }),
     ).toBeDisabled()
-    fireEvent.click(within(film).getByRole('button', { name: 'Play' }))
+    fireEvent.click(within(film).getByRole('button', { name: 'Start recap' }))
     expect(
       await within(film).findByRole('heading', { name: 'Rated' }),
     ).toBeInTheDocument()
-    expect(within(film).getByText('0/10 · Test venue')).toBeInTheDocument()
+    expect(within(film).getByLabelText('Rating: 0')).toBeInTheDocument()
     fireEvent.click(within(film).getByRole('button', { name: 'Next' }))
     expect(
-      await within(film).findByRole('heading', { name: 'Until next year.' }),
+      await within(film).findByRole('heading', { name: 'Unrated' }),
     ).toBeInTheDocument()
+    fireEvent.click(within(film).getByRole('button', { name: 'Next' }))
+    expect(await within(film).findByRole('heading', { name: 'Rated' })).toBeInTheDocument()
     fireEvent.click(within(film).getByRole('button', { name: 'Replay' }))
     expect(
-      await within(film).findByRole('heading', { name: 'Your year in music.' }),
+      await within(film).findByRole('heading', { name: 'Your year live.' }),
     ).toBeInTheDocument()
   })
 })

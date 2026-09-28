@@ -1,6 +1,8 @@
 import { useMemo, useState, type CSSProperties } from 'react'
 import { ChevronDown, Download, MapPin, Share2, Sparkles, Star, Ticket, Users } from 'lucide-react'
-import { m, useReducedMotion } from 'motion/react'
+import { m } from 'motion/react'
+import { useCinematicMotion } from '../hooks/useCinematicMotion'
+import './stage/companion.css'
 import type { Analytics, Concert } from '../types'
 import { buildConcertStory, type InsightPeriod } from '../lib/concertInsights'
 import { artworkSrcSet, resizeArtwork } from '../lib/artwork'
@@ -40,7 +42,7 @@ const countBy = (rows: Concert[], getKey: (row: Concert) => string | null) => {
 const firstName = (name: string) => name.trim().split(/\s+/)[0] || name
 
 export function LiveWrapped({ concerts, memberName }: LiveWrappedProps) {
-  const reduceMotion = useReducedMotion()
+  const { disabled: reduceMotion } = useCinematicMotion()
   const years = useMemo(() => [...new Set(concerts.map((concert) => concert.date.slice(0, 4)))].sort((a, b) => Number(b) - Number(a)), [concerts])
   const latestAttendedYear = useMemo(() => concerts
     .filter((concert) => concert.status === 'Attended')
@@ -59,7 +61,8 @@ export function LiveWrapped({ concerts, memberName }: LiveWrappedProps) {
   const topVenue = venueCounts[0]
   const firstShow = [...attended].sort((left, right) => left.date.localeCompare(right.date))[0]
   const lastShow = [...attended].sort((left, right) => right.date.localeCompare(left.date))[0]
-  const averageRating = attended.filter((concert) => concert.personal_rating !== null).reduce((total, concert, _index, rows) => total + (concert.personal_rating ?? 0) / rows.length, 0)
+  const ratedShows = attended.filter((concert) => concert.personal_rating !== null)
+  const averageRating = ratedShows.length ? ratedShows.reduce((total, concert) => total + (concert.personal_rating ?? 0), 0) / ratedShows.length : null
   const monthlyCounts = monthLabels.map((_, index) => attended.filter((concert) => new Date(`${concert.date}T12:00:00`).getMonth() === index).length)
   const monthlyMax = Math.max(1, ...monthlyCounts)
   const artworkShows = attended.filter((concert) => concert.image).slice(0, 5)
@@ -123,7 +126,7 @@ export function LiveWrapped({ concerts, memberName }: LiveWrappedProps) {
 
   return (
     <m.section
-      className="wrapped-page"
+      className="wrapped-page stage-companion companion-wrapped"
       aria-labelledby="wrapped-title"
       initial={reduceMotion ? false : { opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
@@ -184,7 +187,7 @@ export function LiveWrapped({ concerts, memberName }: LiveWrappedProps) {
 
           <section className="wrapped-panel wrapped-facts" aria-label="Live-show facts">
             <div className="wrapped-fact"><span>Most visited venue</span><strong>{topVenue?.[0] ?? 'Still exploring'}</strong><small>{topVenue ? `${topVenue[1]} ${topVenue[1] === 1 ? 'visit' : 'visits'}` : 'Add a venue to see this'}</small></div>
-            <div className="wrapped-fact"><span>Average rating</span><strong>{averageRating ? `${averageRating.toFixed(1)}/10` : 'Not rated'}</strong><small>{averageRating ? 'across rated nights' : 'Rate a show to unlock this'}</small></div>
+            <div className="wrapped-fact"><span>Average rating</span><strong>{averageRating !== null ? `${averageRating.toFixed(1)}/10` : 'Not rated'}</strong><small>{averageRating !== null ? 'across rated nights' : 'Rate a show to unlock this'}</small></div>
             <div className="wrapped-fact"><span>Tickets</span><strong>{attended.some((concert) => concert.price !== null) ? formatMoney(attended.reduce((total, concert) => total + (concert.price ?? 0), 0)) : 'Unpriced'}</strong><small>spent on attended shows</small></div>
           </section>
 

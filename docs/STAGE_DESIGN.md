@@ -114,10 +114,38 @@ The similarly named `frontend/src/components/cinematic/ConcertStage.tsx` is **Cl
 not the alternate Stage page. Record Room and Wrapped also live under `components/cinematic/`;
 keep their established behavior when changing the shared motion provider.
 
+## Companion pages
+
+Albums, Stats, and Wrapped extend the approved Stage direction. Shared companion styles live
+in `frontend/src/components/stage/companion.css`, scoped beneath `.stage-companion` and the
+surface classes `.companion-albums`, `.companion-stats`, and `.companion-wrapped`. They use the
+bundled Stage typeface, cream type, warm lighting, and near-black surfaces in both theme settings.
+
+- **Albums / Record Room:** a large split heading and dimensional sleeve with a visible vinyl
+  edge, followed by the complete selectable shelf. Keep the Grid option, arrow-key selection,
+  selected-album persistence, journal opening, reviews, and real Spotify artwork. Empty libraries
+  invite album search; never populate production with mock albums.
+- **Stats:** oversized totals, attendance bars by year, and three highest-rated shows introduce
+  the full rankings. **Render every supplied ranking in descending rating order, including zero;
+  never restore the old 12-row limit.** Preserve the server's ranks and personal/shared scope.
+  Each ranked artist links to its concert. Retain year comparisons, archive health/edit actions,
+  Spotify listening and range controls, recent plays, new releases, both lyric breakdowns,
+  monthly heatmap, artists, venues, genres, and archive stories. Section links use native anchors;
+  hash navigation must not reset scrolling through the query-string router.
+- **Wrapped:** manually controlled chapters for the period overview, highest-rated show, first
+  show, and latest show. Use actual attended shows, standalone scores, a large background year,
+  and a tilted artwork ticket. Keep period selection, the full recap underneath, sharing, and
+  saving the recap card. Chapters reset when the selected period changes. No autoplay sound.
+
+Use the shared motion preference on every companion surface, pause ambient motion offscreen,
+and keep the complete content usable when motion is disabled. Do not hide Spotify or lyric
+errors by removing their sections. Keep dense panels inside 320px/390px layouts; check actual
+panel bounds as well as document overflow because clipped containers can hide oversized grids.
+
 ## Implementation details that must survive refactors
 
 - Stage content stays lazy-loaded and its CSS stays scoped to `.stage-page`, `.stage-replay`,
-  `.concert-detail-overlay-stage`, or the temporary root transition attribute. Preserve the
+  `.concert-detail-overlay-stage`, `.stage-companion`, or the temporary root transition attribute. Preserve the
   scoped detail overrides that defeat Classic light-theme rules.
 - Import the display font through the shared header CSS so Vite emits it under `/assets/`. Keep its license.
   Arbitrary `/fonts/` files are rejected by the current Vercel route allowlist; a local font load

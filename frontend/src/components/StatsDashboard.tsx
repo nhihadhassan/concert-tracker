@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
-import { BarChart3, Check, ListMusic, MapPin, Music2, Quote, Radio, Sparkles, Ticket, Trophy, Users, WalletCards } from 'lucide-react'
-import { m, useReducedMotion } from 'motion/react'
+import { BarChart3, Check, ListMusic, MapPin, Music2, Quote, Radio, Sparkles, Ticket, Users, WalletCards } from 'lucide-react'
+import { m } from 'motion/react'
+import { MotionToggle } from './cinematic/CinematicMotion'
+import { useCinematicMotion, useCinematicScene } from '../hooks/useCinematicMotion'
+import { resizeArtwork } from '../lib/artwork'
+import './stage/companion.css'
 import type { Analytics, Concert, GroupSummary, LyricBreakdown, RankingRow, SpotifyInsights, SpotifyRange, SpotifyRelease } from '../types'
 import { connectSpotify, disconnectSpotify, fetchLyricBreakdown, fetchSpotifyInsights, fetchSpotifyPulse, fetchSpotifyStatus, startSpotifyLogin } from '../lib/api'
 import { buildConcertStory } from '../lib/concertInsights'
@@ -204,8 +208,10 @@ function LyricCard({ state, subject }: { state: LyricState; subject: LyricSubjec
   return (
     <article className="lyric-card">
       <span className="lyric-card-kicker">{subject?.label ?? 'Daily pick'}</span>
-      {state.kind === 'loading' || state.kind === 'idle' ? <p className="stats-panel-note">Finding a lyric worth unpacking...</p>
+      {!subject ? <p className="stats-panel-note">No artist available in this scope.</p>
+        : state.kind === 'loading' || state.kind === 'idle' ? <p className="stats-panel-note">Loading lyric breakdown…</p>
         : state.kind === 'error' ? <p className="stats-panel-note">{state.message}</p>
+        : !state.data.configured ? <p className="stats-panel-note">Lyric breakdowns are currently unavailable.</p>
         : !state.data.found ? <p className="stats-panel-note">No annotated breakdown for {state.data.artist ?? title ?? 'this artist'} yet. Check back tomorrow.</p>
         : <div className="lyric-body">
             <div className="lyric-song">
@@ -223,7 +229,12 @@ function LyricCard({ state, subject }: { state: LyricState; subject: LyricSubjec
 }
 
 export function StatsDashboard({ analytics, concerts, memberName, rankings, scope, onEditConcert, onScopeChange }: StatsDashboardProps) {
-  const reduceMotion = useReducedMotion()
+  const { disabled: reduceMotion } = useCinematicMotion()
+  const { ref: sceneRef, playing } = useCinematicScene()
+  const orderedRankings = useMemo(() => [...rankings].sort((a, b) => b.rating - a.rating || a.rank - b.rank), [rankings])
+  const concertById = useMemo(() => new Map(concerts.map(concert => [concert.id, concert])), [concerts])
+  const yearBars = [...analytics.yearly_trends].sort((a, b) => a.year - b.year)
+  const yearMax = Math.max(1, ...yearBars.map(row => row.attended))
   const spotify = useSpotifyPulse()
   const insights = useSpotifyInsights(spotify.state.kind === 'connected')
   const lyricSubjects = useMemo(() => {
@@ -269,7 +280,7 @@ export function StatsDashboard({ analytics, concerts, memberName, rankings, scop
   const topArtists = sortGroups(analytics.artist_summaries).slice(0, 5)
   const topGenres = sortGroups(analytics.genre_summaries).slice(0, 8)
   const topVenues = [...analytics.venue_summaries].sort((left, right) => right.concerts - left.concerts || left.key.localeCompare(right.key)).slice(0, 5)
-  const topRanking = rankings[0]
+  const topRanking = orderedRankings[0]
   const busiestMonth = analytics.monthly_trends.reduce<(typeof analytics.monthly_trends)[number] | null>((best, row) =>
     !best || row.concerts > best.concerts ? row : best, null)
   const attended = analytics.status_counts.Attended ?? 0
@@ -292,18 +303,24 @@ export function StatsDashboard({ analytics, concerts, memberName, rankings, scop
   ]
 
   return (
-    <m.section className="stats-page stats-page-animated" aria-labelledby="stats-title" initial={reduceMotion ? false : { opacity: 0, y: 16, rotateX: -4 }} animate={{ opacity: 1, y: 0, rotateX: 0 }} transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}>
-      <div className="stats-shader" aria-hidden="true" />
+    <m.section ref={sceneRef} data-playing={playing} data-motion={reduceMotion ? 'off' : 'on'} className="stats-page stats-page-animated stage-companion companion-stats" aria-labelledby="stats-title" initial={reduceMotion ? false : { opacity: 0, y: 16, rotateX: -4 }} animate={{ opacity: 1, y: 0, rotateX: 0 }} transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}>
+      <div className="companion-atmosphere" aria-hidden="true" />
       <header className="stats-page-head">
         <div>
-          <h1 id="stats-title" data-view-heading tabIndex={-1}>Concert Stats</h1>
+          <h1 id="stats-title" aria-label="Concert Stats" data-view-heading tabIndex={-1}>The live<span className="companion-outline">numbers.</span></h1>
           <p>{scope === 'personal' ? `${memberName}'s personal archive` : 'Shared archive'}</p>
         </div>
-        <div className="stats-scope" role="group" aria-label="Stats scope">
+        <div className="companion-header-controls"><MotionToggle /><div className="stats-scope" role="group" aria-label="Stats scope">
           <button type="button" className={scope === 'personal' ? 'active' : ''} aria-pressed={scope === 'personal'} onClick={() => onScopeChange('personal')}>Personal</button>
           <button type="button" className={scope === 'shared' ? 'active' : ''} aria-pressed={scope === 'shared'} onClick={() => onScopeChange('shared')}>Shared</button>
-        </div>
+        </div></div>
       </header>
+      {analytics.total_concerts ? <nav className="stats-section-links" aria-label="Stats sections">
+        <a href="#rankings-title">All rankings</a>
+        <a href={spotify.state.kind === 'connected' ? '#your-spotify-title' : '#spotify-title'}>Spotify</a>
+        <a href="#lyrics-title">Lyrics</a>
+        <a href="#activity-title">Activity</a>
+      </nav> : null}
 
       {analytics.total_concerts ? <>
         <section className="stats-overview" aria-label="Stats overview">
@@ -315,6 +332,30 @@ export function StatsDashboard({ analytics, concerts, memberName, rankings, scop
           <article><Users aria-hidden="true" /><span>Artists</span><strong>{analytics.artist_summaries.length}</strong></article>
           <article><MapPin aria-hidden="true" /><span>Venues</span><strong>{analytics.venue_summaries.length}</strong></article>
           <article><WalletCards aria-hidden="true" /><span>Median ticket</span><strong>{analytics.spending.median_attended_ticket === null ? 'N/A' : formatMoney(analytics.spending.median_attended_ticket)}</strong></article>
+        </section>
+
+        <div className="stats-stage-summary">
+          <section className="stats-year-chart" aria-labelledby="stats-year-chart-title">
+            <div className="stats-panel-head"><h2 id="stats-year-chart-title">Through the years.</h2><span>Attended shows</span></div>
+            <div className="stats-stage-bars" role="img" aria-label={yearBars.map(row => `${row.year}: ${row.attended} attended`).join(', ')}>
+              {yearBars.map((row, index) => <div key={row.year} className="stats-stage-bar-column"><span className="stats-stage-bar" style={{ '--bar-height': `${row.attended / yearMax * 100}%`, '--bar-index': index } as CSSProperties}><strong>{row.attended}</strong></span><small>{row.year}</small></div>)}
+            </div>
+          </section>
+          <section className="stats-spotlight" aria-labelledby="stats-spotlight-title">
+            <div className="stats-panel-head"><h2 id="stats-spotlight-title">Highest rated.</h2><span>{scope === 'personal' ? memberName : 'Combined'}</span></div>
+            {orderedRankings.slice(0, 3).map(row => {
+              const concert = concertById.get(row.concert_id)
+              return <a className="stats-spotlight-show" href={`/?concert=${encodeURIComponent(row.concert_id)}`} key={row.concert_id}>
+                {concert?.image ? <img src={resizeArtwork(concert.image, 160)} alt="" loading="lazy" /> : <span className="stats-art-placeholder"><Music2 aria-hidden="true" /></span>}
+                <span><strong>{row.artist}</strong><small>{formatShowDate(row.concert_date)} · {row.concert_date.slice(0, 4)}</small></span><b>{row.rating}</b>
+              </a>
+            })}
+            {!orderedRankings.length ? <p className="stats-inline-empty">No rated concerts in this scope yet.</p> : null}
+          </section>
+        </div>
+        <section className="stats-panel stats-rankings" aria-labelledby="rankings-title">
+          <div className="stats-panel-head"><h2 id="rankings-title">Rankings</h2><span>{orderedRankings.length} rated shows · Highest first</span></div>
+          {orderedRankings.length ? <div className="stats-ranking-table"><table><caption className="sr-only">All concert rankings, highest rating first</caption><thead><tr><th scope="col">Rank</th><th scope="col">Artist</th><th scope="col">Rating</th><th scope="col">Year</th></tr></thead><tbody>{orderedRankings.map(row => <tr key={row.concert_id}><td>#{row.rank}</td><td><a href={`/?concert=${encodeURIComponent(row.concert_id)}`}>{row.artist}</a></td><td><strong>{row.rating}</strong></td><td>{row.concert_date.slice(0, 4)}</td></tr>)}</tbody></table></div> : <p className="stats-inline-empty">No rated concerts in this scope yet.</p>}
         </section>
 
         <div className="stats-grid">
@@ -359,7 +400,7 @@ export function StatsDashboard({ analytics, concerts, memberName, rankings, scop
             </section>
           ) : null}
 
-          {recentLyric.kind === 'loading' || concertLyric.kind === 'loading' || (recentLyric.kind === 'ready' && recentLyric.data.configured) || (concertLyric.kind === 'ready' && concertLyric.data.configured) ? (
+          {(
             <section className="stats-panel stats-lyrics" aria-labelledby="lyrics-title">
               <div className="stats-panel-head"><h3 id="lyrics-title"><Quote aria-hidden="true" />Today's lyric breakdowns</h3><span>via Genius</span></div>
               <div className="lyric-card-grid">
@@ -367,7 +408,7 @@ export function StatsDashboard({ analytics, concerts, memberName, rankings, scop
                 {lyricSubjects.concert ? <LyricCard state={concertLyric} subject={lyricSubjects.concert} /> : null}
               </div>
             </section>
-          ) : null}
+          )}
 
           <section className="stats-panel stats-spotify" aria-labelledby="spotify-title">
             <div className="stats-panel-head">
@@ -401,7 +442,7 @@ export function StatsDashboard({ analytics, concerts, memberName, rankings, scop
                 <span className="heatmap-year">{activityRow.year}</span>
                 <div className="heatmap-cells">{activityRow.months.map((row) => {
                   const intensity = row.concerts ? Math.max(0.18, row.concerts / monthlyMax) : 0
-                  return <span key={`${activityRow.year}-${row.label}`} className="heatmap-cell" style={{ '--heat': intensity } as CSSProperties} title={`${row.label} ${activityRow.year}: ${row.concerts} records, ${row.attended} attended`}><span>{row.concerts || ''}</span></span>
+                  return <span key={`${activityRow.year}-${row.label}`} className="heatmap-cell" data-lit={intensity > 0.45} style={{ '--heat': intensity } as CSSProperties} title={`${row.label} ${activityRow.year}: ${row.concerts} records, ${row.attended} attended`}><span>{row.concerts || ''}</span></span>
                 })}</div>
               </div>)}
               <div className="heatmap-legend" aria-hidden="true"><span>Quiet</span><i /><span>Loud</span></div>
@@ -424,10 +465,7 @@ export function StatsDashboard({ analytics, concerts, memberName, rankings, scop
             <div className="genre-cloud">{topGenres.map((genre) => <span key={genre.key}><strong>{genre.key}</strong><small>{genre.attended} attended</small></span>)}</div>
           </section>
 
-          <section className="stats-panel stats-rankings" aria-labelledby="rankings-title">
-            <div className="stats-panel-head"><h3 id="rankings-title"><Trophy aria-hidden="true" />Rankings</h3><span>{scope === 'personal' ? memberName : 'Combined'}</span></div>
-            {rankings.length ? <div className="stats-ranking-table"><table><thead><tr><th>Rank</th><th>Artist</th><th>Rating</th><th>Year</th></tr></thead><tbody>{rankings.slice(0, 12).map((row) => <tr key={row.concert_id}><td>#{row.rank}</td><td>{row.artist}</td><td><strong>{row.rating}</strong></td><td>{row.concert_date.slice(0, 4)}</td></tr>)}</tbody></table></div> : <p className="stats-inline-empty">No rated concerts in this scope yet.</p>}
-          </section>
+
         </div>
       </> : <section className="stats-empty"><BarChart3 size={28} aria-hidden="true" /><h3>No stats in this scope yet</h3><p>Concerts will appear here once they are connected to this attendance history.</p></section>}
     </m.section>

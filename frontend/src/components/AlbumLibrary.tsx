@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import './stage/companion.css'
 import { RecordRoom } from './cinematic/RecordRoom'
 import { BookOpenText, Disc3, Plus, Search } from 'lucide-react'
 import type { Album } from '../types'
@@ -34,7 +35,7 @@ export function AlbumLibrary({
   ).length
 
   return (
-    <main className="album-library-shell">
+    <main className="album-library-shell stage-companion companion-albums">
       <header className="album-library-heading">
         <div>
           <span className="album-heading-icon" aria-hidden="true"><Disc3 size={21} /></span>

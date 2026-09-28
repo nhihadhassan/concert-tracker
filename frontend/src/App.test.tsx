@@ -286,6 +286,18 @@ describe('Concert Tracker cloud shell', () => {
     expect(await screen.findByRole('heading', { name: 'Rankings' })).toBeInTheDocument()
   })
 
+  it('does not reset Stats scroll on native section-anchor navigation', async () => {
+    window.history.replaceState({}, '', '/?view=stats')
+    render(<Dashboard member={member} />)
+    await screen.findByRole('heading', { name: 'Concert Stats' })
+    const scroll = vi.spyOn(window, 'scrollTo').mockClear()
+    window.history.pushState({}, '', '/?view=stats#rankings-title')
+    fireEvent(window, new PopStateEvent('popstate'))
+    expect(scroll).not.toHaveBeenCalled()
+    expect(screen.getByRole('heading', { name: 'Rankings' })).toBeInTheDocument()
+    scroll.mockRestore()
+  })
+
   it('opens the live-show rewind visualizer', async () => {
     window.history.replaceState({}, '', '/?view=wrapped')
     render(<Dashboard member={member} />)
