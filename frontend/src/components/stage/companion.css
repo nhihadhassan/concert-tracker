@@ -77,6 +77,8 @@
 .stats-spotlight-show:hover > span > strong { color: #ffbf98; }
 .app .companion-stats .stats-panel { background: transparent; border: 0; border-top: 1px solid var(--border); border-radius: 0; box-shadow: none; backdrop-filter: none; padding: 30px 0; }
 .app .companion-stats .stats-rankings { margin-bottom: 25px; }
+.app .companion-stats .stats-all-ranking-list { width: 100%; max-width: 980px; margin: 0 auto; padding: 0; list-style: none; }
+.app .companion-stats .stats-all-ranking-list li { margin: 0; padding: 0; }
 .app .companion-stats .stats-ranking-table { max-height: none; overflow: visible; }
 .app .companion-stats .stats-ranking-table table { width: 100%; min-width: 0; }
 .app .companion-stats .stats-ranking-table :is(th,td) { padding: 14px 12px; border-bottom: 1px solid var(--border); }

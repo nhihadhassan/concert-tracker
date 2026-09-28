@@ -61,11 +61,11 @@ beforeEach(() => {
 
 it('keeps every ranking in descending order, including zero, and links each show', async () => {
   render(<StatsDashboard {...props} />)
-  const table = screen.getByRole('table', { name: 'All concert rankings, highest rating first' })
-  const rows = within(table).getAllByRole('row').slice(1)
+  const rankingsList = screen.getByRole('list', { name: 'All concert rankings, highest rating first' })
+  const rows = within(rankingsList).getAllByRole('listitem')
   expect(rows).toHaveLength(16)
-  expect(rows.map(row => Number(within(row).getAllByRole('cell')[2].textContent))).toEqual([...rankings].reverse().map(row => row.rating))
-  expect(within(rows[15]).getByRole('link')).toHaveAttribute('href', '/?concert=show-0')
+  expect(rows.map(row => Number(row.querySelector('b')?.textContent))).toEqual([...rankings].reverse().map(row => row.rating))
+  expect(within(rows[15]).getByRole('link', { name: /Rank 16: Artist 0/ })).toHaveAttribute('href', '/?concert=show-0')
   fireEvent.click(screen.getByRole('button', { name: 'Shared' }))
   expect(props.onScopeChange).toHaveBeenCalledWith('shared')
   await screen.findByText('Listening track')

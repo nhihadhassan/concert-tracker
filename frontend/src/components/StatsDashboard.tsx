@@ -355,7 +355,15 @@ export function StatsDashboard({ analytics, concerts, memberName, rankings, scop
         </div>
         <section className="stats-panel stats-rankings" aria-labelledby="rankings-title">
           <div className="stats-panel-head"><h2 id="rankings-title">Rankings</h2><span>{orderedRankings.length} rated shows · Highest first</span></div>
-          {orderedRankings.length ? <div className="stats-ranking-table"><table><caption className="sr-only">All concert rankings, highest rating first</caption><thead><tr><th scope="col">Rank</th><th scope="col">Artist</th><th scope="col">Rating</th><th scope="col">Year</th></tr></thead><tbody>{orderedRankings.map(row => <tr key={row.concert_id}><td>#{row.rank}</td><td><a href={`/?concert=${encodeURIComponent(row.concert_id)}`}>{row.artist}</a></td><td><strong>{row.rating}</strong></td><td>{row.concert_date.slice(0, 4)}</td></tr>)}</tbody></table></div> : <p className="stats-inline-empty">No rated concerts in this scope yet.</p>}
+          {orderedRankings.length ? <ol className="stats-all-ranking-list" aria-label="All concert rankings, highest rating first">{orderedRankings.map(row => {
+            const concert = concertById.get(row.concert_id)
+            return <li key={row.concert_id}>
+              <a className="stats-spotlight-show" href={`/?concert=${encodeURIComponent(row.concert_id)}`} aria-label={`Rank ${row.rank}: ${row.artist}, ${formatShowDate(row.concert_date)}, rated ${row.rating} out of 10`}>
+                {concert?.image ? <img src={resizeArtwork(concert.image, 160)} alt="" loading="lazy" /> : <span className="stats-art-placeholder"><Music2 aria-hidden="true" /></span>}
+                <span><strong>{row.artist}</strong><small>{formatShowDate(row.concert_date)} · {row.concert_date.slice(0, 4)}</small></span><b aria-hidden="true">{row.rating}</b>
+              </a>
+            </li>
+          })}</ol> : <p className="stats-inline-empty">No rated concerts in this scope yet.</p>}
         </section>
 
         <div className="stats-grid">
