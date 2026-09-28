@@ -323,12 +323,17 @@ export function StatsDashboard({ analytics, concerts, memberName, rankings, scop
       const file = new File([blob], filename, { type: 'image/png' })
       let message = 'Image saved'
       if (navigator.share && navigator.canShare?.({ files: [file] })) {
-        await navigator.share({
-          title: `${row.artist} live rating`,
-          text: `Encore · ${formatShowDate(row.concert_date)} · ${row.rating}/10`,
-          files: [file],
-        })
-        message = 'Image shared'
+        try {
+          await navigator.share({
+            title: `${row.artist} live rating`,
+            text: `Encore · ${formatShowDate(row.concert_date)} · ${row.rating}/10`,
+            files: [file],
+          })
+          message = 'Image shared'
+        } catch (error) {
+          if (error instanceof DOMException && error.name === 'AbortError') throw error
+          downloadBlob(blob, filename)
+        }
       } else {
         downloadBlob(blob, filename)
       }
