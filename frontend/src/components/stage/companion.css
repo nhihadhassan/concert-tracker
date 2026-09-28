@@ -78,7 +78,12 @@
 .app .companion-stats .stats-panel { background: transparent; border: 0; border-top: 1px solid var(--border); border-radius: 0; box-shadow: none; backdrop-filter: none; padding: 30px 0; }
 .app .companion-stats .stats-rankings { margin-bottom: 25px; }
 .app .companion-stats .stats-all-ranking-list { width: 100%; max-width: 980px; margin: 0 auto; padding: 0; list-style: none; }
-.app .companion-stats .stats-all-ranking-list li { margin: 0; padding: 0; }
+.app .companion-stats .stats-all-ranking-list li { display: grid; grid-template-columns: minmax(0,1fr) 44px; align-items: center; gap: 8px; margin: 0; padding: 0; border-top: 1px solid var(--border); }
+.app .companion-stats .stats-all-ranking-list .stats-spotlight-show { border-top: 0; }
+.app .companion-stats .stats-ranking-share { display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 1px solid transparent; border-radius: 50%; color: var(--text-subtle); background: transparent; opacity: .72; transition: color .18s, border-color .18s, background-color .18s, opacity .18s; }
+.app .companion-stats .stats-ranking-share:hover:not(:disabled) { color: #ffcfac; border-color: var(--border); background: #ffffff08; opacity: 1; }
+.app .companion-stats .stats-ranking-share:disabled { cursor: wait; opacity: .42; }
+.app .companion-stats .stats-ranking-share:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .app .companion-stats .stats-ranking-table { max-height: none; overflow: visible; }
 .app .companion-stats .stats-ranking-table table { width: 100%; min-width: 0; }
 .app .companion-stats .stats-ranking-table :is(th,td) { padding: 14px 12px; border-bottom: 1px solid var(--border); }

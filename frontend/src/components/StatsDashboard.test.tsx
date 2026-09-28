@@ -2,12 +2,16 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { beforeEach, expect, it, vi } from 'vitest'
 import type { Analytics, Concert, RankingRow } from '../types'
 import * as api from '../lib/api'
+import * as exports from '../lib/exports'
+import * as showShareCard from '../lib/showShareCard'
 import { StatsDashboard } from './StatsDashboard'
 
 vi.mock('../lib/api', async (original) => ({
   ...await original<typeof import('../lib/api')>(),
   fetchSpotifyStatus: vi.fn(), fetchSpotifyPulse: vi.fn(), fetchSpotifyInsights: vi.fn(), fetchLyricBreakdown: vi.fn(),
 }))
+vi.mock('../lib/exports', async (original) => ({ ...await original<typeof import('../lib/exports')>(), downloadBlob: vi.fn() }))
+vi.mock('../lib/showShareCard', () => ({ createShowShareCard: vi.fn() }))
 
 const analytics: Analytics = {
   total_concerts: 1,
@@ -69,6 +73,19 @@ it('keeps every ranking in descending order, including zero, and links each show
   fireEvent.click(screen.getByRole('button', { name: 'Shared' }))
   expect(props.onScopeChange).toHaveBeenCalledWith('shared')
   await screen.findByText('Listening track')
+})
+
+it('creates a share image for the selected ranking and saves it when file sharing is unavailable', async () => {
+  vi.mocked(showShareCard.createShowShareCard).mockResolvedValue(new Blob(['image'], { type: 'image/png' }))
+  render(<StatsDashboard {...props} />)
+
+  fireEvent.click(screen.getByRole('button', { name: 'Share Artist 15 image' }))
+
+  await waitFor(() => expect(showShareCard.createShowShareCard).toHaveBeenCalledWith({
+    artist: 'Artist 15', date: '2025-09-17', rating: 7.5, image: null, scope: 'personal',
+  }))
+  await waitFor(() => expect(exports.downloadBlob).toHaveBeenCalledWith(expect.any(Blob), 'encore-artist-15-2025-09-17.png'))
+  expect(await screen.findByRole('button', { name: 'Image saved' })).toBeInTheDocument()
 })
 
 it('preserves Spotify listening, range switching, lyrics and archive information', async () => {

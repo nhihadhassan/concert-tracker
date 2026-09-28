@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
-import { BarChart3, Check, ListMusic, MapPin, Music2, Quote, Radio, Sparkles, Ticket, Users, WalletCards } from 'lucide-react'
+import { BarChart3, Check, ListMusic, MapPin, Music2, Quote, Radio, Share2, Sparkles, Ticket, Users, WalletCards } from 'lucide-react'
 import { m } from 'motion/react'
 import { MotionToggle } from './cinematic/CinematicMotion'
 import { useCinematicMotion, useCinematicScene } from '../hooks/useCinematicMotion'
@@ -9,6 +9,8 @@ import type { Analytics, Concert, GroupSummary, LyricBreakdown, RankingRow, Spot
 import { connectSpotify, disconnectSpotify, fetchLyricBreakdown, fetchSpotifyInsights, fetchSpotifyPulse, fetchSpotifyStatus, startSpotifyLogin } from '../lib/api'
 import { buildConcertStory } from '../lib/concertInsights'
 import { archiveHealth, compareYear, comparisonObservations } from '../lib/archiveInsights'
+import { createShowShareCard } from '../lib/showShareCard'
+import { downloadBlob } from '../lib/exports'
 
 interface StatsDashboardProps {
   analytics: Analytics
@@ -231,6 +233,8 @@ function LyricCard({ state, subject }: { state: LyricState; subject: LyricSubjec
 export function StatsDashboard({ analytics, concerts, memberName, rankings, scope, onEditConcert, onScopeChange }: StatsDashboardProps) {
   const { disabled: reduceMotion } = useCinematicMotion()
   const { ref: sceneRef, playing } = useCinematicScene()
+  const [sharingRankingId, setSharingRankingId] = useState<string | null>(null)
+  const [shareResult, setShareResult] = useState<{ concertId: string; message: string; success: boolean } | null>(null)
   const orderedRankings = useMemo(() => [...rankings].sort((a, b) => b.rating - a.rating || a.rank - b.rank), [rankings])
   const concertById = useMemo(() => new Map(concerts.map(concert => [concert.id, concert])), [concerts])
   const yearBars = [...analytics.yearly_trends].sort((a, b) => a.year - b.year)
@@ -302,6 +306,44 @@ export function StatsDashboard({ analytics, concerts, memberName, rankings, scop
     archiveStory.repeatArtists.length ? `${archiveStory.repeatArtists.length} ${archiveStory.repeatArtists.length === 1 ? 'artist has' : 'artists have'} earned repeat status; ${archiveStory.repeatArtists[0][0]} leads with ${archiveStory.repeatArtists[0][1]} shows.` : `${archiveStory.uniqueArtists} artists have made the archive so far.`,
   ]
 
+  const shareRanking = async (row: RankingRow) => {
+    if (sharingRankingId) return
+    setSharingRankingId(row.concert_id)
+    setShareResult(null)
+    const safeArtist = row.artist.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'concert'
+    const filename = `encore-${safeArtist}-${row.concert_date}.png`
+    try {
+      const blob = await createShowShareCard({
+        artist: row.artist,
+        date: row.concert_date,
+        rating: row.rating,
+        image: concertById.get(row.concert_id)?.image ? resizeArtwork(concertById.get(row.concert_id)?.image ?? '', 960) : null,
+        scope,
+      })
+      const file = new File([blob], filename, { type: 'image/png' })
+      let message = 'Image saved'
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({
+          title: `${row.artist} live rating`,
+          text: `Encore · ${formatShowDate(row.concert_date)} · ${row.rating}/10`,
+          files: [file],
+        })
+        message = 'Image shared'
+      } else {
+        downloadBlob(blob, filename)
+      }
+      setShareResult({ concertId: row.concert_id, message, success: true })
+      window.setTimeout(() => setShareResult((current) => current?.concertId === row.concert_id ? null : current), 1800)
+    } catch (error) {
+      if (!(error instanceof DOMException && error.name === 'AbortError')) {
+        setShareResult({ concertId: row.concert_id, message: 'Could not create image', success: false })
+        window.setTimeout(() => setShareResult((current) => current?.concertId === row.concert_id ? null : current), 2400)
+      }
+    } finally {
+      setSharingRankingId(null)
+    }
+  }
+
   return (
     <m.section ref={sceneRef} data-playing={playing} data-motion={reduceMotion ? 'off' : 'on'} className="stats-page stats-page-animated stage-companion companion-stats" aria-labelledby="stats-title" initial={reduceMotion ? false : { opacity: 0, y: 16, rotateX: -4 }} animate={{ opacity: 1, y: 0, rotateX: 0 }} transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}>
       <div className="companion-atmosphere" aria-hidden="true" />
@@ -362,6 +404,9 @@ export function StatsDashboard({ analytics, concerts, memberName, rankings, scop
                 {concert?.image ? <img src={resizeArtwork(concert.image, 160)} alt="" loading="lazy" /> : <span className="stats-art-placeholder"><Music2 aria-hidden="true" /></span>}
                 <span><strong>{row.artist}</strong><small>{formatShowDate(row.concert_date)} · {row.concert_date.slice(0, 4)}</small></span><b aria-hidden="true">{row.rating}</b>
               </a>
+              <button className="stats-ranking-share" type="button" aria-label={sharingRankingId === row.concert_id ? `Creating image for ${row.artist}` : shareResult?.concertId === row.concert_id ? shareResult.message : `Share ${row.artist} image`} title={shareResult?.concertId === row.concert_id ? shareResult.message : 'Share or save image'} disabled={sharingRankingId !== null} onClick={() => void shareRanking(row)}>
+                {shareResult?.concertId === row.concert_id && shareResult.success ? <Check size={16} aria-hidden="true" /> : <Share2 size={16} aria-hidden="true" />}
+              </button>
             </li>
           })}</ol> : <p className="stats-inline-empty">No rated concerts in this scope yet.</p>}
         </section>
