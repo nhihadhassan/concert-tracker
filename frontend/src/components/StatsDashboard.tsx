@@ -400,6 +400,7 @@ export function StatsDashboard({ analytics, concerts, memberName, rankings, scop
             {!orderedRankings.length ? <p className="stats-inline-empty">No rated concerts in this scope yet.</p> : null}
           </section>
         </div>
+        <div className="stats-rankings-layout">
         <section className="stats-panel stats-rankings" aria-labelledby="rankings-title">
           <div className="stats-panel-head"><h2 id="rankings-title">Rankings</h2><span>{orderedRankings.length} rated shows · Highest first</span></div>
           {orderedRankings.length ? <ol className="stats-all-ranking-list" aria-label="All concert rankings, highest rating first">{orderedRankings.map(row => {
@@ -522,8 +523,7 @@ export function StatsDashboard({ analytics, concerts, memberName, rankings, scop
             <div className="stats-panel-head"><h3 id="genres-title"><Ticket aria-hidden="true" />Top genres</h3><span>{analytics.genre_summaries.length} total</span></div>
             <div className="genre-cloud">{topGenres.map((genre) => <span key={genre.key}><strong>{genre.key}</strong><small>{genre.attended} attended</small></span>)}</div>
           </section>
-
-
+        </div>
         </div>
       </> : <section className="stats-empty"><BarChart3 size={28} aria-hidden="true" /><h3>No stats in this scope yet</h3><p>Concerts will appear here once they are connected to this attendance history.</p></section>}
     </m.section>
