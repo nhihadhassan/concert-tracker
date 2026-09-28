@@ -35,6 +35,7 @@ class BackupReview(InputModel):
     stage_score: Optional[float] = Field(default=None, ge=0)
     setlist_score: Optional[float] = Field(default=None, ge=0)
     seat_score: Optional[float] = Field(default=None, ge=0)
+    performance_score: Optional[float] = Field(default=None, ge=0)
     override_rating: Optional[float] = Field(default=None, ge=0, le=10)
     override_reason: Optional[str] = None
     notes: Optional[str] = None
@@ -136,6 +137,7 @@ def _review_payload(review: Any) -> dict[str, Any]:
         "stage_score": review.stage_score,
         "setlist_score": review.setlist_score,
         "seat_score": review.seat_score,
+        "performance_score": review.performance_score,
         "override_rating": review.override_rating,
         "override_reason": review.override_reason,
         "notes": review.notes,

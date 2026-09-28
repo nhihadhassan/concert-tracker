@@ -27,9 +27,14 @@ def test_current_rule_contract() -> None:
         clear_auth_override()
 
     assert response.status_code == 200
-    assert response.json()["version"] == 1
-    assert response.json()["weights"]["enjoyment"] == 0.5
-    assert round(response.json()["weights"]["stage"], 6) == 0.166667
+    assert response.json()["version"] == 2
+    assert response.json()["weights"] == {
+        "enjoyment": 0.6,
+        "stage": 0.1,
+        "setlist": 0.1,
+        "seat": 0.1,
+        "performance": 0.1,
+    }
 
 
 def test_rating_endpoint_returns_personal_calculated_override_and_combined_values() -> None:
@@ -61,12 +66,12 @@ def test_rating_endpoint_returns_personal_calculated_override_and_combined_value
 
     body = response.json()
     assert response.status_code == 200
-    assert body["reviews"][0]["calculated_rating"] == 9.0
-    assert body["reviews"][0]["final_rating"] == 9.0
+    assert body["reviews"][0]["calculated_rating"] == 9.3
+    assert body["reviews"][0]["final_rating"] == 9.3
     assert body["reviews"][1]["calculated_rating"] is None
     assert body["reviews"][1]["override_rating"] == 9.5
     assert body["reviews"][1]["final_rating"] == 9.5
-    assert body["combined_rating"] == 9.3
+    assert body["combined_rating"] == 9.4
 
 
 def test_rating_endpoint_rejects_undocumented_and_duplicate_overrides() -> None:
@@ -159,7 +164,7 @@ def test_analytics_endpoint_calculates_ratings_before_analytics() -> None:
 
     body = response.json()
     assert response.status_code == 200
-    assert body["concert_ratings"][0]["combined_rating"] == 8.5
+    assert body["concert_ratings"][0]["combined_rating"] == 8.8
     assert body["concert_ratings"][1]["combined_rating"] == 9.5
     assert body["analytics"]["spending"]["attended_spent"] == 250.0
     assert body["analytics"]["repeat_artists"][0]["key"] == "Don Toliver"

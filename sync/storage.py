@@ -14,7 +14,7 @@ from typing import Any
 
 from sync.config import BackupConfig, atomic_write_text, backup_home
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 ARCHIVE_RETENTION = 30
 
 TABLE_COLUMNS = {
@@ -57,6 +57,7 @@ TABLE_COLUMNS = {
         "stage_score",
         "setlist_score",
         "seat_score",
+        "performance_score",
         "override_rating",
         "override_reason",
         "notes",
@@ -361,7 +362,7 @@ def _create_schema(connection: sqlite3.Connection) -> None:
         create table reviews (
           id text primary key, concert_id text not null, artist text not null,
           reviewer_user_id text not null, reviewer_name text not null,
-          enjoyment_score real, stage_score real, setlist_score real, seat_score real,
+          enjoyment_score real, stage_score real, setlist_score real, seat_score real, performance_score real,
           override_rating real, override_reason text, notes text, calculated_rating real,
           final_rating real, is_overridden integer not null, row_version integer not null
         );

@@ -62,7 +62,7 @@ const library: LibraryResponse = {
     companions: 'Rachel',
     row_version: 1,
     attendees: [{ user_id: '11111111-1111-4111-8111-111111111111', display_name: 'Nhihad', attendance_status: 'Attended', row_version: 1 }],
-    reviews: [{ id: '44444444-4444-4444-8444-444444444444', reviewer_user_id: '11111111-1111-4111-8111-111111111111', reviewer_name: 'Nhihad', enjoyment_score: 9, stage_score: 8, setlist_score: 8.5, seat_score: 7.5, override_rating: null, override_reason: null, notes: 'Personal memory', calculated_rating: 8.5, final_rating: 8.5, is_overridden: false, row_version: 1 }],
+    reviews: [{ id: '44444444-4444-4444-8444-444444444444', reviewer_user_id: '11111111-1111-4111-8111-111111111111', reviewer_name: 'Nhihad', enjoyment_score: 9, stage_score: 8, setlist_score: 8.5, seat_score: 7.5, performance_score: 9, override_rating: null, override_reason: null, notes: 'Personal memory', calculated_rating: 8.7, final_rating: 8.7, is_overridden: false, row_version: 1 }],
     personal_rating: 8.5,
     combined_rating: 8.5,
   }, {

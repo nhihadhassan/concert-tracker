@@ -301,8 +301,8 @@ def test_review_and_attendance_updates_keep_personal_scores_separate() -> None:
     concert = library.json()["concerts"][0]
     assert review.status_code == 200
     assert attendance.status_code == 200
-    assert concert["personal_rating"] == 9.0
-    assert concert["combined_rating"] == 9.0
+    assert concert["personal_rating"] == 9.3
+    assert concert["combined_rating"] == 9.3
     rachel = next(row for row in concert["attendees"] if row["user_id"] == RACHEL_ID)
     assert rachel["attendance_status"] == "Did Not Attend"
 

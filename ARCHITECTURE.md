@@ -77,9 +77,10 @@ legacy table and deployment for rollback.
 ## Stage 3 Calculation Boundary
 
 Stage 3 adds a pure Python domain layer under `backend/domain/`. Rating calculations use
-Decimal arithmetic, exact `3:1:1:1` relative weights, missing-score renormalization,
-half-up rounding, a 10-point cap, documented overrides, and explicit rule versions. Analytics
-consume final personal ratings and never recalculate review formulas.
+Decimal arithmetic, versioned 60/10/10/10/10 weights, missing-score renormalization,
+half-up rounding, a 10-point cap, documented overrides, and explicit rule versions. Reviews can
+set an optional manual final rating with a required reason, which takes precedence over the
+weighted result. Analytics consume final personal ratings and never recalculate review formulas.
 
 Authenticated FastAPI endpoints expose the current rule, personal and combined ratings,
 spending, yearly trends, projection error and bias, grouped summaries, repeat artists, and

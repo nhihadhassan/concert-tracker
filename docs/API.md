@@ -5,13 +5,14 @@ sign-in and serves every caller as the single identity configured by `PUBLIC_USE
 
 ## `GET /api/v1/rating-rules/current`
 
-Returns rule version 1, normalized component weights, one-decimal rounding, the 10-point cap,
+Returns rule version 2, normalized component weights (Enjoyment 60%, Stage 10%, Setlist 10%,
+Seat 10%, Performance 10%), one-decimal rounding, the 10-point cap,
 and missing-score renormalization behavior.
 
 ## `POST /api/v1/ratings/calculate`
 
 Accepts up to 20 uniquely identified reviews. Each review may include enjoyment, stage,
-setlist, and seat scores plus an optional documented override. The server always selects the
+setlist, seat, and performance scores plus an optional manual final rating and reason. The server always selects the
 current rule; requests cannot provide custom weights.
 
 The response identifies present and missing components and returns `uncapped_rating`,
@@ -39,7 +40,7 @@ projection.
 
 ## Errors
 
-- `422`: invalid scores, undocumented overrides, duplicate reviewer IDs, or malformed input.
+- `422`: invalid scores, a manual rating without a reason, duplicate reviewer IDs, or malformed input.
 - `503`: Supabase configuration is missing or the data service is unreachable.
 
 The generated OpenAPI schema at `/api/v1/openapi.json` is the machine-readable source for all

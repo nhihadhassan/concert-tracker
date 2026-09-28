@@ -22,6 +22,7 @@ export interface Review {
   stage_score: number | null
   setlist_score: number | null
   seat_score: number | null
+  performance_score: number | null
   override_rating: number | null
   override_reason: string | null
   notes: string | null
@@ -189,6 +190,7 @@ export interface ReviewWrite {
   stage_score: number | null
   setlist_score: number | null
   seat_score: number | null
+  performance_score: number | null
   override_rating: number | null
   override_reason: string | null
   notes: string | null

@@ -47,6 +47,7 @@ create table if not exists public.rating_rule_versions (
   stage_weight numeric(8, 7) not null check (stage_weight > 0),
   setlist_weight numeric(8, 7) not null check (setlist_weight > 0),
   seat_weight numeric(8, 7) not null check (seat_weight > 0),
+  performance_weight numeric(8, 7) check (performance_weight is null or performance_weight > 0),
   rounds_to integer not null default 1 check (rounds_to between 0 and 4),
   maximum_rating numeric(4, 2) not null default 10 check (maximum_rating > 0),
   renormalize_missing boolean not null default true,
@@ -59,7 +60,11 @@ create table if not exists public.rating_rule_versions (
   deleted_at timestamptz,
   row_version integer not null default 1 check (row_version > 0),
   constraint rating_rule_weight_total check (
-    abs((enjoyment_weight + stage_weight + setlist_weight + seat_weight) - 1.0) < 0.00001
+    (version = 1 and performance_weight is null
+      and abs((enjoyment_weight + stage_weight + setlist_weight + seat_weight) - 1.0) < 0.00001)
+    or
+    (version >= 2 and performance_weight is not null
+      and abs((enjoyment_weight + stage_weight + setlist_weight + seat_weight + performance_weight) - 1.0) < 0.00001)
   )
 );
 
@@ -115,6 +120,7 @@ create table if not exists public.concert_reviews (
   stage_score numeric(5, 2) check (stage_score is null or stage_score >= 0),
   setlist_score numeric(5, 2) check (setlist_score is null or setlist_score >= 0),
   seat_score numeric(5, 2) check (seat_score is null or seat_score >= 0),
+  performance_score numeric(5, 2) check (performance_score is null or performance_score >= 0),
   rating_override numeric(4, 2) check (rating_override is null or rating_override between 0 and 10),
   rating_override_reason text,
   review_notes text,
@@ -482,7 +488,7 @@ begin
     loop
       insert into public.concert_reviews (
         id, concert_id, reviewer_user_id, enjoyment_score, stage_score,
-        setlist_score, seat_score, rating_override, rating_override_reason,
+        setlist_score, seat_score, performance_score, rating_override, rating_override_reason,
         review_notes, rating_rule_version_id, created_by, last_mutation_id, deleted_at
       ) values (
         coalesce(nullif(review->>'id', '')::uuid, gen_random_uuid()),
@@ -492,6 +498,7 @@ begin
         nullif(review->>'stage_score', '')::numeric,
         nullif(review->>'setlist_score', '')::numeric,
         nullif(review->>'seat_score', '')::numeric,
+        nullif(review->>'performance_score', '')::numeric,
         nullif(review->>'override_rating', '')::numeric,
         nullif(review->>'override_reason', ''),
         nullif(review->>'notes', ''),
@@ -504,6 +511,7 @@ begin
           stage_score = excluded.stage_score,
           setlist_score = excluded.setlist_score,
           seat_score = excluded.seat_score,
+          performance_score = excluded.performance_score,
           rating_override = excluded.rating_override,
           rating_override_reason = excluded.rating_override_reason,
           review_notes = excluded.review_notes,

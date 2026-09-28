@@ -170,3 +170,11 @@ with psycopg.connect(database_url_unpooled) as conn:
         cur.execute(open("db/neon/schema.sql").read())
     conn.commit()
 ```
+
+## Applying schema updates
+
+`db/neon/schema.sql` is the complete schema for a fresh Neon database. For an existing database,
+apply each forward-only SQL file in `db/neon/migrations/` in filename order, using
+`DATABASE_URL_UNPOOLED`. These migrations keep previously recorded rows intact. Supabase
+deployments use the corresponding Encore-only migrations in `supabase/migrations/`; do not use
+`supabase db push` for this shared project.

@@ -167,6 +167,7 @@ const optimisticReview = (submission: ConcertFormSubmission, member: SessionMemb
     stage_score: submission.review.stage_score,
     setlist_score: submission.review.setlist_score,
     seat_score: submission.review.seat_score,
+    performance_score: submission.review.performance_score,
     override_rating: submission.review.override_rating,
     override_reason: submission.review.override_reason,
     notes: submission.review.notes,

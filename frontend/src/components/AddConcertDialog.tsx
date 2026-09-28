@@ -251,16 +251,18 @@ export function AddConcertDialog({
       stage_score: numberOrNull(form.get('stage')),
       setlist_score: numberOrNull(form.get('setlist')),
       seat_score: numberOrNull(form.get('seatScore')),
+      performance_score: numberOrNull(form.get('performance')),
     }
     const hasReview = Boolean(personalReview)
       || Object.values(reviewValues).some((value) => value !== null)
+      || numberOrNull(form.get('overrideRating')) !== null
       || Boolean(String(form.get('reviewNotes') ?? '').trim())
     const review: ReviewWrite | null = hasReview ? {
       id: personalReview?.id ?? crypto.randomUUID(),
       expected_row_version: personalReview?.row_version ?? null,
       ...reviewValues,
-      override_rating: personalReview?.override_rating ?? null,
-      override_reason: personalReview?.override_reason ?? null,
+      override_rating: numberOrNull(form.get('overrideRating')),
+      override_reason: String(form.get('overrideReason') ?? '').trim() || null,
       notes: String(form.get('reviewNotes') ?? '').trim() || null,
     } : null
     await onSave({
@@ -490,12 +492,17 @@ export function AddConcertDialog({
           <fieldset className="disclosure-fieldset" id="concert-form-review">
           <legend className="sr-only">Your review</legend>
           <div className="score-grid">
-            <label className="field"><span>Enjoyment</span><input name="enjoyment" type="number" min="0" max="10" step="0.1" defaultValue={personalReview?.enjoyment_score ?? ''} /></label>
-            <label className="field"><span>Stage</span><input name="stage" type="number" min="0" max="10" step="0.1" defaultValue={personalReview?.stage_score ?? ''} /></label>
-            <label className="field"><span>Setlist</span><input name="setlist" type="number" min="0" max="10" step="0.1" defaultValue={personalReview?.setlist_score ?? ''} /></label>
-            <label className="field"><span>Seat</span><input name="seatScore" type="number" min="0" max="10" step="0.1" defaultValue={personalReview?.seat_score ?? ''} /></label>
+            <label className="field"><span>Enjoyment (60%)</span><input name="enjoyment" type="number" min="0" max="10" step="0.1" defaultValue={personalReview?.enjoyment_score ?? ''} /></label>
+            <label className="field"><span>Stage (10%)</span><input name="stage" type="number" min="0" max="10" step="0.1" defaultValue={personalReview?.stage_score ?? ''} /></label>
+            <label className="field"><span>Setlist (10%)</span><input name="setlist" type="number" min="0" max="10" step="0.1" defaultValue={personalReview?.setlist_score ?? ''} /></label>
+            <label className="field"><span>Seat (10%)</span><input name="seatScore" type="number" min="0" max="10" step="0.1" defaultValue={personalReview?.seat_score ?? ''} /></label>
+            <label className="field"><span>Performance (10%)</span><input name="performance" type="number" min="0" max="10" step="0.1" defaultValue={personalReview?.performance_score ?? ''} /></label>
           </div>
-          {personalReview?.is_overridden ? <p className="override-note">Historical override: {personalReview.override_rating}/10. Component edits remain visible, while the documented override stays authoritative.</p> : null}
+          <div className="score-grid">
+            <label className="field"><span>Manual final rating</span><input name="overrideRating" type="number" min="0" max="10" step="0.1" defaultValue={personalReview?.override_rating ?? ''} aria-describedby="manual-rating-help" /></label>
+            <label className="field"><span>Override reason</span><input name="overrideReason" maxLength={500} defaultValue={personalReview?.override_reason ?? ''} aria-describedby="manual-rating-help" /></label>
+          </div>
+          <p className="override-note" id="manual-rating-help">Optional. This becomes your final rating instead of the weighted average. Add a reason when using it.</p>
           <label className="field"><span>Review notes</span><textarea name="reviewNotes" rows={3} defaultValue={personalReview?.notes ?? ''} /></label>
           </fieldset>
         </details>

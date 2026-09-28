@@ -87,6 +87,7 @@ def calculate_review_set(
                 stage=review.stage_score,
                 setlist=review.setlist_score,
                 seat=review.seat_score,
+                performance=review.performance_score,
             ),
             override_rating=review.override_rating,
             override_reason=review.override_reason,

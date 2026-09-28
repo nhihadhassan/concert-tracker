@@ -32,6 +32,7 @@ class ReviewResponse(BaseModel):
     stage_score: Optional[float]
     setlist_score: Optional[float]
     seat_score: Optional[float]
+    performance_score: Optional[float] = None
     override_rating: Optional[float]
     override_reason: Optional[str]
     notes: Optional[str]
@@ -79,6 +80,7 @@ class ReviewWrite(StrictInput):
     stage_score: Optional[float] = Field(default=None, ge=0)
     setlist_score: Optional[float] = Field(default=None, ge=0)
     seat_score: Optional[float] = Field(default=None, ge=0)
+    performance_score: Optional[float] = Field(default=None, ge=0)
     override_rating: Optional[float] = Field(default=None, ge=0, le=10)
     override_reason: Optional[str] = Field(default=None, max_length=500)
     notes: Optional[str] = Field(default=None, max_length=4000)

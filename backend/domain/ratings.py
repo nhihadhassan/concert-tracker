@@ -6,7 +6,7 @@ from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from typing import Union
 
 Numeric = Union[Decimal, int, float, str]
-COMPONENT_NAMES = ("enjoyment", "stage", "setlist", "seat")
+COMPONENT_NAMES = ("enjoyment", "stage", "setlist", "seat", "performance")
 
 
 class RatingValidationError(ValueError):
@@ -34,11 +34,12 @@ def round_decimal(value: Decimal, places: int) -> Decimal:
 
 @dataclass(frozen=True)
 class RatingRule:
-    version: int = 1
-    enjoyment_weight: Decimal = Decimal("3")
-    stage_weight: Decimal = Decimal("1")
-    setlist_weight: Decimal = Decimal("1")
-    seat_weight: Decimal = Decimal("1")
+    version: int = 2
+    enjoyment_weight: Decimal = Decimal("0.6")
+    stage_weight: Decimal = Decimal("0.1")
+    setlist_weight: Decimal = Decimal("0.1")
+    seat_weight: Decimal = Decimal("0.1")
+    performance_weight: Decimal = Decimal("0.1")
     rounds_to: int = 1
     maximum_rating: Decimal = Decimal("10")
     renormalize_missing: bool = True
@@ -60,6 +61,7 @@ class RatingRule:
             "stage": self.stage_weight,
             "setlist": self.setlist_weight,
             "seat": self.seat_weight,
+            "performance": self.performance_weight,
         }
 
     @property
@@ -77,6 +79,7 @@ class ReviewScores:
     stage: Numeric | None = None
     setlist: Numeric | None = None
     seat: Numeric | None = None
+    performance: Numeric | None = None
 
     def validated(self) -> Mapping[str, Decimal | None]:
         scores = {

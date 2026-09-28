@@ -24,6 +24,7 @@ class ReviewCalculationInput(StrictInput):
     stage_score: Optional[Decimal] = Field(default=None, ge=0)
     setlist_score: Optional[Decimal] = Field(default=None, ge=0)
     seat_score: Optional[Decimal] = Field(default=None, ge=0)
+    performance_score: Optional[Decimal] = Field(default=None, ge=0)
     override_rating: Optional[Decimal] = Field(default=None, ge=0)
     override_reason: Optional[str] = Field(default=None, max_length=500)
 

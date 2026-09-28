@@ -34,6 +34,7 @@ export function ConcertDetail({ cinematic = false, concert, member, milestones, 
     ['Stage', personalReview?.stage_score],
     ['Setlist', personalReview?.setlist_score],
     ['Seat', personalReview?.seat_score],
+    ['Performance', personalReview?.performance_score],
   ] as const
 
   return (
