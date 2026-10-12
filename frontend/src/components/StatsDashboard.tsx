@@ -301,7 +301,7 @@ export function StatsDashboard({ analytics, concerts, memberName, rankings, scop
   }, {})
   const busiestYear = Object.entries(yearlyTotals).sort((left, right) => right[1] - left[1])[0]
   const archiveStories = [
-    topRanking ? `Your highest-rated night: ${topRanking.artist} at ${formatConcertRating100(topRanking.rating)}/100 back in ${topRanking.concert_date.slice(0, 4)}.` : 'Rate a concert to crown your best night.',
+    topRanking ? `Your highest-rated night: ${topRanking.artist} at ${formatConcertRating100(topRanking.rating)} back in ${topRanking.concert_date.slice(0, 4)}.` : 'Rate a concert to crown your best night.',
     archiveStory.closestRun ? `Your tightest run was ${archiveStory.closestRun.days} ${archiveStory.closestRun.days === 1 ? 'day' : 'days'} between ${archiveStory.closestRun.first.artist} and ${archiveStory.closestRun.second.artist}.` : 'A second attended show will reveal your tightest live run.',
     archiveStory.longestMonthlyStreak > 1 ? `Your longest streak ran for ${archiveStory.longestMonthlyStreak} consecutive months with at least one show.` : busiestYear ? `${busiestYear[0]} was your biggest year with ${busiestYear[1]} ${busiestYear[1] === 1 ? 'show' : 'shows'}.` : 'Your busiest year appears once the archive spans the calendar.',
     archiveStory.repeatArtists.length ? `${archiveStory.repeatArtists.length} ${archiveStory.repeatArtists.length === 1 ? 'artist has' : 'artists have'} earned repeat status; ${archiveStory.repeatArtists[0][0]} leads with ${archiveStory.repeatArtists[0][1]} shows.` : `${archiveStory.uniqueArtists} artists have made the archive so far.`,
@@ -351,7 +351,7 @@ export function StatsDashboard({ analytics, concerts, memberName, rankings, scop
   }
 
   return (
-    <m.section ref={sceneRef} data-playing={playing} data-motion={reduceMotion ? 'off' : 'on'} className="stats-page stats-page-animated stage-companion companion-stats" aria-labelledby="stats-title" initial={reduceMotion ? false : { opacity: 0, y: 16, rotateX: -4 }} animate={{ opacity: 1, y: 0, rotateX: 0 }} transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}>
+    <m.section ref={sceneRef} data-playing={playing} data-motion={reduceMotion ? 'off' : 'on'} className="stats-page stats-page-animated stage-companion companion-stats stage-surface" aria-labelledby="stats-title" initial={reduceMotion ? false : { opacity: 0, y: 16, rotateX: -4 }} animate={{ opacity: 1, y: 0, rotateX: 0 }} transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}>
       <div className="companion-atmosphere" aria-hidden="true" />
       <header className="stats-page-head">
         <div>
@@ -395,7 +395,7 @@ export function StatsDashboard({ analytics, concerts, memberName, rankings, scop
               const concert = concertById.get(row.concert_id)
               return <a className="stats-spotlight-show" href={`/?concert=${encodeURIComponent(row.concert_id)}`} key={row.concert_id}>
                 {concert?.image ? <img src={resizeArtwork(concert.image, 160)} alt="" loading="lazy" /> : <span className="stats-art-placeholder"><Music2 aria-hidden="true" /></span>}
-                <span><strong>{row.artist}</strong><small>{formatShowDate(row.concert_date)} · {row.concert_date.slice(0, 4)}</small></span><b>{formatConcertRating100(row.rating)}/100</b>
+                <span><strong>{row.artist}</strong><small>{formatShowDate(row.concert_date)} · {row.concert_date.slice(0, 4)}</small></span><b aria-label={`${formatConcertRating100(row.rating)} out of 100`}>{formatConcertRating100(row.rating)}</b>
               </a>
             })}
             {!orderedRankings.length ? <p className="stats-inline-empty">No rated concerts in this scope yet.</p> : null}
@@ -416,7 +416,7 @@ export function StatsDashboard({ analytics, concerts, memberName, rankings, scop
             return <li key={row.concert_id}>
               <a className="stats-spotlight-show" href={`/?concert=${encodeURIComponent(row.concert_id)}`} aria-label={`Rank ${row.rank}: ${row.artist}, ${formatShowDate(row.concert_date)}, rated ${formatConcertRating100(row.rating)} out of 100`}>
                 {concert?.image ? <img src={resizeArtwork(concert.image, 160)} alt="" loading="lazy" /> : <span className="stats-art-placeholder"><Music2 aria-hidden="true" /></span>}
-                <span><strong>{row.artist}</strong><small>{formatShowDate(row.concert_date)} · {row.concert_date.slice(0, 4)}</small></span><b aria-hidden="true">{formatConcertRating100(row.rating)}/100</b>
+                <span><strong>{row.artist}</strong><small>{formatShowDate(row.concert_date)} · {row.concert_date.slice(0, 4)}</small></span><b aria-hidden="true">{formatConcertRating100(row.rating)}</b>
               </a>
               <button className="stats-ranking-share" type="button" aria-label={sharingRankingId === row.concert_id ? `Creating image for ${row.artist}` : shareResult?.concertId === row.concert_id ? shareResult.message : `Share ${row.artist} image`} title={shareResult?.concertId === row.concert_id ? shareResult.message : 'Share or save image'} disabled={sharingRankingId !== null} onClick={() => void shareRanking(row)}>
                 {shareResult?.concertId === row.concert_id && shareResult.success ? <Check size={16} aria-hidden="true" /> : <Share2 size={16} aria-hidden="true" />}
@@ -426,7 +426,7 @@ export function StatsDashboard({ analytics, concerts, memberName, rankings, scop
         </section>
 
         <div className="stats-grid">
-          {comparison.length === 2 ? <section className="stats-panel stats-year-comparison" aria-labelledby="year-comparison-title"><div className="stats-panel-head"><h3 id="year-comparison-title"><BarChart3 aria-hidden="true" />Year comparison</h3><span>{comparison[0].year} · {comparison[1].year}</span></div><div className="year-comparison-grid">{comparison.map((year) => <div key={year.year}><strong>{year.year}</strong><span>{year.attended} attended · {year.artists} artists · {year.venues} venues</span><span>{formatMoney(year.spend)} spent · {year.averageRating === null ? 'Unrated' : `${formatConcertRating100(year.averageRating)}/100`}</span><span>{year.newArtists} new artists · {year.busiestMonth ?? 'No busiest month'}</span><small>{year.mostSeenArtist ? `Most seen: ${year.mostSeenArtist}` : 'No repeat artist yet'}</small></div>)}</div>{comparisonNotes.length ? <ul className="stats-observations">{comparisonNotes.map((note) => <li key={note}>{note}</li>)}</ul> : null}</section> : null}
+          {comparison.length === 2 ? <section className="stats-panel stats-year-comparison" aria-labelledby="year-comparison-title"><div className="stats-panel-head"><h3 id="year-comparison-title"><BarChart3 aria-hidden="true" />Year comparison</h3><span>{comparison[0].year} · {comparison[1].year}</span></div><div className="year-comparison-grid">{comparison.map((year) => <div key={year.year}><strong>{year.year}</strong><span>{year.attended} attended · {year.artists} artists · {year.venues} venues</span><span>{formatMoney(year.spend)} spent · {year.averageRating === null ? 'Unrated' : formatConcertRating100(year.averageRating)}</span><span>{year.newArtists} new artists · {year.busiestMonth ?? 'No busiest month'}</span><small>{year.mostSeenArtist ? `Most seen: ${year.mostSeenArtist}` : 'No repeat artist yet'}</small></div>)}</div>{comparisonNotes.length ? <ul className="stats-observations">{comparisonNotes.map((note) => <li key={note}>{note}</li>)}</ul> : null}</section> : null}
 
           {health.length ? <section className="stats-panel stats-archive-health" aria-labelledby="archive-health-title"><div className="stats-panel-head"><h3 id="archive-health-title"><Sparkles aria-hidden="true" />Archive Health</h3><span>{health.length} records to enrich</span></div><p className="stats-panel-note">Optional details that can make older concert memories richer.</p><ul className="archive-health-list">{health.slice(0, 6).map(({ concert, issues }) => <li key={concert.id}><div><strong>{concert.artist}</strong><small>{concert.date} · Missing {issues.join(', ')}</small></div><button type="button" onClick={() => onEditConcert(concert)}>Update record</button></li>)}</ul></section> : null}
 

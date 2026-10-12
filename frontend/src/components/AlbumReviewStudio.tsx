@@ -161,7 +161,7 @@ export function AlbumReviewStudio({
   }
 
   return (
-    <main className="album-studio">
+    <main className="album-studio stage-surface">
       <header className="album-studio-header">
         <div>
           {album.image_url

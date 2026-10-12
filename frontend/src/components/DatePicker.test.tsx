@@ -33,4 +33,18 @@ describe('DatePicker', () => {
     expect(screen.getByText('September 2026')).toBeInTheDocument()
     expect(onDateChange).not.toHaveBeenCalled()
   })
+
+  it('consumes Escape while the calendar is open so the surrounding editor stays open', () => {
+    const onDateChange = vi.fn()
+    render(<DatePicker name="date" defaultValue="2026-08-15" onDateChange={onDateChange} />)
+    fireEvent.click(screen.getByRole('button', { name: /Aug 15, 2026/ }))
+    const escape = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
+    fireEvent(document, escape)
+    expect(escape.defaultPrevented).toBe(true)
+    expect(screen.queryByText('August 2026')).not.toBeInTheDocument()
+    expect(onDateChange).not.toHaveBeenCalled()
+    const nextEscape = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
+    fireEvent(document, nextEscape)
+    expect(nextEscape.defaultPrevented).toBe(false)
+  })
 })

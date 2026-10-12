@@ -65,7 +65,7 @@ export function AlbumJournal({
   }
 
   return (
-    <main className="album-journal" style={headerStyle}>
+    <main className="album-journal stage-surface" style={headerStyle}>
       <section className="album-journal-hero">
         <a className="album-back-button" href="/?view=albums" onClick={onBack}>
           <ArrowLeft size={18} aria-hidden="true" />Back to albums

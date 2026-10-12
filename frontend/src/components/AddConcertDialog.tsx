@@ -6,7 +6,9 @@ import { Combobox } from './Combobox'
 import { DatePicker } from './DatePicker'
 import { Dropdown, type DropdownOption } from './Dropdown'
 import { addGuests, parseGuests, serializeGuests } from '../lib/guests'
-import { toStoredConcertRating } from '../lib/concertRating'
+import { formatConcertRating100, toStoredConcertRating } from '../lib/concertRating'
+import { artworkSrcSet, resizeArtwork } from '../lib/artwork'
+import { stageDate } from './stage/stageDate'
 import { formatPriceRange, formatShowTime, statusLabel, suggestionVenueValue } from '../lib/suggestions'
 import type {
   ArtworkOption,
@@ -64,6 +66,10 @@ export function AddConcertDialog({
   onSave,
 }: ConcertDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
+  const closeDialog = () => {
+    dialogRef.current?.close()
+    onClose()
+  }
   const formRef = useRef<HTMLFormElement>(null)
   const artworkRequest = useRef<AbortController | null>(null)
   const suggestionRequest = useRef<AbortController | null>(null)
@@ -294,7 +300,7 @@ export function AddConcertDialog({
   }
 
   return (
-    <dialog ref={dialogRef} className="concert-dialog" onClose={onClose} onCancel={onClose}>
+    <dialog ref={dialogRef} className="concert-dialog stage-surface stage-concert-editor" onClose={onClose} onCancel={(event) => { event.preventDefault(); closeDialog() }}>
       <m.form
         key={concert?.id ?? 'new-concert'}
         ref={formRef}
@@ -304,18 +310,18 @@ export function AddConcertDialog({
         transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
         onSubmit={(event) => void handleSubmit(event)}
       >
+        <div className="stage-editor-fields">
         <div className="dialog-head">
           <div>
             <h2>{concert ? 'Edit concert' : 'Add concert'}</h2>
-            <p>{concert ? 'Update the event, attendance, or your own review.' : 'Artist, date, and venue are enough. Everything else can wait.'}</p>
           </div>
-          <button className="icon-button" type="button" onClick={onClose} title="Close" aria-label="Close concert form">
+          <button className="icon-button" type="button" onClick={closeDialog} title="Close" aria-label="Close concert form">
             <X size={20} />
           </button>
         </div>
 
         {concert ? null : <details className="form-disclosure show-finder">
-          <summary><span><Sparkles size={15} aria-hidden="true" />Find a show and fill it in</span><small>Optional</small></summary>
+          <summary><span><Sparkles size={15} aria-hidden="true" />Find a show and fill it in</span></summary>
           <div className="suggest-box">
               <div className="suggest-head">
                 <span className="suggest-title">Search free show sources</span>
@@ -396,7 +402,6 @@ export function AddConcertDialog({
 
         <fieldset className="form-section quick-event" id="concert-form-event">
           <legend>Concert</legend>
-          <p className="form-section-note">Start with the essentials. Archive matches appear as you type.</p>
           <div className="form-grid quick-event-grid">
             <label className="field field-wide"><span>Artist</span><Combobox name="artist" suggestions={archiveSuggestions.artists} required defaultValue={concert?.artist} onBlur={(event) => {
               if (concert || artworkQuery.trim()) return
@@ -419,7 +424,7 @@ export function AddConcertDialog({
         </fieldset>
 
         <details className="form-disclosure" open={Boolean(concert)}>
-          <summary><span>Event details</span><small>Tour, ticket, seat, genre</small></summary>
+          <summary><span>Event details</span></summary>
           <div className="form-grid disclosure-content">
             <label className="field field-wide"><span>Tour name</span><input name="tour" defaultValue={concert?.tour ?? ''} /></label>
             <label className="field"><span>Price</span><input name="price" type="number" min="0" step="0.01" defaultValue={concert?.price ?? ''} /></label>
@@ -431,7 +436,7 @@ export function AddConcertDialog({
         </details>
 
         <details className="form-disclosure" open={Boolean(concert)}>
-          <summary><span>Attendance</span><small>{concert ? 'Edit people' : 'You are selected by default'}</small></summary>
+          <summary><span>Attendance</span></summary>
           <fieldset className="disclosure-fieldset" id="concert-form-attendance">
           <legend className="sr-only">Attendance</legend>
           <div className="attendance-options">
@@ -444,7 +449,6 @@ export function AddConcertDialog({
           </div>
           <div className="field field-wide guest-field">
             <span className="guest-label" id="guest-label">Guests</span>
-            <p className="guest-hint">Anyone who came along without an account here.</p>
             {guests.length ? <ul className="guest-chips">{guests.map((guest) => (
               <li key={guest}>
                 <span>{guest}</span>
@@ -489,10 +493,9 @@ export function AddConcertDialog({
         </details>
 
         <details className="form-disclosure" open={Boolean(personalReview)}>
-          <summary><span>Your review</span><small>Add after the show</small></summary>
+          <summary><span>Your review</span></summary>
           <fieldset className="disclosure-fieldset" id="concert-form-review">
           <legend className="sr-only">Your review</legend>
-          <p className="override-note">Scores use a 100-point scale.</p>
           <div className="score-grid">
             <label className="field"><span>Enjoyment (60%)</span><input name="enjoyment" type="number" min="0" max="100" step="0.1" defaultValue={personalReview?.enjoyment_score == null ? '' : personalReview.enjoyment_score * 10} /></label>
             <label className="field"><span>Stage (10%)</span><input name="stage" type="number" min="0" max="100" step="0.1" defaultValue={personalReview?.stage_score == null ? '' : personalReview.stage_score * 10} /></label>
@@ -501,22 +504,21 @@ export function AddConcertDialog({
             <label className="field"><span>Performance (10%)</span><input name="performance" type="number" min="0" max="100" step="0.1" defaultValue={personalReview?.performance_score == null ? '' : personalReview.performance_score * 10} /></label>
           </div>
           <div className="score-grid">
-            <label className="field"><span>Manual final rating (out of 100)</span><input name="overrideRating" type="number" min="0" max="100" step="0.1" defaultValue={personalReview?.override_rating == null ? '' : personalReview.override_rating * 10} aria-describedby="manual-rating-help" /></label>
-            <label className="field"><span>Override reason</span><input name="overrideReason" maxLength={500} defaultValue={personalReview?.override_reason ?? ''} aria-describedby="manual-rating-help" /></label>
+            <label className="field"><span>Manual final rating (out of 100)</span><input name="overrideRating" type="number" min="0" max="100" step="0.1" defaultValue={personalReview?.override_rating == null ? '' : personalReview.override_rating * 10} /></label>
+            <label className="field"><span>Override reason</span><input name="overrideReason" maxLength={500} defaultValue={personalReview?.override_reason ?? ''} /></label>
           </div>
-          <p className="override-note" id="manual-rating-help">Optional. This becomes your final rating instead of the weighted average. Add a reason when using it.</p>
           <label className="field"><span>Review notes</span><textarea name="reviewNotes" rows={3} defaultValue={personalReview?.notes ?? ''} /></label>
           </fieldset>
         </details>
 
         <details className="form-disclosure" open={Boolean(concert?.image || concert?.setlist_url || concert?.spotify_url || concert?.notes)}>
-          <summary><span>Artwork and notes</span><small>Optional</small></summary>
+          <summary><span>Artwork and notes</span></summary>
           <fieldset className="disclosure-fieldset" id="concert-form-details">
           <legend className="sr-only">Artwork and notes</legend>
           <div className="form-grid">
             <div className="artwork-picker field-wide">
               <div className="artwork-picker-head">
-                <div><strong>Choose artwork</strong><span>Options load automatically from Apple Music.</span></div>
+                <div><strong>Choose artwork</strong></div>
                 {imageUrl ? <button className="text-action" type="button" onClick={() => setImageUrl('')}>Remove artwork</button> : null}
               </div>
               <div className="artwork-search-row">
@@ -543,9 +545,18 @@ export function AddConcertDialog({
 
         {error ? <p className="form-error" role="alert">{error}</p> : null}
         <div className="dialog-actions">
-          <button className="button button-secondary" type="button" onClick={onClose}>Cancel</button>
+          <button className="button button-secondary" type="button" onClick={closeDialog}>Cancel</button>
           <button className="button button-primary" type="submit" disabled={saving}>{saving ? 'Saving...' : concert ? 'Save changes' : 'Save concert'}</button>
         </div>
+        </div>
+        <aside className="stage-editor-poster" aria-label="Concert preview">
+          {imageUrl ? <img src={resizeArtwork(imageUrl, 640)} srcSet={artworkSrcSet(imageUrl, [320, 480, 640])} sizes="330px" alt="" decoding="async" /> : null}
+          <div>
+            <h3>{concert?.artist ?? 'New concert'}</h3>
+            {concert ? <><p>{concert.venue}</p><p>{stageDate(concert.date)}</p></> : null}
+            {concert?.personal_rating != null ? <><strong>{formatConcertRating100(concert.personal_rating)}<small>/100</small></strong><span>Your rating</span></> : null}
+          </div>
+        </aside>
       </m.form>
     </dialog>
   )

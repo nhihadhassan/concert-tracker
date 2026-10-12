@@ -32,7 +32,7 @@ export function ConcertDetailOverlay({ children, onClose, cinematic = false }: C
   return (
     <m.dialog
       ref={dialogRef}
-      className={`concert-detail-overlay${cinematic ? ' concert-detail-overlay-stage' : ''}`}
+      className={`concert-detail-overlay${cinematic ? ' concert-detail-overlay-stage stage-surface' : ''}`}
       data-motion={reduceMotion ? 'off' : 'on'}
       aria-modal="true"
       aria-labelledby="detail-title"

@@ -28,6 +28,10 @@ export function ArtworkDialog({
   onSave,
 }: ArtworkDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
+  const closeDialog = () => {
+    dialogRef.current?.close()
+    onClose()
+  }
   const artworkRequest = useRef<AbortController | null>(null)
   const [imageUrl, setImageUrl] = useState(concert?.image ?? '')
   const [artworkQuery, setArtworkQuery] = useState('')
@@ -90,7 +94,7 @@ export function ArtworkDialog({
   }
 
   return (
-    <dialog ref={dialogRef} className="concert-dialog artwork-dialog" onClose={onClose} onCancel={onClose}>
+    <dialog ref={dialogRef} className="concert-dialog artwork-dialog stage-surface stage-artwork-dialog" onClose={onClose} onCancel={(event) => { event.preventDefault(); closeDialog() }}>
       <m.form
         key={concert?.id ?? 'artwork'}
         className="dialog-shell artwork-dialog-shell"
@@ -104,7 +108,7 @@ export function ArtworkDialog({
             <h2>Choose artwork</h2>
             <p>{concert ? `${concert.artist}${concert.tour ? ` · ${concert.tour}` : ''}` : 'Search Apple Music artwork.'}</p>
           </div>
-          <button className="icon-button" type="button" onClick={onClose} title="Close" aria-label="Close artwork picker">
+          <button className="icon-button" type="button" onClick={closeDialog} title="Close" aria-label="Close artwork picker">
             <X size={20} />
           </button>
         </div>
@@ -131,7 +135,7 @@ export function ArtworkDialog({
         {error ? <p className="form-error" role="alert">{error}</p> : null}
         <div className="dialog-actions">
           {imageUrl ? <button className="button button-secondary" type="button" onClick={() => setImageUrl('')}>Remove image</button> : <span />}
-          <button className="button button-secondary" type="button" onClick={onClose}>Cancel</button>
+          <button className="button button-secondary" type="button" onClick={closeDialog}>Cancel</button>
           <button className="button button-primary" type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save image'}</button>
         </div>
       </m.form>

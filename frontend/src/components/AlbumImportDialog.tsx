@@ -17,6 +17,10 @@ export function AlbumImportDialog({
   onImported,
 }: AlbumImportDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
+  const closeDialog = () => {
+    dialogRef.current?.close()
+    onClose()
+  }
   const requestRef = useRef<AbortController | null>(null)
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SpotifyAlbumOption[]>([])
@@ -79,14 +83,14 @@ export function AlbumImportDialog({
   }
 
   return (
-    <dialog ref={dialogRef} className="album-import-dialog" onCancel={onClose} onClose={onClose}>
+    <dialog ref={dialogRef} className="album-import-dialog stage-surface" onCancel={(event) => { event.preventDefault(); closeDialog() }} onClose={onClose}>
       <div className="album-import-shell">
         <header>
           <div>
             <h2>Find an album</h2>
             <p>Spotify supplies the artwork, release details, and original track order.</p>
           </div>
-          <button className="icon-button" type="button" onClick={onClose} aria-label="Close album search">
+          <button className="icon-button" type="button" onClick={closeDialog} aria-label="Close album search">
             <X size={20} />
           </button>
         </header>

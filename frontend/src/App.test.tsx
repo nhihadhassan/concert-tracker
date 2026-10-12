@@ -247,7 +247,7 @@ describe('Concert Tracker cloud shell', () => {
     expect(
       await screen.findByRole('heading', { name: 'Add concert' }, { timeout: 5_000 }),
     ).toBeInTheDocument()
-    expect(screen.getByText('Artist, date, and venue are enough. Everything else can wait.')).toBeInTheDocument()
+    expect(screen.queryByText('Artist, date, and venue are enough. Everything else can wait.')).not.toBeInTheDocument()
     expect(screen.getByRole('combobox', { name: 'Artist' })).toBeInTheDocument()
     expect(screen.getByRole('combobox', { name: 'Venue' })).toBeInTheDocument()
     expect(screen.getAllByText('Your review').length).toBeGreaterThan(0)

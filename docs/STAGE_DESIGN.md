@@ -32,7 +32,7 @@ bold motion and lighting over a modest rearrangement of ordinary dashboard cards
 | Colour | Default hot orange (`#ff7149`); year palettes also use violet, teal, gold, and rose. Poster glow comes from that poster's artwork. |
 | Depth | Layer blurred artwork, gradients, haze, light beams, typography, and a cream ticket. Use perspective and restrained spring tilt for depth. |
 | Header | Centered Encore wordmark with a simple E symbol; centered navigation beneath. Near-black canvas, cream text, warm active underline, compact actions. The shared header keeps these colours in either app theme. |
-| Archive | Large 4:5 posters; three columns on desktop and two on small screens. No decorative numbering. Ratings are standalone condensed numerals (e.g. 10 or 9.7) with a short accent underline and no denominator or badge box. Unrated shows retain a separate status label. |
+| Archive | Large 4:5 posters; three columns on desktop and two on small screens. No decorative numbering. Ratings use a 100-point display scale and standalone condensed numerals (e.g. 100 or 97), with a short accent underline and no denominator or badge box. Unrated shows retain a separate status label. |
 | Restraint | Concentrate drama in the stage, artwork, and transitions. Keep filters, editing, and navigation predictable. Avoid adding decorative cards, badges, or captions everywhere. |
 
 The current dimensional treatment uses CSS perspective and Motion springs. It does not require
@@ -99,6 +99,7 @@ Paths below are relative to the repository root.
 | `frontend/src/components/stage/StageConcerts.tsx` | Hero, floating/flip ticket, ribbon, year filters, poster archive, and Replay eligibility. |
 | `frontend/src/components/stage/StageReplay.tsx` | Native fullscreen dialog, playback/manual navigation, opt-in audio and cleanup. |
 | `frontend/src/components/stage/stage.css` | Stage tokens, composition, responsive rules, effects, scoped detail theme, and reduced-motion overrides. |
+| `frontend/src/components/stage/stage-surfaces.css` | Approved shared dialog, album journal/editor, detail, Stats, Wrapped, and Classic companion styling, scoped to `.stage-surface`. |
 | `frontend/src/components/stage/stageDate.ts` | Display date-only values without shifting the concert date across time zones. |
 | `frontend/src/components/AppHeader.tsx` and `frontend/src/components/AppHeader.css` | Shared centered header, navigation, actions, and bundled display-font declaration. |
 | `frontend/src/components/stage/fonts/` | Shared display font and its OFL license. |
@@ -135,7 +136,22 @@ bundled Stage typeface, cream type, warm lighting, and near-black surfaces in bo
 - **Wrapped:** manually controlled chapters for the period overview, highest-rated show, first
   show, and latest show. Use actual attended shows, standalone scores, a large background year,
   and a tilted artwork ticket. Keep period selection, the full recap underneath, sharing, and
-  saving the recap card. Chapters reset when the selected period changes. No autoplay sound.
+saving the recap card. Chapters reset when the selected period changes. No autoplay sound.
+
+### Shared workflows
+
+The October 2026 approved extension uses `.stage-surface` for add/edit concerts, artwork
+selection, album search, album detail, and album review editing. These surfaces use a dark
+Stage palette in both theme settings, condensed headings, open sections, and warm actions.
+The concert editor keeps a real artwork and saved-rating sidebar visible while scrolling on
+desktop; mobile dialogs fill the viewport. Form labels retain score ranges and validation,
+while redundant instructional paragraphs are omitted. Manual ratings still require a reason.
+
+Stage concert details use open score, fact, companion, and notes sections. Stats displays
+standalone 100-point scores, including zero; keep the scale available in accessible names.
+Wrapped keeps its film and shows a larger highest-rated poster alongside artist and month
+summaries. Classic remains at `/?view=classic`, preserving its compact composition and
+featured ticket while using the approved Stage colour and typography treatment.
 
 Use the shared motion preference on every companion surface, pause ambient motion offscreen,
 and keep the complete content usable when motion is disabled. Do not hide Spotify or lyric
@@ -145,7 +161,7 @@ panel bounds as well as document overflow because clipped containers can hide ov
 ## Implementation details that must survive refactors
 
 - Stage content stays lazy-loaded and its CSS stays scoped to `.stage-page`, `.stage-replay`,
-  `.concert-detail-overlay-stage`, `.stage-companion`, or the temporary root transition attribute. Preserve the
+  `.concert-detail-overlay-stage`, `.stage-companion`, `.stage-surface`, or the temporary root transition attribute. Preserve the
   scoped detail overrides that defeat Classic light-theme rules.
 - Import the display font through the shared header CSS so Vite emits it under `/assets/`. Keep its license.
   Arbitrary `/fonts/` files are rejected by the current Vercel route allowlist; a local font load

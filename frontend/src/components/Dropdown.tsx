@@ -81,6 +81,7 @@ export function Dropdown({ options, value, defaultValue, onChange, label, name, 
     }
     const closeWithKeyboard = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return
+      event.preventDefault()
       setOpen(false)
       triggerRef.current?.focus()
     }

@@ -127,7 +127,7 @@ export function LiveWrapped({ concerts, memberName }: LiveWrappedProps) {
 
   return (
     <m.section
-      className="wrapped-page stage-companion companion-wrapped"
+      className="wrapped-page stage-companion companion-wrapped stage-surface"
       aria-labelledby="wrapped-title"
       initial={reduceMotion ? false : { opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}

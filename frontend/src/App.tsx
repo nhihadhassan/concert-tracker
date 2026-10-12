@@ -34,6 +34,7 @@ import type {
 import './App.css'
 import './components/cinematic/cinematic.css'
 import './components/AppHeader.css'
+import './components/stage/stage-surfaces.css'
 
 const StageConcerts = lazy(() => import('./components/stage/StageConcerts').then((module) => ({ default: module.StageConcerts })))
 
@@ -555,7 +556,7 @@ export function Dashboard({ member }: DashboardProps) {
     {selectedConcert ? <Suspense fallback={<FeatureViewLoading />}><ConcertDetail cinematic={stageView} concert={selectedConcert} member={member} milestones={milestones.get(selectedConcert.id) ?? []} onArtwork={openArtwork} onClose={closeConcertOverlay} onEdit={(row) => { setEditing(row); setFormError(''); setDialogOpen(true) }} onDelete={(row) => { void deleteConcert(row).then((deleted) => { if (deleted) navigate({ kind: stageView ? 'stage' : 'concerts' }, true) }) }} /></Suspense> : <section className="detail-not-found"><ArrowLeft size={22} aria-hidden="true" /><h1 id="detail-title" tabIndex={-1}>Concert not found</h1><p>This concert may have been deleted or is not available in your library.</p><button className="button button-primary" type="button" onClick={closeConcertOverlay}>Back to concerts</button></section>}
   </ConcertDetailOverlay> : null
   return (
-    <div className={darkMode ? 'app theme-dark' : 'app theme-light'}>
+    <div className={darkMode ? 'app stage-site theme-dark' : 'app stage-site theme-light'}>
       <a className="skip-link" href="#encore-main">Skip to content</a>
       <AppHeader activeView={activeView} addLabel={activeView === 'albums' ? 'Find album' : 'Add concert'} darkMode={darkMode} memberName={member.display_name} pendingCount={cloud.pendingCount} syncState={cloud.syncState} onAdd={activeView === 'albums' ? () => setAlbumDialogOpen(true) : openNew} onExportCalendar={exportCalendar} onExportCsv={() => void exportCsv()} onExportJson={exportJson} onHome={(event) => navigateFromLink(event, { kind: 'stage' })} onRestoreBackup={() => setRestoreOpen(true)} onThemeToggle={toggleTheme} onViewNavigate={(event, view) => navigateFromLink(event, view === 'stats' ? { kind: 'stats', scope: 'personal' } : view === 'wrapped' ? { kind: 'wrapped' } : view === 'albums' ? { kind: 'albums' } : { kind: 'stage' })} />
       <div id="encore-main" tabIndex={-1}>
@@ -564,7 +565,7 @@ export function Dashboard({ member }: DashboardProps) {
           {cloud.error ? <div className="sync-error-banner" role="status">{cloud.error}<button type="button" onClick={() => void cloud.flushOutbox()}>Retry sync</button></div> : null}
           <FiltersBar genres={genres} genre={genre} search={search} sort={sort} status={status} onGenreChange={setGenre} onSearchChange={setSearch} onSortChange={setSort} onStatusChange={setStatus} footer={yearFilter} additionalActiveCount={yearActive ? 1 : 0} quickSorts={[{ value: 'date-desc', label: 'Most recent' }, { value: 'rating-desc', label: 'Highest score' }]} />
         </>}
-      </StageConcerts></Suspense> : route.kind === 'concerts' || route.kind === 'detail' ? <main className="page-shell page-shell-feed">
+      </StageConcerts></Suspense> : route.kind === 'concerts' || route.kind === 'detail' ? <main className="page-shell page-shell-feed stage-surface stage-classic">
         <h1 className="sr-only" data-view-heading tabIndex={-1}>Concert Archive</h1>
         <a className="stage-view-link" href="/" onClick={(event) => navigateFromLink(event, { kind: 'stage' })}>Stage view <span aria-hidden="true">↗</span></a>
         <ConcertStage concerts={personalConcerts} onOpen={openConcert} />

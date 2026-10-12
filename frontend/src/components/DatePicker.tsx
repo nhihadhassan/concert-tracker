@@ -66,6 +66,7 @@ export function DatePicker({ name, defaultValue, required, onDateChange }: DateP
     }
     const closeWithKeyboard = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return
+      event.preventDefault()
       setOpen(false)
       triggerRef.current?.focus()
     }
