@@ -51,6 +51,10 @@ request and response fields.
 Library routes are unauthenticated. FastAPI calls PostgREST with the Supabase secret key, which
 bypasses RLS, and scopes rows to the configured public user in application code.
 
+The Encore interface displays concert ratings on a 100-point scale. Library/API payloads retain
+the normalized 10-point domain values for compatibility; the interface converts values on read
+and write. Concert CSV exports use the displayed 100-point scale. Album ratings are unchanged.
+
 ### `GET /api/v1/library`
 
 Returns active members, all non-deleted concerts with attendees and separate reviews, and two

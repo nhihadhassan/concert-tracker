@@ -6,6 +6,7 @@ import { Combobox } from './Combobox'
 import { DatePicker } from './DatePicker'
 import { Dropdown, type DropdownOption } from './Dropdown'
 import { addGuests, parseGuests, serializeGuests } from '../lib/guests'
+import { toStoredConcertRating } from '../lib/concertRating'
 import { formatPriceRange, formatShowTime, statusLabel, suggestionVenueValue } from '../lib/suggestions'
 import type {
   ArtworkOption,
@@ -247,11 +248,11 @@ export function AddConcertDialog({
     event.preventDefault()
     const form = new FormData(event.currentTarget)
     const reviewValues = {
-      enjoyment_score: numberOrNull(form.get('enjoyment')),
-      stage_score: numberOrNull(form.get('stage')),
-      setlist_score: numberOrNull(form.get('setlist')),
-      seat_score: numberOrNull(form.get('seatScore')),
-      performance_score: numberOrNull(form.get('performance')),
+      enjoyment_score: toStoredConcertRating(numberOrNull(form.get('enjoyment'))),
+      stage_score: toStoredConcertRating(numberOrNull(form.get('stage'))),
+      setlist_score: toStoredConcertRating(numberOrNull(form.get('setlist'))),
+      seat_score: toStoredConcertRating(numberOrNull(form.get('seatScore'))),
+      performance_score: toStoredConcertRating(numberOrNull(form.get('performance'))),
     }
     const hasReview = Boolean(personalReview)
       || Object.values(reviewValues).some((value) => value !== null)
@@ -261,7 +262,7 @@ export function AddConcertDialog({
       id: personalReview?.id ?? crypto.randomUUID(),
       expected_row_version: personalReview?.row_version ?? null,
       ...reviewValues,
-      override_rating: numberOrNull(form.get('overrideRating')),
+      override_rating: toStoredConcertRating(numberOrNull(form.get('overrideRating'))),
       override_reason: String(form.get('overrideReason') ?? '').trim() || null,
       notes: String(form.get('reviewNotes') ?? '').trim() || null,
     } : null
@@ -273,7 +274,7 @@ export function AddConcertDialog({
         venue: String(form.get('venue') ?? '').trim(),
         price: numberOrNull(form.get('price')),
         genre: String(form.get('genre') ?? '').trim() || null,
-        projected: numberOrNull(form.get('projected')),
+        projected: toStoredConcertRating(numberOrNull(form.get('projected'))),
         seat: String(form.get('seat') ?? '').trim() || null,
         status: String(form.get('status') ?? 'Want to Go') as ConcertStatus,
         type: String(form.get('type') ?? '').trim() || 'Concert',
@@ -422,7 +423,7 @@ export function AddConcertDialog({
           <div className="form-grid disclosure-content">
             <label className="field field-wide"><span>Tour name</span><input name="tour" defaultValue={concert?.tour ?? ''} /></label>
             <label className="field"><span>Price</span><input name="price" type="number" min="0" step="0.01" defaultValue={concert?.price ?? ''} /></label>
-            <label className="field"><span>Projected rating</span><input name="projected" type="number" min="0" max="10" step="0.1" defaultValue={concert?.projected ?? ''} /></label>
+            <label className="field"><span>Projected rating (out of 100)</span><input name="projected" type="number" min="0" max="100" step="0.1" defaultValue={concert?.projected == null ? '' : concert.projected * 10} /></label>
             <label className="field"><span>Genre</span><Combobox name="genre" suggestions={archiveSuggestions.genres} defaultValue={concert?.genre ?? ''} /></label>
             <label className="field"><span>Type</span><Combobox name="type" suggestions={archiveSuggestions.types} defaultValue={concert?.type ?? 'Concert'} /></label>
             <label className="field field-wide"><span>Seat</span><input name="seat" defaultValue={concert?.seat ?? ''} /></label>
@@ -491,15 +492,16 @@ export function AddConcertDialog({
           <summary><span>Your review</span><small>Add after the show</small></summary>
           <fieldset className="disclosure-fieldset" id="concert-form-review">
           <legend className="sr-only">Your review</legend>
+          <p className="override-note">Scores use a 100-point scale.</p>
           <div className="score-grid">
-            <label className="field"><span>Enjoyment (60%)</span><input name="enjoyment" type="number" min="0" max="10" step="0.1" defaultValue={personalReview?.enjoyment_score ?? ''} /></label>
-            <label className="field"><span>Stage (10%)</span><input name="stage" type="number" min="0" max="10" step="0.1" defaultValue={personalReview?.stage_score ?? ''} /></label>
-            <label className="field"><span>Setlist (10%)</span><input name="setlist" type="number" min="0" max="10" step="0.1" defaultValue={personalReview?.setlist_score ?? ''} /></label>
-            <label className="field"><span>Seat (10%)</span><input name="seatScore" type="number" min="0" max="10" step="0.1" defaultValue={personalReview?.seat_score ?? ''} /></label>
-            <label className="field"><span>Performance (10%)</span><input name="performance" type="number" min="0" max="10" step="0.1" defaultValue={personalReview?.performance_score ?? ''} /></label>
+            <label className="field"><span>Enjoyment (60%)</span><input name="enjoyment" type="number" min="0" max="100" step="0.1" defaultValue={personalReview?.enjoyment_score == null ? '' : personalReview.enjoyment_score * 10} /></label>
+            <label className="field"><span>Stage (10%)</span><input name="stage" type="number" min="0" max="100" step="0.1" defaultValue={personalReview?.stage_score == null ? '' : personalReview.stage_score * 10} /></label>
+            <label className="field"><span>Setlist (10%)</span><input name="setlist" type="number" min="0" max="100" step="0.1" defaultValue={personalReview?.setlist_score == null ? '' : personalReview.setlist_score * 10} /></label>
+            <label className="field"><span>Seat (10%)</span><input name="seatScore" type="number" min="0" max="100" step="0.1" defaultValue={personalReview?.seat_score == null ? '' : personalReview.seat_score * 10} /></label>
+            <label className="field"><span>Performance (10%)</span><input name="performance" type="number" min="0" max="100" step="0.1" defaultValue={personalReview?.performance_score == null ? '' : personalReview.performance_score * 10} /></label>
           </div>
           <div className="score-grid">
-            <label className="field"><span>Manual final rating</span><input name="overrideRating" type="number" min="0" max="10" step="0.1" defaultValue={personalReview?.override_rating ?? ''} aria-describedby="manual-rating-help" /></label>
+            <label className="field"><span>Manual final rating (out of 100)</span><input name="overrideRating" type="number" min="0" max="100" step="0.1" defaultValue={personalReview?.override_rating == null ? '' : personalReview.override_rating * 10} aria-describedby="manual-rating-help" /></label>
             <label className="field"><span>Override reason</span><input name="overrideReason" maxLength={500} defaultValue={personalReview?.override_reason ?? ''} aria-describedby="manual-rating-help" /></label>
           </div>
           <p className="override-note" id="manual-rating-help">Optional. This becomes your final rating instead of the weighted average. Add a reason when using it.</p>

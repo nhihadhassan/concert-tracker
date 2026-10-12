@@ -68,7 +68,7 @@ it('keeps every ranking in descending order, including zero, and links each show
   const rankingsList = screen.getByRole('list', { name: 'All concert rankings, highest rating first' })
   const rows = within(rankingsList).getAllByRole('listitem')
   expect(rows).toHaveLength(16)
-  expect(rows.map(row => Number(row.querySelector('b')?.textContent))).toEqual([...rankings].reverse().map(row => row.rating))
+  expect(rows.map(row => row.querySelector('b')?.textContent)).toEqual([...rankings].reverse().map(row => `${row.rating * 10}/100`))
   expect(within(rows[15]).getByRole('link', { name: /Rank 16: Artist 0/ })).toHaveAttribute('href', '/?concert=show-0')
   fireEvent.click(screen.getByRole('button', { name: 'Shared' }))
   expect(props.onScopeChange).toHaveBeenCalledWith('shared')

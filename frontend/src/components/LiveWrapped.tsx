@@ -9,6 +9,7 @@ import { artworkSrcSet, resizeArtwork } from '../lib/artwork'
 import { downloadBlob } from '../lib/exports'
 import { WrappedFilm } from './cinematic/WrappedFilm'
 import { createRecapCard } from '../lib/recapCard'
+import { formatConcertRating100 } from '../lib/concertRating'
 
 interface LiveWrappedProps {
   concerts: Concert[]
@@ -167,7 +168,7 @@ export function LiveWrapped({ concerts, memberName }: LiveWrappedProps) {
             <div className="wrapped-panel-head"><span className="wrapped-kicker">{topShow?.personal_rating !== null ? 'Highest rated show' : 'Latest show'}</span><Star size={18} aria-hidden="true" /></div>
             <div className="wrapped-show-art">
               {topShow?.image ? <img src={resizeArtwork(topShow.image, 640)} srcSet={artworkSrcSet(topShow.image, [480, 640, 800])} sizes="(max-width: 720px) calc(100vw - 48px), 520px" alt="" decoding="async" /> : <span className="show-art-placeholder" aria-hidden="true"><Sparkles size={32} /></span>}
-              <span className="wrapped-rating">{topShow?.personal_rating !== null && topShow?.personal_rating !== undefined ? `${topShow.personal_rating}/10` : 'Unrated'}</span>
+              <span className="wrapped-rating">{topShow?.personal_rating !== null && topShow?.personal_rating !== undefined ? `${formatConcertRating100(topShow.personal_rating)}/100` : 'Unrated'}</span>
             </div>
             <div className="wrapped-show-copy"><h3 id="top-show-title">{topShow?.artist}</h3><p>{topShow?.venue.split('(')[0].trim()} <span aria-hidden="true">·</span> {topShow ? formatDate(topShow.date) : ''}</p></div>
           </section>
@@ -187,7 +188,7 @@ export function LiveWrapped({ concerts, memberName }: LiveWrappedProps) {
 
           <section className="wrapped-panel wrapped-facts" aria-label="Live-show facts">
             <div className="wrapped-fact"><span>Most visited venue</span><strong>{topVenue?.[0] ?? 'Still exploring'}</strong><small>{topVenue ? `${topVenue[1]} ${topVenue[1] === 1 ? 'visit' : 'visits'}` : 'Add a venue to see this'}</small></div>
-            <div className="wrapped-fact"><span>Average rating</span><strong>{averageRating !== null ? `${averageRating.toFixed(1)}/10` : 'Not rated'}</strong><small>{averageRating !== null ? 'across rated nights' : 'Rate a show to unlock this'}</small></div>
+            <div className="wrapped-fact"><span>Average rating</span><strong>{averageRating !== null ? `${formatConcertRating100(averageRating)}/100` : 'Not rated'}</strong><small>{averageRating !== null ? 'across rated nights' : 'Rate a show to unlock this'}</small></div>
             <div className="wrapped-fact"><span>Tickets</span><strong>{attended.some((concert) => concert.price !== null) ? formatMoney(attended.reduce((total, concert) => total + (concert.price ?? 0), 0)) : 'Unpriced'}</strong><small>spent on attended shows</small></div>
           </section>
 

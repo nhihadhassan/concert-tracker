@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import type { Concert } from '../../types'
 import { artworkSrcSet, resizeArtwork } from '../../lib/artwork'
+import { formatConcertRating100 } from '../../lib/concertRating'
 import { selectFeaturedConcert } from '../../lib/cinematic'
 import { parseGuests } from '../../lib/guests'
 import { MotionToggle } from '../cinematic/CinematicMotion'
@@ -323,6 +324,8 @@ export function StageConcerts({
   onOpen,
   onClassic,
   onAdd,
+  search,
+  onClearSearch,
   children,
 }: {
   concerts: Concert[]
@@ -331,7 +334,9 @@ export function StageConcerts({
   onOpen: (concert: Concert) => void
   onClassic: (event: MouseEvent<HTMLAnchorElement>) => void
   onAdd: () => void
-  children: ReactNode
+  search: string
+  onClearSearch: () => void
+  children: (yearFilter: ReactNode, yearActive: boolean) => ReactNode
 }) {
   const [year, setYear] = useState('all')
   const [replay, setReplay] = useState(false)
@@ -358,6 +363,20 @@ export function StageConcerts({
   const featured = selectFeaturedConcert(personalConcerts, localDate)
   const palette =
     selectedYear === 'all' ? 0 : Number(selectedYear) % palettes.length
+  const yearFilter = (
+    <div className="stage-year-tabs" role="group" aria-label="Filter by year">
+      {['all', ...years].map((value) => (
+        <button
+          key={value}
+          type="button"
+          aria-pressed={selectedYear === value}
+          onClick={() => setYear(value)}
+        >
+          {value === 'all' ? 'All years' : value}
+        </button>
+      ))}
+    </div>
+  )
   return (
     <main
       className="stage-page"
@@ -394,23 +413,7 @@ export function StageConcerts({
             Replay{selectedYear === 'all' ? '' : ` ${selectedYear}`}
           </button>
         </div>
-        <div
-          className="stage-year-tabs"
-          role="group"
-          aria-label="Filter by year"
-        >
-          {['all', ...years].map((value) => (
-            <button
-              key={value}
-              type="button"
-              aria-pressed={selectedYear === value}
-              onClick={() => setYear(value)}
-            >
-              {value === 'all' ? 'All years' : value}
-            </button>
-          ))}
-        </div>
-        {children}
+      {children(yearFilter, selectedYear !== 'all')}
         <p className="stage-result-count" role="status">
           {filtered.length} {filtered.length === 1 ? 'show' : 'shows'}
         </p>
@@ -463,8 +466,8 @@ export function StageConcerts({
                         )}
                         <span className="stage-poster-shade" />
                         {concert.personal_rating != null ? (
-                          <span className="stage-poster-rating" aria-label={`Rating: ${concert.personal_rating}`}>
-                            {concert.personal_rating}
+                          <span className="stage-poster-rating" aria-label={`Rating: ${formatConcertRating100(concert.personal_rating)}/100`}>
+                            {formatConcertRating100(concert.personal_rating)}
                           </span>
                         ) : (
                           <span className="stage-poster-status">{concert.status}</span>
@@ -490,7 +493,18 @@ export function StageConcerts({
                   : 'Add your first concert.'}
               </h3>
               {allConcerts.length ? (
-                <p>Try another year or clear a filter.</p>
+                <>
+                  <p>Try another year or clear a filter.</p>
+                  {search.trim() ? (
+                    <button
+                      type="button"
+                      className="stage-action"
+                      onClick={onClearSearch}
+                    >
+                      Clear search
+                    </button>
+                  ) : null}
+                </>
               ) : (
                 <button type="button" className="stage-action" onClick={onAdd}>
                   Add concert

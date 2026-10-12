@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type { ReactNode } from 'react'
 import { ChevronDown, Search, SlidersHorizontal } from 'lucide-react'
 import { AnimatePresence, m } from 'motion/react'
 import { Dropdown } from './Dropdown'
@@ -14,13 +15,16 @@ interface FiltersBarProps {
   onSearchChange: (value: string) => void
   onSortChange: (value: string) => void
   onStatusChange: (value: string) => void
+  footer?: ReactNode
+  additionalActiveCount?: number
+  quickSorts?: Array<{ value: string; label: string }>
 }
 
 const statuses: Array<ConcertStatus | ''> = ['', 'Attended', 'Want to Go', 'Cancelled']
 
 export function FiltersBar(props: FiltersBarProps) {
   const [expanded, setExpanded] = useState(false)
-  const activeCount = Number(Boolean(props.status)) + Number(Boolean(props.genre)) + Number(props.sort !== 'date-desc')
+  const activeCount = Number(Boolean(props.status)) + Number(Boolean(props.genre)) + Number(props.sort !== 'date-desc') + (props.additionalActiveCount ?? 0)
   return (
     <section className="filters" aria-label="Concert filters">
       <label className="field search-field">
@@ -74,8 +78,24 @@ export function FiltersBar(props: FiltersBarProps) {
               ]}
             />
           </label>
+          {props.footer ? <div className="filters-footer">{props.footer}</div> : null}
         </m.div>
       </AnimatePresence>
+      {props.quickSorts?.length ? (
+        <div className="filters-quick-sorts" role="group" aria-label="Quick sort">
+          {props.quickSorts.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              className="filters-quick-sort"
+              aria-pressed={props.sort === option.value}
+              onClick={() => props.onSortChange(option.value)}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
     </section>
   )
 }

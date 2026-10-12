@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import type { Concert } from '../../types'
 import { resizeArtwork } from '../../lib/artwork'
+import { formatConcertRating100 } from '../../lib/concertRating'
 import { useCinematicMotion } from '../../hooks/useCinematicMotion'
 import { stageDate } from './stageDate'
 
@@ -151,8 +152,8 @@ export function StageReplay({
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: disabled ? 0 : 0.45 }}
                 >
-                  <strong>{current.personal_rating}</strong>
-                  <span>/ 10 · Your rating</span>
+                  <strong>{formatConcertRating100(current.personal_rating)}</strong>
+                  <span>/ 100 · Your rating</span>
                 </m.div>
               ) : null}
             </div>

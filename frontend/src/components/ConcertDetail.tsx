@@ -2,6 +2,7 @@ import { Armchair, CalendarDays, ExternalLink, Image, MapPin, Music2, Pencil, Pl
 import { m, useReducedMotion } from 'motion/react'
 import { useCinematicMotion } from '../hooks/useCinematicMotion'
 import { downloadConcertCalendar } from '../lib/exports'
+import { formatConcertRating100 } from '../lib/concertRating'
 import { spotifySearchUrl, verifiedSetlistsByConcertId } from '../lib/verifiedSetlists'
 import type { Milestone } from '../lib/archiveInsights'
 import type { SessionMember } from '../session/useSession'
@@ -56,10 +57,10 @@ export function ConcertDetail({ cinematic = false, concert, member, milestones, 
         </header>
 
       <div className="detail-content">
-        {concert.personal_rating !== null || concert.combined_rating !== null || scores.some(([, score]) => score !== null) ? <section className="detail-rating" aria-labelledby="detail-rating-title">
-          {concert.personal_rating !== null ? <div className="detail-rating-primary"><span id="detail-rating-title">Your rating</span><strong>{concert.personal_rating}</strong><small>/10</small></div> : null}
-          {concert.combined_rating !== null ? <div className="detail-rating-combined"><Star size={18} fill="currentColor" aria-hidden="true" /><span>Combined</span><strong>{concert.combined_rating}</strong></div> : null}
-          {scores.some(([, score]) => score !== null) ? <dl className="detail-scores">{scores.filter(([, score]) => score !== null).map(([label, score]) => <div key={label}><dt>{label}</dt><dd>{score}</dd></div>)}</dl> : null}
+        {concert.personal_rating !== null || concert.combined_rating !== null || scores.some(([, score]) => score != null) ? <section className="detail-rating" aria-labelledby="detail-rating-title">
+          {concert.personal_rating !== null ? <div className="detail-rating-primary"><span id="detail-rating-title">Your rating</span><strong>{formatConcertRating100(concert.personal_rating)}</strong><small>/100</small></div> : null}
+          {concert.combined_rating !== null ? <div className="detail-rating-combined"><Star size={18} fill="currentColor" aria-hidden="true" /><span>Combined</span><strong>{formatConcertRating100(concert.combined_rating)}/100</strong></div> : null}
+          {scores.some(([, score]) => score != null) ? <dl className="detail-scores">{scores.filter(([, score]) => score != null).map(([label, score]) => <div key={label}><dt>{label}</dt><dd>{formatConcertRating100(score!)}/100</dd></div>)}</dl> : null}
         </section> : null}
 
         <section className="detail-people" aria-labelledby="detail-people-title">

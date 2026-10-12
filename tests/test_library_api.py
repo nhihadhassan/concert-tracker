@@ -312,6 +312,17 @@ def test_csv_and_soft_delete_use_cloud_state() -> None:
     client = client_for(rest)
     try:
         create_concert(client)
+        reviewed = client.put(
+            f"/v1/concerts/{CONCERT_ID}/review",
+            headers={"Idempotency-Key": "88888888-8888-4888-8888-888888888888"},
+            json={
+                "id": REVIEW_ID,
+                "enjoyment_score": 10,
+                "stage_score": 8,
+                "setlist_score": 8,
+                "seat_score": 8,
+            },
+        )
         csv_response = client.get("/v1/concerts/export.csv")
         deleted = client.delete(
             f"/v1/concerts/{CONCERT_ID}",
@@ -323,6 +334,8 @@ def test_csv_and_soft_delete_use_cloud_state() -> None:
         clear_overrides()
 
     assert csv_response.status_code == 200
+    assert reviewed.status_code == 200
     assert "Little Simz" in csv_response.text
+    assert "93.0,93.0" in csv_response.text
     assert deleted.status_code == 200
     assert library.json()["concerts"] == []

@@ -3,6 +3,7 @@ import { ArrowLeft, ArrowRight, Music2, RotateCcw } from 'lucide-react'
 import { AnimatePresence, m } from 'motion/react'
 import type { Concert } from '../../types'
 import { resizeArtwork } from '../../lib/artwork'
+import { formatConcertRating100 } from '../../lib/concertRating'
 import { MotionToggle } from './CinematicMotion'
 import { useCinematicMotion, useCinematicScene } from '../../hooks/useCinematicMotion'
 
@@ -40,7 +41,7 @@ export function WrappedFilm({ attended, period }: { attended: Concert[]; period:
         <div className="wrapped-stage-ticket">
           {current.show?.image ? <img src={resizeArtwork(current.show.image, 640)} alt={`${current.show.artist} artwork`} decoding="async" /> : <div className="wrapped-stage-placeholder"><Music2 size={64} aria-hidden="true" /></div>}
           <div className="wrapped-stage-stub"><strong>{current.intro ? `Encore / ${period === 'all' ? 'All time' : period}` : current.show?.artist}</strong><small>{current.intro ? 'WRAPPED' : 'ATTENDED'}</small></div>
-          {!current.intro && current.show?.personal_rating != null ? <span className="wrapped-stage-score" aria-label={`Rating: ${current.show.personal_rating}`}>{current.show.personal_rating}</span> : null}
+          {!current.intro && current.show?.personal_rating != null ? <span className="wrapped-stage-score" aria-label={`Rating: ${formatConcertRating100(current.show.personal_rating)}/100`}>{formatConcertRating100(current.show.personal_rating)}</span> : null}
         </div>
       </m.div>
     </AnimatePresence>

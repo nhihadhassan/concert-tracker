@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { Check, ChevronDown } from 'lucide-react'
 import { AnimatePresence, m } from 'motion/react'
 
@@ -27,9 +27,11 @@ export function Dropdown({ options, value, defaultValue, onChange, label, name, 
   const [internalValue, setInternalValue] = useState(defaultValue ?? options[0]?.value ?? '')
   const current = isControlled ? value : internalValue
   const [open, setOpen] = useState(false)
+  const [openAbove, setOpenAbove] = useState(false)
   const [highlight, setHighlight] = useState(0)
   const rootRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
+  const popoverRef = useRef<HTMLUListElement>(null)
   const listId = useId()
   const selectRef = useRef<HTMLSelectElement>(null)
 
@@ -54,6 +56,23 @@ export function Dropdown({ options, value, defaultValue, onChange, label, name, 
     const index = options.findIndex((option) => option.value === current)
     setHighlight(index >= 0 ? index : 0)
   }, [open, options, current])
+
+  useLayoutEffect(() => {
+    if (!open) {
+      setOpenAbove(false)
+      return
+    }
+
+    const trigger = triggerRef.current?.getBoundingClientRect()
+    const popover = popoverRef.current?.getBoundingClientRect()
+    if (!trigger || !popover) return
+
+    const spaceBelow = window.innerHeight - trigger.bottom
+    const spaceAbove = trigger.top
+    setOpenAbove(
+      spaceBelow < popover.height + 8 && spaceAbove >= popover.height + 8,
+    )
+  }, [open])
 
   useEffect(() => {
     if (!open) return
@@ -133,7 +152,8 @@ export function Dropdown({ options, value, defaultValue, onChange, label, name, 
       <AnimatePresence>
         {open ? (
           <m.ul
-            className="dropdown-popover"
+            ref={popoverRef}
+            className={`dropdown-popover${openAbove ? ' dropdown-popover-above' : ''}`}
             role="listbox"
             aria-label={label}
             initial={{ opacity: 0, y: -4 }}

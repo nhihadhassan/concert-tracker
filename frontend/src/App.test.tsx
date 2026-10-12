@@ -199,7 +199,7 @@ describe('Concert Tracker cloud shell', () => {
     expect(screen.getByRole('heading', { name: 'Concert archive', level: 2 })).toBeInTheDocument()
     expect(screen.getAllByText('Scotiabank Arena').length).toBeGreaterThan(0)
     expect(screen.queryByText(/40 Bay St/)).not.toBeInTheDocument()
-    expect(screen.getByText('Proj 8')).toBeInTheDocument()
+    expect(screen.getByText('Proj 80')).toBeInTheDocument()
     expect(screen.queryByText(/combined 8\.5/i)).not.toBeInTheDocument()
     expect(screen.queryByText('Past shows')).not.toBeInTheDocument()
     expect(screen.queryByText('Concert memory journal')).not.toBeInTheDocument()
@@ -216,6 +216,21 @@ describe('Concert Tracker cloud shell', () => {
     fireEvent.change(screen.getByPlaceholderText('e.g. Kendrick, Scotiabank...'), { target: { value: 'No match' } })
     expect(screen.queryByRole('heading', { name: 'Kali Uchis' })).not.toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'No concerts match' })).toBeInTheDocument()
+  })
+
+  it('clears an unmatched Stage search in one action', async () => {
+    render(<Dashboard member={member} />)
+    fireEvent.click(await screen.findByRole('link', { name: 'Stage view' }))
+    await screen.findByRole('link', { name: 'Classic view' })
+    const search = screen.getByPlaceholderText('e.g. Kendrick, Scotiabank...')
+    fireEvent.change(search, { target: { value: 'No matching artist' } })
+
+    expect(await screen.findByRole('heading', { name: 'No matching shows.' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Clear search' }))
+
+    expect(search).toHaveValue('')
+    expect(await screen.findByText('2 shows')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Clear search' })).not.toBeInTheDocument()
   })
 
   it('shows next concert timing without total spend on the main page', () => {
@@ -393,8 +408,8 @@ describe('Concert Tracker cloud shell', () => {
     expect(document.head.querySelector('link[rel="canonical"]')).toHaveAttribute('href', 'https://concert-tracker-sepia.vercel.app/')
     expect(document.head.querySelector('meta[name="robots"]')).not.toBeInTheDocument()
     const poster = screen.getByRole('button', { name: 'Open Kali Uchis concert' })
-    expect(within(poster).getByLabelText('Rating: 8.5')).toHaveTextContent('8.5')
-    expect(within(poster).queryByText(/\/ 10/)).not.toBeInTheDocument()
+    expect(within(poster).getByLabelText('Rating: 85/100')).toHaveTextContent('85')
+    expect(within(poster).getByText('85')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('link', { name: 'Classic view' }))
     expect(screen.getByRole('region', { name: 'Concert totals' })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('link', { name: 'Encore, return to Concerts' }))
@@ -405,6 +420,25 @@ describe('Concert Tracker cloud shell', () => {
     fireEvent.click(screen.getByRole('link', { name: 'Concerts' }))
     expect(await screen.findByRole('link', { name: 'Classic view' })).toBeInTheDocument()
     expect(window.location.search).toBe('')
+  })
+
+  it('shows the site-wide Back to top button only after scrolling and returns to the top', async () => {
+    const originalScrollY = Object.getOwnPropertyDescriptor(window, 'scrollY')
+    render(<Dashboard member={member} />)
+    const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {})
+    expect(screen.queryByRole('button', { name: 'Back to top' })).not.toBeInTheDocument()
+
+    Object.defineProperty(window, 'scrollY', { configurable: true, value: 600 })
+    fireEvent.scroll(window)
+    const backToTop = await screen.findByRole('button', { name: 'Back to top' })
+    fireEvent.click(backToTop)
+    expect(scrollTo).toHaveBeenCalledWith(expect.objectContaining({ top: 0 }))
+
+    Object.defineProperty(window, 'scrollY', { configurable: true, value: 0 })
+    fireEvent.scroll(window)
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Back to top' })).not.toBeInTheDocument())
+    if (originalScrollY) Object.defineProperty(window, 'scrollY', originalScrollY)
+    else Reflect.deleteProperty(window, 'scrollY')
   })
 
   it('filters Stage years, flips the ticket, and replays only attended personal shows', async () => {

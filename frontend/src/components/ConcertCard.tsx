@@ -1,6 +1,7 @@
 import { Armchair, CalendarDays, Image, MapPin, Music2, Pencil, Plus, Star, Trash2, Users } from 'lucide-react'
 import { AnimatePresence, m, useReducedMotion } from 'motion/react'
 import { artworkSrcSet, resizeArtwork } from '../lib/artwork'
+import { formatConcertRating100 } from '../lib/concertRating'
 import { downloadConcertCalendar } from '../lib/exports'
 import type { Concert } from '../types'
 
@@ -50,7 +51,7 @@ export function ConcertCard({ concert, index, onArtwork, onDelete, onEdit, onOpe
         </div>
         <div className="concert-card-head">
           <div className="concert-title"><h3>{concert.artist}</h3>{concert.tour ? <p title={concert.tour}>{concert.tour}</p> : null}<span className="concert-venue"><MapPin size={14} />{venueName(concert.venue)}</span></div>
-          <AnimatePresence mode="popLayout" initial={false}><m.div key={concert.personal_rating ?? 'unrated'} className={`rating-badge ${ratingTone(concert.personal_rating)}`} title="Your rating" initial={reduceMotion ? false : { opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.94 }} transition={{ type: 'spring', stiffness: 380, damping: 30, mass: 0.8 }}><Star size={16} fill="currentColor" aria-hidden="true" /><strong>{concert.personal_rating ?? 'N/A'}</strong><span>{concert.personal_rating === null ? 'unrated' : '/10'}</span>{concert.projected !== null ? <small>Proj {concert.projected}</small> : null}</m.div></AnimatePresence>
+          <AnimatePresence mode="popLayout" initial={false}><m.div key={concert.personal_rating ?? 'unrated'} className={`rating-badge ${ratingTone(concert.personal_rating)}`} title="Your rating" initial={reduceMotion ? false : { opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.94 }} transition={{ type: 'spring', stiffness: 380, damping: 30, mass: 0.8 }}><Star size={16} fill="currentColor" aria-hidden="true" /><strong>{concert.personal_rating === null ? 'N/A' : formatConcertRating100(concert.personal_rating)}</strong><span>{concert.personal_rating === null ? 'unrated' : '/100'}</span>{concert.projected !== null ? <small>Proj {formatConcertRating100(concert.projected)}</small> : null}</m.div></AnimatePresence>
         </div>
         <div className="concert-meta"><span><CalendarDays size={16} />{formatDate(concert.date)}</span>{concert.price !== null ? <strong className="concert-price">{formatMoney(concert.price)}</strong> : null}</div>
         <div className="chips">

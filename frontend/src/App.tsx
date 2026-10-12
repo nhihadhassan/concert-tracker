@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
-import { ArrowLeft, CheckCircle2, RefreshCw, Sparkles } from 'lucide-react'
+import { ArrowLeft, ArrowUp, CheckCircle2, RefreshCw, Sparkles } from 'lucide-react'
 import { AnimatePresence, m } from 'motion/react'
 import { EncoreLoading, SessionError } from './session/SessionScreens'
 import { useSession } from './session/useSession'
@@ -187,6 +187,13 @@ export function Dashboard({ member }: DashboardProps) {
   const [route, setRoute] = useState<DashboardRoute>(readDashboardRoute)
   const stageView = route.kind === 'stage' || (route.kind === 'detail' && Boolean(route.stage))
   const { disabled: stageMotionDisabled } = useCinematicMotion()
+  const [showBackToTop, setShowBackToTop] = useState(false)
+  useEffect(() => {
+    const updateVisibility = () => setShowBackToTop(window.scrollY > 480)
+    updateVisibility()
+    window.addEventListener('scroll', updateVisibility, { passive: true })
+    return () => window.removeEventListener('scroll', updateVisibility)
+  }, [])
   const activeView = route.kind === 'stats'
     ? 'stats'
     : route.kind === 'wrapped'
@@ -552,9 +559,11 @@ export function Dashboard({ member }: DashboardProps) {
       <a className="skip-link" href="#encore-main">Skip to content</a>
       <AppHeader activeView={activeView} addLabel={activeView === 'albums' ? 'Find album' : 'Add concert'} darkMode={darkMode} memberName={member.display_name} pendingCount={cloud.pendingCount} syncState={cloud.syncState} onAdd={activeView === 'albums' ? () => setAlbumDialogOpen(true) : openNew} onExportCalendar={exportCalendar} onExportCsv={() => void exportCsv()} onExportJson={exportJson} onHome={(event) => navigateFromLink(event, { kind: 'stage' })} onRestoreBackup={() => setRestoreOpen(true)} onThemeToggle={toggleTheme} onViewNavigate={(event, view) => navigateFromLink(event, view === 'stats' ? { kind: 'stats', scope: 'personal' } : view === 'wrapped' ? { kind: 'wrapped' } : view === 'albums' ? { kind: 'albums' } : { kind: 'stage' })} />
       <div id="encore-main" tabIndex={-1}>
-      {stageView ? <Suspense fallback={<FeatureViewLoading />}><StageConcerts concerts={filteredConcerts} allConcerts={library.concerts} personalConcerts={personalConcerts} onOpen={openConcert} onAdd={openNew} onClassic={(event) => navigateFromLink(event, { kind: 'concerts' })}>
-        {cloud.error ? <div className="sync-error-banner" role="status">{cloud.error}<button type="button" onClick={() => void cloud.flushOutbox()}>Retry sync</button></div> : null}
-        <FiltersBar genres={genres} genre={genre} search={search} sort={sort} status={status} onGenreChange={setGenre} onSearchChange={setSearch} onSortChange={setSort} onStatusChange={setStatus} />
+      {stageView ? <Suspense fallback={<FeatureViewLoading />}><StageConcerts concerts={filteredConcerts} allConcerts={library.concerts} personalConcerts={personalConcerts} onOpen={openConcert} onAdd={openNew} onClearSearch={() => setSearch('')} search={search} onClassic={(event) => navigateFromLink(event, { kind: 'concerts' })}>
+        {(yearFilter, yearActive) => <>
+          {cloud.error ? <div className="sync-error-banner" role="status">{cloud.error}<button type="button" onClick={() => void cloud.flushOutbox()}>Retry sync</button></div> : null}
+          <FiltersBar genres={genres} genre={genre} search={search} sort={sort} status={status} onGenreChange={setGenre} onSearchChange={setSearch} onSortChange={setSort} onStatusChange={setStatus} footer={yearFilter} additionalActiveCount={yearActive ? 1 : 0} quickSorts={[{ value: 'date-desc', label: 'Most recent' }, { value: 'rating-desc', label: 'Highest score' }]} />
+        </>}
       </StageConcerts></Suspense> : route.kind === 'concerts' || route.kind === 'detail' ? <main className="page-shell page-shell-feed">
         <h1 className="sr-only" data-view-heading tabIndex={-1}>Concert Archive</h1>
         <a className="stage-view-link" href="/" onClick={(event) => navigateFromLink(event, { kind: 'stage' })}>Stage view <span aria-hidden="true">↗</span></a>
@@ -580,6 +589,7 @@ export function Dashboard({ member }: DashboardProps) {
       {artworkDialogOpen ? <Suspense fallback={null}><ArtworkDialog concert={artworkEditing} error={artworkError} open saving={artworkSaving} onClose={() => { setArtworkDialogOpen(false); setArtworkEditing(null) }} onSave={saveArtwork} /></Suspense> : null}
       {restoreOpen ? <Suspense fallback={null}><BackupRestoreDialog online={cloud.syncState !== 'offline'} pendingCount={cloud.pendingCount} onClose={() => setRestoreOpen(false)} onRestored={(message) => { setRestoreOpen(false); void cloud.refetch(); flashNotice(message) }} /></Suspense> : null}
       {cloud.conflict ? <Suspense fallback={null}><ConflictDialog conflict={cloud.conflict} onDiscard={() => void cloud.discardConflict()} onRetry={() => void cloud.retryConflict()} /></Suspense> : null}
+      {showBackToTop ? <button className="site-back-to-top" type="button" aria-label="Back to top" onClick={() => window.scrollTo({ top: 0, behavior: stageMotionDisabled ? 'auto' : 'smooth' })}><ArrowUp size={15} aria-hidden="true" /><span>Top</span></button> : null}
       <AnimatePresence>{notice ? <m.div className={`toast${notice.celebratory ? ' toast-celebration' : ''}`} role="status" initial={{ opacity: 0, y: 12, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 8 }} transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}>{notice.celebratory ? <Sparkles size={18} /> : <CheckCircle2 size={18} />}{notice.message}</m.div> : null}</AnimatePresence>
     </div>
   )

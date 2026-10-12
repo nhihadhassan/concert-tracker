@@ -224,7 +224,7 @@ describe('Cinematic library interactions', () => {
     expect(
       await within(film).findByRole('heading', { name: 'Rated' }),
     ).toBeInTheDocument()
-    expect(within(film).getByLabelText('Rating: 0')).toBeInTheDocument()
+    expect(within(film).getByLabelText('Rating: 0/100')).toBeInTheDocument()
     fireEvent.click(within(film).getByRole('button', { name: 'Next' }))
     expect(
       await within(film).findByRole('heading', { name: 'Unrated' }),

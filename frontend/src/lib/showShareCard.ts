@@ -1,3 +1,5 @@
+import { formatConcertRating100 } from './concertRating'
+
 export interface ShowShareCardData {
   artist: string
   date: string
@@ -139,11 +141,12 @@ export async function createShowShareCard(data: ShowShareCardData): Promise<Blob
 
   context.fillStyle = '#ffcfac'
   context.font = '900 310px "Stage Condensed", "Arial Narrow", sans-serif'
-  context.fillText(String(data.rating), 76, 1740)
-  const scoreWidth = context.measureText(String(data.rating)).width
+  const formattedRating = formatConcertRating100(data.rating)
+  context.fillText(formattedRating, 76, 1740)
+  const scoreWidth = context.measureText(formattedRating).width
   context.fillStyle = '#f5eee7'
   context.font = '700 44px "DM Mono", monospace'
-  context.fillText('/10', 95 + scoreWidth, 1730)
+  context.fillText('/100', 95 + scoreWidth, 1730)
 
   context.strokeStyle = '#ffffff29'
   context.beginPath()

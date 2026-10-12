@@ -487,8 +487,8 @@ def export_concerts_csv(
                 concert.price if concert.price is not None else "",
                 concert.genre or "",
                 concert.status,
-                concert.personal_rating if concert.personal_rating is not None else "",
-                concert.combined_rating if concert.combined_rating is not None else "",
+                concert.personal_rating * 10 if concert.personal_rating is not None else "",
+                concert.combined_rating * 10 if concert.combined_rating is not None else "",
                 ", ".join(
                     row.display_name
                     for row in concert.attendees
