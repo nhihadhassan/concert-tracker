@@ -2,6 +2,11 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Album, Analytics, LibraryResponse } from './types'
 
+const cloudState = vi.hoisted(() => ({
+  error: '',
+  rejectedMutation: null as { method: string; path: string } | null,
+}))
+
 vi.mock('./lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./lib/api')>()
   return {
@@ -96,11 +101,12 @@ vi.mock('./hooks/useConcertLibrary', () => ({
   useConcertLibrary: () => ({
     conflict: null,
     discardConflict: vi.fn(),
-    error: '',
+    error: cloudState.error,
     executeMutation: vi.fn(),
     flushOutbox: vi.fn(),
     library,
     pendingCount: 0,
+    rejectedMutation: cloudState.rejectedMutation,
     refetch: vi.fn(),
     retryConflict: vi.fn(),
     syncState: 'synced',
@@ -184,6 +190,8 @@ const member = {
 describe('Concert Tracker cloud shell', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
+    cloudState.error = ''
+    cloudState.rejectedMutation = null
     window.history.replaceState({}, '', '/?view=classic')
     document.head.querySelector('link[rel="canonical"]')?.remove()
     document.head.querySelector('meta[name="robots"]')?.remove()
@@ -253,6 +261,30 @@ describe('Concert Tracker cloud shell', () => {
     expect(screen.getAllByText('Your review').length).toBeGreaterThan(0)
   })
 
+  it('opens the concert editor from a rejected review sync banner', async () => {
+    cloudState.error = 'override_reason: override_reason is required when override_rating is set'
+    cloudState.rejectedMutation = {
+      method: 'PUT',
+      path: '/v1/concerts/33333333-3333-4333-8333-333333333333/review',
+    }
+    render(<Dashboard member={member} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Fix review' }))
+
+    expect(await screen.findByRole('heading', { name: 'Edit concert' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Manual final rating (out of 100)')).toHaveValue(null)
+  })
+
+  it('prevents a manual final rating without a reason from being queued', async () => {
+    render(<Dashboard member={member} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Kali Uchis' }))
+    fireEvent.change(screen.getByLabelText('Manual final rating (out of 100)'), { target: { value: '84' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Add a reason for the manual final rating.')
+    expect(screen.getByRole('heading', { name: 'Edit concert' })).toBeInTheDocument()
+  })
+
   it('defaults a newly entered past concert to attended', async () => {
     const { container } = render(<Dashboard member={member} />)
     fireEvent.click(screen.getByRole('button', { name: 'Add concert' }))
@@ -267,8 +299,7 @@ describe('Concert Tracker cloud shell', () => {
 
   it('preloads and selects artwork while editing a concert', async () => {
     render(<Dashboard member={member} />)
-    fireEvent.click(screen.getByRole('button', { name: 'View Kali Uchis details' }))
-    fireEvent.click(await screen.findByRole('button', { name: 'Edit Kali Uchis' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Kali Uchis' }))
     const artworkOption = await screen.findByRole('button', { name: 'Use Sincerely artwork' })
     fireEvent.click(artworkOption)
     expect(artworkOption).toHaveAttribute('aria-pressed', 'true')

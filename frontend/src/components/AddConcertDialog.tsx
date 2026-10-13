@@ -79,6 +79,7 @@ export function AddConcertDialog({
   const [artworkResults, setArtworkResults] = useState<ArtworkOption[]>([])
   const [artworkLoading, setArtworkLoading] = useState(false)
   const [artworkError, setArtworkError] = useState('')
+  const [reviewValidationError, setReviewValidationError] = useState('')
   const [discovery, setDiscovery] = useState<DiscoveryStatus>({ upcoming: true, past: false })
   const [suggestQuery, setSuggestQuery] = useState('')
   const [suggestMode, setSuggestMode] = useState<ConcertSuggestionMode>('upcoming')
@@ -253,6 +254,17 @@ export function AddConcertDialog({
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const form = new FormData(event.currentTarget)
+    const overrideRating = numberOrNull(form.get('overrideRating'))
+    const overrideReason = String(form.get('overrideReason') ?? '').trim()
+    if (overrideRating !== null && !overrideReason) {
+      setReviewValidationError('Add a reason for the manual final rating.')
+      return
+    }
+    if (overrideRating === null && overrideReason) {
+      setReviewValidationError('Enter a manual final rating or clear the override reason.')
+      return
+    }
+    setReviewValidationError('')
     const reviewValues = {
       enjoyment_score: toStoredConcertRating(numberOrNull(form.get('enjoyment'))),
       stage_score: toStoredConcertRating(numberOrNull(form.get('stage'))),
@@ -268,8 +280,8 @@ export function AddConcertDialog({
       id: personalReview?.id ?? crypto.randomUUID(),
       expected_row_version: personalReview?.row_version ?? null,
       ...reviewValues,
-      override_rating: toStoredConcertRating(numberOrNull(form.get('overrideRating'))),
-      override_reason: String(form.get('overrideReason') ?? '').trim() || null,
+      override_rating: toStoredConcertRating(overrideRating),
+      override_reason: overrideReason || null,
       notes: String(form.get('reviewNotes') ?? '').trim() || null,
     } : null
     await onSave({
@@ -504,9 +516,10 @@ export function AddConcertDialog({
             <label className="field"><span>Performance (10%)</span><input name="performance" type="number" min="0" max="100" step="0.1" defaultValue={personalReview?.performance_score == null ? '' : personalReview.performance_score * 10} /></label>
           </div>
           <div className="score-grid">
-            <label className="field"><span>Manual final rating (out of 100)</span><input name="overrideRating" type="number" min="0" max="100" step="0.1" defaultValue={personalReview?.override_rating == null ? '' : personalReview.override_rating * 10} /></label>
-            <label className="field"><span>Override reason</span><input name="overrideReason" maxLength={500} defaultValue={personalReview?.override_reason ?? ''} /></label>
+            <label className="field"><span>Manual final rating (out of 100)</span><input name="overrideRating" type="number" min="0" max="100" step="0.1" defaultValue={personalReview?.override_rating == null ? '' : personalReview.override_rating * 10} onChange={() => setReviewValidationError('')} /></label>
+            <label className="field"><span>Override reason</span><input name="overrideReason" maxLength={500} defaultValue={personalReview?.override_reason ?? ''} onChange={() => setReviewValidationError('')} /></label>
           </div>
+          {reviewValidationError ? <p className="form-error" role="alert">{reviewValidationError}</p> : null}
           <label className="field"><span>Review notes</span><textarea name="reviewNotes" rows={3} defaultValue={personalReview?.notes ?? ''} /></label>
           </fieldset>
         </details>

@@ -32,6 +32,18 @@ export class ApiError extends Error {
 
 const detailMessage = (detail: unknown) => {
   if (typeof detail === 'string') return detail
+  if (Array.isArray(detail)) {
+    const messages = detail.map((item) => {
+      if (!item || typeof item !== 'object') return ''
+      const error = item as { loc?: unknown[]; msg?: unknown }
+      const location = Array.isArray(error.loc)
+        ? error.loc.filter((part) => part !== 'body').map(String).join(' → ')
+        : ''
+      const message = typeof error.msg === 'string' ? error.msg : ''
+      return [location, message].filter(Boolean).join(': ')
+    }).filter(Boolean)
+    if (messages.length) return messages.join(' · ')
+  }
   if (detail && typeof detail === 'object' && 'message' in detail) {
     return String((detail as { message: unknown }).message)
   }

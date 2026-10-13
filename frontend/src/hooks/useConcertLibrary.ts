@@ -32,7 +32,9 @@ export function useConcertLibrary() {
   const [online, setOnline] = useState(() => navigator.onLine)
   const [flushing, setFlushing] = useState(false)
   const [conflict, setConflict] = useState<ConflictState | null>(null)
+  const [rejectedMutation, setRejectedMutation] = useState<QueuedMutation | null>(null)
   const [syncError, setSyncError] = useState('')
+  const rejectedMutationRef = useRef<QueuedMutation | null>(null)
   const flushRef = useRef<() => Promise<void>>(async () => undefined)
 
   const query = useQuery({
@@ -67,11 +69,19 @@ export function useConcertLibrary() {
         try {
           await sendQueuedMutation(mutation)
           await removeMutation(mutation.id)
+          if (rejectedMutationRef.current?.id === mutation.id) {
+            rejectedMutationRef.current = null
+            setRejectedMutation(null)
+          }
           await refreshPending()
         } catch (error) {
           if (error instanceof ApiError && error.status === 409) {
             setConflict(conflictFromError(mutation, error))
             return
+          }
+          if (error instanceof ApiError && error.status === 422) {
+            rejectedMutationRef.current = mutation
+            setRejectedMutation(mutation)
           }
           if (!(error instanceof ApiError)) setOnline(false)
           setSyncError(error instanceof Error ? error.message : 'Pending changes could not sync.')
@@ -107,7 +117,15 @@ export function useConcertLibrary() {
     mutation: QueuedMutation,
     optimisticUpdate: (library: LibraryResponse) => LibraryResponse,
   ) => {
-    await persistMutation(mutation)
+    const rejected = rejectedMutationRef.current
+    if (rejected && rejected.method === mutation.method && rejected.path === mutation.path) {
+      await replaceMutation({ ...mutation, id: rejected.id, createdAt: rejected.createdAt })
+      rejectedMutationRef.current = null
+      setRejectedMutation(null)
+      setSyncError('')
+    } else {
+      await persistMutation(mutation)
+    }
     queryClient.setQueryData<LibraryResponse>(LIBRARY_KEY, (current) => {
       if (!current) return current
       const updated = optimisticUpdate(current)
@@ -174,6 +192,7 @@ export function useConcertLibrary() {
     flushOutbox,
     library: query.data ?? null,
     pendingCount,
+    rejectedMutation,
     refetch: query.refetch,
     retryConflict,
     syncState,

@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
-import { ArrowLeft, ArrowUp, CheckCircle2, RefreshCw, Sparkles } from 'lucide-react'
+import { ArrowLeft, ArrowUp, CheckCircle2, Sparkles } from 'lucide-react'
 import { AnimatePresence, m } from 'motion/react'
 import { EncoreLoading, SessionError } from './session/SessionScreens'
 import { useSession } from './session/useSession'
@@ -344,6 +344,20 @@ export function Dashboard({ member }: DashboardProps) {
     noticeTimer.current = window.setTimeout(() => setNotice(null), 2600)
   }
 
+  const rejectedReviewConcertId = cloud.rejectedMutation?.path.match(/^\/v1\/concerts\/([^/]+)\/review$/)?.[1]
+  const openRejectedReview = () => {
+    const concert = rejectedReviewConcertId
+      ? library?.concerts.find((row) => row.id === rejectedReviewConcertId)
+      : null
+    if (!concert) return
+    setEditing(concert)
+    setFormError('')
+    setDialogOpen(true)
+  }
+  const syncRecoveryAction = rejectedReviewConcertId
+    ? <button type="button" onClick={openRejectedReview}>Fix review</button>
+    : <button type="button" onClick={() => void cloud.flushOutbox()}>Retry sync</button>
+
   const openNew = () => {
     setEditing(null)
     setFormError('')
@@ -521,7 +535,7 @@ export function Dashboard({ member }: DashboardProps) {
         <main className="page-shell page-shell-feed encore-loading-shell" aria-label="Loading concert library" aria-busy="true">
           <h1 className="sr-only">{loadingHeading}</h1>
           <div className="dashboard-column">
-            {cloud.error ? <div className="sync-error-banner" role="alert">{cloud.error}<button type="button" onClick={() => void cloud.refetch()}><RefreshCw size={17} aria-hidden="true" />Retry</button></div> : null}
+            {cloud.error ? <div className="sync-error-banner" role="alert">{cloud.error}{syncRecoveryAction}</div> : null}
             <section className="loading-stats-row" aria-hidden="true"><span className="skeleton" /><span className="skeleton" /><span className="skeleton" /></section>
             <div className="skeleton loading-filter" aria-hidden="true" />
             <section className="loading-card-grid" aria-hidden="true"><span className="skeleton" /><span className="skeleton" /><span className="skeleton" /></section>
@@ -562,7 +576,7 @@ export function Dashboard({ member }: DashboardProps) {
       <div id="encore-main" tabIndex={-1}>
       {stageView ? <Suspense fallback={<FeatureViewLoading />}><StageConcerts concerts={filteredConcerts} allConcerts={library.concerts} personalConcerts={personalConcerts} onOpen={openConcert} onAdd={openNew} onClearSearch={() => setSearch('')} search={search} onClassic={(event) => navigateFromLink(event, { kind: 'concerts' })}>
         {(yearFilter, yearActive) => <>
-          {cloud.error ? <div className="sync-error-banner" role="status">{cloud.error}<button type="button" onClick={() => void cloud.flushOutbox()}>Retry sync</button></div> : null}
+          {cloud.error ? <div className="sync-error-banner" role="status">{cloud.error}{syncRecoveryAction}</div> : null}
           <FiltersBar genres={genres} genre={genre} search={search} sort={sort} status={status} onGenreChange={setGenre} onSearchChange={setSearch} onSortChange={setSort} onStatusChange={setStatus} footer={yearFilter} additionalActiveCount={yearActive ? 1 : 0} quickSorts={[{ value: 'date-desc', label: 'Most recent' }, { value: 'rating-desc', label: 'Highest score' }]} />
         </>}
       </StageConcerts></Suspense> : route.kind === 'concerts' || route.kind === 'detail' ? <main className="page-shell page-shell-feed stage-surface stage-classic">
@@ -576,7 +590,7 @@ export function Dashboard({ member }: DashboardProps) {
             const concert = attended[Math.floor(Math.random() * attended.length)]
             if (concert) openConcert(concert)
           }} />
-          {cloud.error ? <div className="sync-error-banner" role="status">{cloud.error}<button type="button" onClick={() => void cloud.flushOutbox()}>Retry sync</button></div> : null}
+          {cloud.error ? <div className="sync-error-banner" role="status">{cloud.error}{syncRecoveryAction}</div> : null}
           <FiltersBar genres={genres} genre={genre} search={search} sort={sort} status={status} onGenreChange={setGenre} onSearchChange={setSearch} onSortChange={setSort} onStatusChange={setStatus} />
           <p className="list-meta">Showing {filteredConcerts.length} of {library.concerts.length} cloud concerts</p>
           {filteredConcerts.length ? <><h2 className="sr-only" id="concert-archive-title">Concert archive</h2><section className="concert-grid" aria-labelledby="concert-archive-title">{filteredConcerts.map((concert, index) => <ConcertCard key={concert.id} concert={concert} index={index} onArtwork={openArtwork} onDelete={(row) => void deleteConcert(row)} onEdit={(row) => { setEditing(row); setFormError(''); setDialogOpen(true) }} onOpen={openConcert} />)}</section></> : <section className="empty-state"><h2>{library.concerts.length ? 'No concerts match' : 'Add the first staging concert'}</h2><p>{library.concerts.length ? 'Clear a filter or try another artist or venue.' : 'The shared normalized library is empty and ready for testing.'}</p>{!library.concerts.length ? <button className="button button-primary" type="button" onClick={openNew}>Add concert</button> : null}</section>}
